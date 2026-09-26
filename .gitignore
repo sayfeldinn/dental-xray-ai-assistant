@@ -89,3 +89,22 @@ logs/
 *.tmp
 *.temp
 .temp/
+
+# Archives & exports
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Exported model formats
+*.tflite
+*.pb
+*.mlmodel
+
+# Dataset exports
+exports/
+data_exports/
+
+# Python env markers
+.Python
+

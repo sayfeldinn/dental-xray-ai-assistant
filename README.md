@@ -2,7 +2,26 @@
 
 AI-Assisted Diagnostic & Patient History System for Dental Clinics
 
-## 🏗️ Project Structure
+> **Positioning:** DentalAI is an **assistive, second-opinion tool**. It surfaces findings
+> and flags drug-safety concerns for a licensed dentist to review. It does **not**
+> diagnose, prescribe, or make treatment decisions autonomously.
+
+## Locked stack
+
+Do not swap these without Team Lead sign-off.
+
+| Layer | Choice | Notes |
+| --- | --- | --- |
+| Backend | **FastAPI** (Python) | Already scaffolded |
+| Database / Auth / Storage | **Supabase** | Postgres + RLS + Storage |
+| Frontend | **React** (Vite) | Already scaffolded |
+| Detection model | **Ultralytics YOLOv8s** | Weights published as a [Release](https://github.com/sayfeldinn/dental-xray-ai-assistant/releases) |
+
+**No drug-interaction API.** The RxNav DDI endpoint returns 404 — it has been retired.
+Contraindications come from a **hand-curated table** maintained with the dentist, not a
+live API. See `docs/qa/synthetic-patient-profiles.md`.
+
+## Project Structure
 
 ```
 dental-xray-ai-assistant/
@@ -26,15 +45,28 @@ dental-xray-ai-assistant/
 │   │   └── utils/         # Utilities
 │   ├── public/
 │   └── package.json
-├── docs/                  # Documentation
+├── ml/                     # Training notebook + model card
+│   ├── README.md           # Class taxonomy, metrics, Release link
+│   └── train_dental_yolov8s.ipynb
+├── scripts/                # Dev tooling
+│   ├── setup-week1-board.ps1
+│   ├── start-dev.sh
+│   └── test_supabase_connection.py
+├── docs/                   # Documentation
+│   ├── SETUP_GUIDE.md      # Single setup entry point
+│   ├── qa/                 # QA artifacts (synthetic profiles, test cases)
+│   └── ...
 └── .gitignore
 ```
 
-## 🚀 Quick Start
+**Model weights are not in git** (22.6 MB). Download them from the
+[Releases page](https://github.com/sayfeldinn/dental-xray-ai-assistant/releases).
+
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.9+
+- Python **3.11 or 3.12** (3.14 breaks `pydantic-core` — see `docs/SETUP_GUIDE.md`)
 - Node.js 18+
 - Supabase account (free tier)
 
@@ -87,7 +119,16 @@ npm run dev
 
 Frontend will be available at: http://localhost:5173
 
-## 📝 Week 1 Features
+### Or start both at once
+
+```bash
+./scripts/start-dev.sh
+```
+
+Full instructions, troubleshooting and the Week 1 checklist:
+**[`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md)**.
+
+## Week 1 Features
 
 ### Backend
 - ✅ Patient record management (CRUD)
@@ -102,7 +143,11 @@ Frontend will be available at: http://localhost:5173
 - ✅ Treatment confirmation screen
 - ✅ Patient history viewer
 
-## 🔐 Environment Variables
+### ML
+- ✅ YOLOv8s detector trained (5 classes) — see [`ml/README.md`](ml/README.md)
+- ⬜ Inference path (`predict.py` / ONNX / API endpoint) — issue #12
+
+## Environment Variables
 
 ### Backend (.env)
 ```
@@ -118,13 +163,20 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 VITE_API_URL=http://localhost:8000
 ```
 
-## 📚 Documentation
+Never commit `.env` files, and never prefix the service-role key with `VITE_`.
+
+## Documentation
 
 See the `/docs` folder for detailed project documentation:
-- `Project_Context.md` - Full project context and scope
-- `Week1_Execution_Plan.md` - Week 1 detailed execution plan
 
-## 🧪 Testing
+- `docs/SETUP_GUIDE.md` - Setup, troubleshooting, checklist
+- `docs/Project_Context.md` - Full project context and scope
+- `docs/Week1_Execution_Plan.md` - Week 1 detailed execution plan
+- `docs/ARCHITECTURE.md` - System design and diagrams
+- `docs/qa/README.md` - QA artifacts and their status
+- `ml/README.md` - Model card, class taxonomy, metrics
+
+## Testing
 
 ### Backend Tests
 ```bash
@@ -135,10 +187,15 @@ pytest
 ### Frontend Tests
 ```bash
 cd frontend
-npm test
+npm run lint
 ```
 
-## 🤝 Team Roles
+### Connection check
+```bash
+python scripts/test_supabase_connection.py
+```
+
+## Team Roles
 
 - ML Engineer - Dataset preparation & model training
 - Backend Engineer - API & business logic
@@ -146,6 +203,6 @@ npm test
 - Integration/QA Engineer - Testing & synthetic data
 - Team Lead - Coordination & clinical liaison
 
-## 📄 License
+## License
 
 IEEE FCTAI Competition Project
