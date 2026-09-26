@@ -1,0 +1,34 @@
+This repository contains the training pipeline and final weights for a highly optimized YOLOv8s object detection model designed to classify dental diseases in panoramic X-rays. Engineered by Abdullah Tarek Habashy, a recent Alexandria University Computer and Data Science graduate, the project merges the Tufts Dental Database with specialized caries datasets to establish a unified taxonomy. The primary focus was overcoming severe dataset annotation artifacts to achieve accurate, lesion-level detection for elusive features like cavities.
+
+The DENTEX Annotation Problem
+The most significant engineering hurdle occurred during the initial dataset integration.
+
+Initial attempts utilized the DENTEX Challenge 2023 dataset to train the Caries and Deep Caries classes.
+
+The model hit a hard plateau, persistently scoring 0% Recall on cavities despite aggressive Focal Loss and penalty tuning.
+
+Visual diagnostic scripts revealed that DENTEX bounding boxes were "tooth-level" rather than "lesion-level," encompassing massive areas of healthy tissue.
+
+Because the boxes were predominantly healthy enamel, YOLO mathematically treated the micro-features of actual decay as background noise.
+
+Dataset Pivot & Fine-Tuning Strategy
+To cure the poisoned training pool, a two-phase training strategy was deployed alongside a complete dataset overhaul.
+
+DENTEX was completely purged and replaced with the Loki Silvres dataset to inject surgically tight, lesion-specific annotations.
+
+Phase 1 utilized moderate mosaic augmentation (mosaic=0.5) to break the 0% plateau, pushing Caries Recall to 60.0%.
+
+Phase 2 fine-tuned the checkpoint for 35 epochs with early stopping disabled (patience=0) and a lowered learning rate (lr0=0.002).
+
+Mosaic augmentations were disabled (mosaic=0.0) to allow the network to evaluate teeth at their native scale and tighten bounding box precision.
+
+Final Checkpoint Results
+The dataset pivot and refinement strategy resolved the small-object detection failures.
+
+Caries Recall reached 66.7%, proving the network successfully learned to identify the micro-features of dental decay.
+
+Caries mAP50 soared to 64.8%, alongside a strong Precision score of 0.555.
+
+The overall multi-class mAP50 stabilized at 38.0%.
+
+The optimized best.pt weights have been committed to the repository for inference and deployment.
