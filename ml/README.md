@@ -14,7 +14,7 @@ asset because they are 22.6 MB (see `CONTRIBUTING.md`).
 | Weights | [`v0.1-dental-yolov8s`](https://github.com/sayfeldinn/dental-xray-ai-assistant/releases/tag/v0.1-dental-yolov8s) → `best.pt` (22,601,514 bytes) |
 | SHA-256 | `df4455861a67fd683a0ab44b0f461b889624b513738b7cbb6c0ea3adc033a2ed` |
 | Notebook | [`train_dental_yolov8s.ipynb`](train_dental_yolov8s.ipynb) (outputs stripped) |
-| Inference path | **Not yet wired** — tracked in issue #12 / Friday checkpoint |
+| Inference path | **Not yet wired** — issue #30 (blocks #15/#17/#21) |
 | Metrics | Reported below; notebook outputs were stripped, so re-run to reproduce |
 
 ## Class taxonomy (authoritative)
@@ -81,7 +81,8 @@ for r in results:
 ```
 
 There is currently **no `predict.py`, ONNX export, or FastAPI inference endpoint** —
-the API still runs the placeholder `FindingTypeEnum`. See issue #12 and #15/#17.
+the API still runs the placeholder `FindingTypeEnum`. Tracked in issue **#30**;
+blocked by the taxonomy reconciliation in **#28**.
 
 ## Reproducing
 
