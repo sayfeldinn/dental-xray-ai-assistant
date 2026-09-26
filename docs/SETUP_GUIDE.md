@@ -1,325 +1,306 @@
 # DentalAI Setup Guide
 
-Complete setup instructions for Week 1 implementation.
+Single entry point for getting the project running. Everything the old
+`QUICK_START.md`, `START_HERE.md` and `SETUP_INSTRUCTIONS.md` covered is merged here.
 
-## 📋 Prerequisites
+## Table of contents
 
-- Python 3.9 or higher
-- Node.js 18 or higher
+- [Prerequisites](#prerequisites)
+- [5-minute quick start](#5-minute-quick-start)
+- [Supabase setup](#supabase-setup)
+- [Backend setup](#backend-setup)
+- [Frontend setup](#frontend-setup)
+- [Environment variables](#environment-variables)
+- [Python version notes](#python-version-notes)
+- [Verify the install](#verify-the-install)
+- [Useful commands](#useful-commands)
+- [Troubleshooting](#troubleshooting)
+- [Week 1 checklist](#week-1-checklist)
+- [API reference](#api-reference)
+
+## Prerequisites
+
+- **Python 3.11 or 3.12** (3.14 is broken — see [Python version notes](#python-version-notes))
+- Node.js 18+
 - Supabase account (free tier)
 - Git
 
-## 🔧 Supabase Setup
+## 5-minute quick start
 
-### 1. Create Supabase Project
+**1. Supabase (2 min)** — create a project, copy the Project URL, `anon public` key and
+`service_role` key, run `backend/database_schema.sql` in the SQL Editor, and create a
+Storage bucket named `xray-scans` (public for now).
 
-1. Go to [supabase.com](https://supabase.com) and sign up/login
-2. Click "New Project"
-3. Fill in project details:
-   - Name: `dentalai` (or your preferred name)
-   - Database Password: (save this!)
-   - Region: Choose closest to you
-4. Wait for project to be created (~2 minutes)
-
-### 2. Get API Credentials
-
-1. In your Supabase project dashboard, go to **Settings** → **API**
-2. Copy the following:
-   - `Project URL` (looks like: `https://xxxxx.supabase.co`)
-   - `anon public` key (under Project API keys)
-   - `service_role` key (under Project API keys - keep this secret!)
-
-### 3. Create Storage Bucket
-
-1. In Supabase dashboard, go to **Storage**
-2. Click "New bucket"
-3. Name: `xray-scans`
-4. Set to **Public** bucket (for now - will add RLS policies later)
-5. Click "Create bucket"
-
-### 4. Set Up Database Schema
-
-1. In Supabase dashboard, go to **SQL Editor**
-2. Click "New query"
-3. Copy the entire content from `backend/database_schema.sql`
-4. Paste into SQL editor
-5. Click "Run" to execute
-6. Verify tables were created: Go to **Table Editor** and you should see:
-   - patients
-   - scans
-   - treatments
-   - prescriptions
-   - feedback
-
-## 🐍 Backend Setup
-
-### 1. Navigate to Backend Directory
+**2. Backend (1 min)**
 
 ```bash
 cd backend
-```
-
-### 2. Create Virtual Environment
-
-```bash
 python -m venv venv
-```
-
-### 3. Activate Virtual Environment
-
-**macOS/Linux:**
-```bash
-source venv/bin/activate
-```
-
-**Windows:**
-```bash
-venv\Scripts\activate
-```
-
-### 4. Install Dependencies
-
-```bash
+source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+cp .env.example .env          # then fill in your Supabase credentials
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 5. Configure Environment Variables
+**3. Frontend (1 min)** — in a new terminal:
 
-1. Copy the example env file:
 ```bash
-cp .env.example .env
+cd frontend
+npm install
+cp .env.example .env.local    # then fill in your Supabase credentials
+npm run dev
 ```
 
-2. Edit `.env` file and fill in your Supabase credentials:
-```env
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_KEY=your_anon_key_here
-SUPABASE_SERVICE_KEY=your_service_role_key_here
+**4. Test it** — open http://localhost:5173, click **Sign Up**, create an account.
 
-SECRET_KEY=generate_a_random_secret_key_here
+## Supabase setup
+
+### 1. Create a project
+
+1. Go to [supabase.com](https://supabase.com) → **New Project**
+2. Name: `dentalai`, pick a region, save the database password
+
+### 2. Get API credentials
+
+**Settings → API**, copy:
+
+- `Project URL` (`https://xxxxx.supabase.co`)
+- `anon public` key
+- `service_role` key — **keep this secret, never commit it**
+
+### 3. Create the storage bucket
+
+**Storage → New bucket** → name `xray-scans` → Public → Create.
+
+### 4. Apply the schema
+
+1. **SQL Editor → New query**
+2. Paste the entire contents of `backend/database_schema.sql`
+3. Run it. You should see "Success. No rows returned"
+4. **Table Editor** should now show: `patients`, `scans`, `treatments`, `prescriptions`, `feedback`
+
+## Backend setup
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate      # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env          # fill in Supabase credentials
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**To generate a SECRET_KEY:**
+Generate a `SECRET_KEY` for `.env`:
+
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-### 6. Run the Backend Server
+Running at:
 
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Backend should now be running at:
 - API: http://localhost:8000
-- Interactive Docs: http://localhost:8000/docs
-- Alternative Docs: http://localhost:8000/redoc
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
-## ⚛️ Frontend Setup
-
-### 1. Navigate to Frontend Directory
-
-Open a **new terminal** and:
+## Frontend setup
 
 ```bash
 cd frontend
-```
-
-### 2. Install Dependencies
-
-```bash
 npm install
+cp .env.example .env.local    # fill in Supabase credentials
+npm run dev
 ```
 
-### 3. Configure Environment Variables
+Running at http://localhost:5173.
 
-1. Copy the example env file:
-```bash
-cp .env.example .env.local
+Use the **same** `SUPABASE_URL` and anon key in both `.env` and `.env.local`.
+
+## Environment variables
+
+### Backend (`backend/.env`)
+
+```env
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_KEY=your_anon_key
+SUPABASE_SERVICE_KEY=your_service_key
+SECRET_KEY=generate_with_python_secrets
 ```
 
-2. Edit `.env.local` file:
+### Frontend (`frontend/.env.local`)
+
 ```env
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key_here
+VITE_SUPABASE_ANON_KEY=your_anon_key
 VITE_API_URL=http://localhost:8000
 VITE_API_V1_PREFIX=/api/v1
 ```
 
-**Important:** Use the same `SUPABASE_URL` and `SUPABASE_KEY` (anon key) from backend setup.
+Variables exposed to the browser **must** start with `VITE_`. Never put the
+`service_role` key in a `VITE_` variable.
 
-### 4. Run the Frontend Development Server
+## Python version notes
+
+**Python 3.14 does not work** — `pydantic-core` (pulled in by `pydantic==2.5.3`) has no
+3.14 wheels yet, so `pip install -r requirements.txt` fails. Use 3.11 or 3.12.
+
+Check what you have:
 
 ```bash
-npm run dev
+python --version
 ```
 
-Frontend should now be running at: http://localhost:5173
+**Option 1 — Homebrew:**
 
-## ✅ Verify Installation
+```bash
+brew install python@3.12
+cd backend && rm -rf venv
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-### 1. Test Backend
+**Option 2 — pyenv:**
 
-Open http://localhost:8000/docs in your browser. You should see the FastAPI interactive documentation.
+```bash
+pyenv install 3.12
+pyenv local 3.12
+cd backend && rm -rf venv
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-Test the health endpoint:
+**Option 3 — no admin rights?** Install just the runtime deps from PyPI wheels:
+
+```bash
+cd backend
+rm -rf venv
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install fastapi uvicorn supabase-py python-dotenv \
+  "python-jose[cryptography]" "passlib[bcrypt]" python-multipart \
+  email-validator pydantic-settings
+uvicorn app.main:app --reload
+```
+
+## Verify the install
+
+**Backend:**
+
 ```bash
 curl http://localhost:8000/health
 ```
 
-Expected response:
+Expected:
+
 ```json
-{
-  "status": "healthy",
-  "app": "DentalAI",
-  "version": "1.0.0"
-}
+{ "status": "healthy", "app": "DentalAI", "version": "1.0.0" }
 ```
 
-### 2. Test Frontend
+**Connection test:**
 
-1. Open http://localhost:5173 in your browser
-2. You should be redirected to the login page
-3. Click "Sign Up" and create a test account:
-   - Full Name: Test Dentist
-   - Email: test@example.com
-   - Password: password123
-4. After signup, you should be redirected to the Dashboard
-
-### 3. Test Full Stack Integration
-
-1. On the Dashboard, you should see your email in the top right
-2. Try clicking on different cards (they will show "Coming soon" pages)
-3. Try signing out and signing back in
-
-## 🔍 Troubleshooting
-
-### Backend Issues
-
-**Error: "Missing Supabase environment variables"**
-- Make sure `.env` file exists in `backend/` directory
-- Verify all required variables are set
-
-**Error: "Failed to create scan record"**
-- Check that database schema was run successfully
-- Verify Supabase connection by checking `/health` endpoint
-
-**Port 8000 already in use:**
 ```bash
-# Find and kill the process
+python scripts/test_supabase_connection.py
+```
+
+Loads `backend/.env` and confirms the Supabase client connects. If it reports missing
+tables, re-run the schema SQL.
+
+**Frontend:** open http://localhost:5173, sign up with a test account
+(`test@example.com` / `password123`), and confirm you land on the Dashboard.
+
+## Useful commands
+
+```bash
+# Start both servers (macOS/Linux)
+./scripts/start-dev.sh
+
+# Backend only
+cd backend && source venv/bin/activate && uvicorn app.main:app --reload
+
+# Frontend only
+cd frontend && npm run dev
+
+# Supabase connection check
+python scripts/test_supabase_connection.py
+
+# Tests (when they land)
+cd backend && pytest
+cd frontend && npm run lint
+```
+
+**URLs**
+
+| Service | URL |
+| --- | --- |
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8000 |
+| API docs | http://localhost:8000/docs |
+| Supabase dashboard | https://app.supabase.com |
+
+## Troubleshooting
+
+**`ModuleNotFoundError: No module named 'fastapi'`** — you are not in the virtual
+environment: `cd backend && source venv/bin/activate`
+
+**`Connection refused` / `ECONNREFUSED`** — the backend is not running:
+`cd backend && source venv/bin/activate && uvicorn app.main:app --reload`
+
+**`Missing Supabase environment variables`** — `backend/.env` or `frontend/.env.local`
+is missing or incomplete. Frontend vars must start with `VITE_`.
+
+**`Invalid credentials` on login** — the schema SQL was never applied; re-run it in the
+SQL Editor.
+
+**`pydantic-core` / Python 3.14 build failure** — see [Python version notes](#python-version-notes).
+
+**Port already in use:**
+
+```bash
+# macOS/Linux
 lsof -ti:8000 | xargs kill -9
-```
-
-### Frontend Issues
-
-**Error: "Missing Supabase environment variables"**
-- Make sure `.env.local` file exists in `frontend/` directory
-- Variables must start with `VITE_` prefix in Vite
-
-**Error: "Network Error" or "CORS Error"**
-- Make sure backend is running on port 8000
-- Check `VITE_API_URL` in `.env.local`
-
-**Port 5173 already in use:**
-```bash
-# Find and kill the process
 lsof -ti:5173 | xargs kill -9
+
+# Windows
+netstat -ano | findstr :8000
+taskkill /PID <pid> /F
 ```
 
-### Supabase Issues
+**`Network Error` / CORS error** — the backend is down, or `VITE_API_URL` does not point
+at http://localhost:8000.
 
-**Storage bucket not working:**
-1. Go to Supabase dashboard → Storage
-2. Click on `xray-scans` bucket
-3. Go to "Policies" tab
-4. Add policy for public access:
-   - Policy name: "Public Access"
-   - Target roles: `public`
-   - Policy command: `SELECT`
-   - Policy definition: `true`
+**Storage bucket not working** — Supabase dashboard → Storage → `xray-scans` → Policies
+→ add a `SELECT` policy for role `public` with definition `true`.
 
-## 📚 API Documentation
+## Week 1 checklist
 
-Once backend is running, visit:
-- **Swagger UI:** http://localhost:8000/docs
+- [ ] Supabase project created
+- [ ] Database schema executed
+- [ ] `xray-scans` storage bucket created
+- [ ] Backend running on port 8000 (`/health` returns healthy)
+- [ ] Frontend running on port 5173
+- [ ] `scripts/test_supabase_connection.py` passes
+- [ ] Can create an account and log in
+- [ ] Dashboard loads
+
+All checked → you're ready for Week 2.
+
+## API reference
+
+- **Swagger:** http://localhost:8000/docs
 - **ReDoc:** http://localhost:8000/redoc
 
-### Available Endpoints
+| Group | Endpoints |
+| --- | --- |
+| Auth | `POST /api/v1/auth/signup`, `/signin`, `/signout`, `GET /api/v1/auth/me` |
+| Patients | `GET/POST /api/v1/patients`, `GET/PUT/DELETE /api/v1/patients/{id}` |
+| Scans | `GET/POST /api/v1/scans`, `POST /api/v1/scans/upload`, `GET/PUT/DELETE /api/v1/scans/{id}` |
+| Recommendations | `POST /api/v1/recommendations/treatment`, `POST /api/v1/recommendations/check-contraindication`, `GET /api/v1/recommendations/drugs`, `GET /api/v1/recommendations/finding-mappings` |
 
-#### Authentication
-- `POST /api/v1/auth/signup` - Create new account
-- `POST /api/v1/auth/signin` - Sign in
-- `POST /api/v1/auth/signout` - Sign out
-- `GET /api/v1/auth/me` - Get current user
+## Next steps
 
-#### Patients
-- `GET /api/v1/patients` - List patients
-- `POST /api/v1/patients` - Create patient
-- `GET /api/v1/patients/{id}` - Get patient
-- `PUT /api/v1/patients/{id}` - Update patient
-- `DELETE /api/v1/patients/{id}` - Delete patient
-
-#### Scans
-- `GET /api/v1/scans` - List scans
-- `POST /api/v1/scans/upload` - Upload X-ray
-- `GET /api/v1/scans/{id}` - Get scan
-- `PUT /api/v1/scans/{id}` - Update scan
-- `DELETE /api/v1/scans/{id}` - Delete scan
-
-#### Recommendations
-- `POST /api/v1/recommendations/treatment` - Get treatment recommendation
-- `POST /api/v1/recommendations/check-contraindication` - Check drug safety
-- `GET /api/v1/recommendations/drugs` - List available drugs
-- `GET /api/v1/recommendations/finding-mappings` - Get finding mappings
-
-## 🎯 Next Steps
-
-After successful setup:
-
-1. **Test API endpoints** using the Swagger UI at http://localhost:8000/docs
-2. **Create test patients** through the frontend (once implemented)
-3. **Review recommendation engine** logic in `backend/app/services/recommendation_engine.py`
-4. **Prepare for Week 2** - ML model integration
-
-## 🆘 Need Help?
-
-- Check backend logs in the terminal where you ran `uvicorn`
-- Check frontend logs in the browser console (F12)
-- Review Supabase logs in dashboard → Logs section
-- Make sure both backend and frontend are running simultaneously
-
-## 📝 Development Tips
-
-### Hot Reload
-
-Both backend and frontend support hot reload:
-- **Backend:** Any changes to Python files will auto-reload
-- **Frontend:** Any changes to React files will auto-reload in browser
-
-### Stopping Servers
-
-- Press `Ctrl+C` in the terminal to stop either server
-
-### Running Tests (Future)
-
-```bash
-# Backend tests
-cd backend
-pytest
-
-# Frontend tests
-cd frontend
-npm test
-```
-
----
-
-**Week 1 Setup Complete! 🎉**
-
-You now have a working full-stack application with:
-- ✅ Authentication system
-- ✅ Database with proper schema
-- ✅ Backend API with FastAPI
-- ✅ Frontend with React
-- ✅ Supabase integration
-- ✅ Recommendation engine skeleton
+- Test endpoints in Swagger
+- Review `backend/app/services/recommendation_engine.py`
+- Week 1 QA artifacts live in [`docs/qa/`](qa/README.md)
+- ML weights and the model card live in [`ml/`](../ml/README.md)
