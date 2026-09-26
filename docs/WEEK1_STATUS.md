@@ -107,7 +107,8 @@ dental-xray-ai-assistant/
 │   └── WEEK1_STATUS.md       # This file
 ├── .gitignore                # Git exclusions
 ├── README.md                 # Project readme
-└── start-dev.sh              # Dev server starter
+└── scripts/
+    └── start-dev.sh          # Dev server starter
 ```
 
 ## 🎯 Key Features Implemented
@@ -310,7 +311,7 @@ cp frontend/.env.example frontend/.env.local
 # Edit both .env files with your credentials
 
 # 3. Run development servers
-./start-dev.sh
+./scripts/start-dev.sh
 ```
 
 ## 🎯 Competition Readiness

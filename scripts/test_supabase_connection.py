@@ -3,10 +3,15 @@ Simple test script to verify Supabase connection
 Run this to ensure your credentials are working
 """
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv('/Users/seifshawky/seif_projects/ieee/dental-xray-ai-assistant/backend/.env')
+# Load environment variables from backend/.env, wherever the repo was cloned
+ENV_FILE = Path(__file__).resolve().parents[1] / "backend" / ".env"
+if not ENV_FILE.exists():
+    raise SystemExit(f"backend/.env not found at {ENV_FILE}. Copy backend/.env.example first.")
+load_dotenv(ENV_FILE)
 
 # Get credentials
 SUPABASE_URL = os.getenv('SUPABASE_URL')
