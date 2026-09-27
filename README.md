@@ -139,13 +139,15 @@ Full instructions, troubleshooting and the Week 1 checklist:
 
 ### Frontend
 - ✅ Authentication (login/signup)
-- ✅ X-ray review screen
+- ✅ Patient record viewer + X-ray scan list
+- ✅ X-ray review screen with bounding-box overlay
 - ✅ Treatment confirmation screen
-- ✅ Patient history viewer
+- ⬜ Wireframe sketches for the two screens above — issues #4, #9 (skipped: built straight to UI)
+- ⬜ Not yet CI-verified beyond `oxlint` — author marked PR #35 *"testing in progress"*
 
 ### ML
 - ✅ YOLOv8s detector trained (5 classes) — see [`ml/README.md`](ml/README.md)
-- ⬜ Inference path (`predict.py` / ONNX / API endpoint) — issue #12
+- ⬜ Inference path (`predict.py` / ONNX / API endpoint) — issue #30
 
 ## Environment Variables
 

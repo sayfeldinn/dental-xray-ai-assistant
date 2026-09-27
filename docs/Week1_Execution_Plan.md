@@ -115,14 +115,34 @@
 
 ## 6. End-of-Week 1 Deliverables Checklist
 
+Status recorded by Lead + QA on 2026-09-27. Evidence and the full verification table are in
+[#23](https://github.com/sayfeldinn/dental-xray-ai-assistant/issues/23). **3 met · 4 partial · 1 not met.**
+
 - [ ] Dentist meeting completed; finding-to-treatment table and drug list corrected and documented
-- [ ] DENTEX + Tufts + Roboflow datasets downloaded, merged, and converted to training format
-- [ ] First model fine-tuning run started
-- [ ] Patient record schema implemented in Supabase with all contraindication-relevant fields
-- [ ] Recommendation engine skeleton coded from the validated table, stub-tested
-- [ ] Review-screen and confirmation-screen UI shells built against mock data
-- [ ] Five or more synthetic patient profiles drafted, covering all three demo branches
-- [ ] Shared repo, branching strategy, and project board fully set up and in active use
+      — **not met.** #6 and #11 open with 0 comments since Day 1; everything in `docs/qa/` is `UNVALIDATED`.
+- [~] DENTEX + Tufts + Roboflow datasets downloaded, merged, and converted to training format
+      — **diverged.** DENTEX purged (box granularity), Roboflow unused. Actual set: **Tufts + Loki Silvres**.
+      Awaiting Lead decision: accept the substitution or re-plan.
+- [x] First model fine-tuning run started — two runs in `ml/Evaluation_Report.md`; checkpoint
+      frozen as Release `v0.1-dental-yolov8s`. (#16)
+- [~] Patient record schema implemented in Supabase with all contraindication-relevant fields
+      — **partial.** Tables + JSONB fields in (#3, #8), but **`weight_kg` is not a column** and age
+      is never computed → 3 of 9 rules have no data path (#33 gap A).
+- [~] Recommendation engine skeleton coded from the validated table, stub-tested
+      — **partial.** Engine built and tested (19 passed / 10 xfailed), but the table was **never
+      validated** (#11).
+- [x] Review-screen and confirmation-screen UI shells built against mock data — landed in PR #35
+      (`Review.jsx`, `Treatments.jsx`, routed). Built against the real API rather than mock.
+      Author marked the PR "testing in progress".
+- [x] Five or more synthetic patient profiles drafted, covering all three demo branches —
+      6 profiles (P-001…P-006), §3 branch matrix covers all three branches. (#10, PR #26)
+- [~] Shared repo, branching strategy, and project board fully set up and in active use
+      — **mostly.** Repo + CI + board live (25 issues, all with Status). Branching documented in
+      `CONTRIBUTING.md` but **violated twice by direct pushes to `main`**; no branch protection on
+      the free plan, so **CI is the only enforcement**.
+
+> `[~]` = partial. The original plan used `- [ ]` only; partial states are recorded here rather
+> than silently checking an item that is not finished.
 
 ## 7. Risks & Blockers to Watch
 
@@ -130,6 +150,28 @@
 - Dataset access issues — should not occur, since DENTEX's full dataset is confirmed public on Hugging Face; verify this on Day 1 regardless.
 - Stack decision paralysis — lock the stack choices on Day 1 (FastAPI + Supabase + React) and do not revisit them mid-week.
 - Scope creep from excitement — see Section 8; the team will be tempted to "just quickly try" something out of scope. Don't.
+
+### 7.1 Risk log — status at end of Week 1 (recorded 2026-09-27)
+
+Recorded for #20. Verification detail in [#23](https://github.com/sayfeldinn/dental-xray-ai-assistant/issues/23).
+
+| Planned risk | Outcome | Note |
+| --- | --- | --- |
+| Dentist meeting slips | 🔴 **MATERIALISED** | Never scheduled. #1 open with the question list posted, #6 and #11 untouched since Day 1. Every table, rule and profile is `UNVALIDATED`. **Still the #1 blocker into Week 2.** |
+| Dataset access issues | 🟡 **different problem** | Access was fine. The real issue was granularity: DENTEX boxes are tooth-level, we need lesion-level, so **DENTEX was purged**. Roboflow was never used. Substitution (Tufts + Loki Silvres) needs a Lead call. |
+| Stack decision paralysis | 🟢 **avoided** | Stack locked Day 1 and never revisited. |
+| Scope creep | 🟢 **mostly avoided** | §8 respected: no 3D, no drug-interaction API, no patient app, no retraining infra. **One deviation to note:** `Review.jsx` hand-rolls its bbox overlay on `<canvas>` instead of reusing an open-source annotation component (§8 bullet 4) — `package.json` has no such dependency. |
+
+**New risks discovered during the week that §7 did not anticipate:**
+
+| Risk | Severity | Issue |
+| --- | --- | --- |
+| **No branch protection available** (private repo, free plan) so `CONTRIBUTING.md` §2 is advisory — violated twice by direct pushes to `main` (`8892da0`, `ac930a2`) | 🔴 | #22 |
+| **The GitHub web upload UI ignores `.gitignore`** — 8 duplicate "project is 100% complete" docs, a 22.6 MB weight file, a `.pyc` and a broken symlink all reached `main` that way. CI's repo guard caught the weights (turned `main` red) but does not check for `.md`/`.txt`/`.pyc`/symlinks | 🔴 | #22 |
+| **Status documents claimed work that did not exist** — `README.md` and `WEEK1_STATUS.md` both advertised review/confirmation screens as done while `App.jsx` served `"Coming soon..."`; `FINAL_SETUP.md` said "100% complete" | 🟡 | fixed in PR #36 |
+| **Service-role key still recoverable from git history** | 🔴 | **#31** |
+| **Frontend merged marked "testing in progress"** — PR #35 has no run-time verification | 🟡 | #14, #18 |
+| **`main` can go red from a single web upload** — the guard is the only thing standing between a bad push and a broken default branch | 🟡 | PR #36 |
 
 ## 8. What NOT To Do This Week
 

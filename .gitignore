@@ -33,9 +33,12 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Virtual environments
-venv/
-ENV/
-env/
+# NOTE: patterns with a trailing slash match directories only, so a symlink
+# named `venv` slipped through as a file (commit ac930a2). Bare patterns catch
+# directories, files, and symlinks alike.
+venv
+ENV
+env
 .venv
 
 # IDEs

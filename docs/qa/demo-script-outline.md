@@ -35,7 +35,7 @@ rest credible. Do not cut it.
 | 2 | `frontend` running | | demo the two UI shells against mock data |
 | 3 | Auth token (`POST` login) — every recommendation route has `Depends(get_current_user_id)` | | blocks *all* API branches |
 | 4 | Six profiles seeded into `patients`, with `dentist_id` matching the logged-in user | | branches return **404 Patient not found** |
-| 5 | `backend/tests/test_contraindications.py` green | 13 passed / 16 xfailed | stop — see §4 |
+| 5 | `backend/tests/test_contraindications.py` green | 19 passed / 10 xfailed | stop — see §4 |
 | 6 | Model weights available (`v0.1-dental-yolov8s` Release asset) | | inference segment cannot run — #30 |
 
 **Known seeding problem (gap A, #33):** `age_years` and `weight_kg` are **not columns in the
@@ -125,13 +125,14 @@ Two flavours are demoable; a third is not.
 
 **Talking points + honest narration**
 - ✅ The warning *fires*. `test_tc01_amoxicillin_warns_on_penicillin_allergy` passes.
-- ⚠️ The text reads **"Allergy alert: Amoxicillin may cause allergic reaction"** — it never
-  says **penicillin**, so a reader cannot tell *why*. Gap **E** (`test_tc01b` xfail).
-- ⚠️ **No alternative is offered.** The engine appends warnings; it has no substitution logic
-  (gap **D**). The profile expects **Azithromycin** as the swap — and Azithromycin is not even
-  in `DRUGS_DATABASE` (gap **B**). So the demo shows a warning without a way forward.
-- **Line to use:** *"We can tell you not to give this drug. We cannot yet tell you what to give
-  instead — that's issue #33, tracked, 16 assertions waiting on it."*
+- ✅ The text now names the allergen — **"Allergy alert: Amoxicillin contraindicated due to
+  penicillin allergy. Consider Azithromycin."** (`test_tc01b` passes since PR #35; gap E closed).
+- ✅ **An alternative is offered**, and Azithromycin is now in `DRUGS_DATABASE`, so it can be
+  checked in its own right (gap B closed for Azithromycin).
+- ⚠️ Still open: Dexamethasone is missing from `DRUGS_DATABASE`, so the R-05 diabetes branch
+  (TC-14) remains xfail.
+- **Line to use:** *"Six of the sixteen gaps the test suite found were closed this afternoon by
+  the backend engineer — the remaining ten are listed in issue #33."*
 
 #### C2 — drug interaction (fully demoable today)
 
@@ -142,18 +143,19 @@ Two flavours are demoable; a third is not.
 | **Expected** | ≥2 warnings — R-02 (warfarin × NSAID, Paracetamol offered) **and** R-03 (age ≥ 65) |
 
 **Steps**
-1. Confirm with Ibuprofen proposed → warning shows **"Drug interaction: Ibuprofen with warfarin"**.
-2. Swapping to Paracetamol to show the clean alternative — ⚠️ **it warns too.**
+1. Confirm with Ibuprofen proposed → warning shows **"Drug interaction: Ibuprofen co-administered with Warfarin increases bleed risk. Substitute Paracetamol."**
+2. Swap to Paracetamol → it now comes back **clean**.
 
 **Talking points + honest narration**
 - ✅ `test_tc04_ibuprofen_warns_on_warfarin` passes and names the interacting drug.
+- ✅ **The substitute is named in the warning** — gap D closed.
+- ✅ **Paracetamol now clears.** It no longer declares `warfarin` as an interaction, so R-02's
+  own recommended substitute is clean (gap C closed; `test_tc05` and `test_tc08` pass).
+  *The suite caught this and the backend engineer fixed it the same day.*
 - ⚠️ **Only one warning appears, not two.** R-03 (age 72) never fires: there is no age input
   (gap **A**), and `age_years` is not even a column. `test_tc07` and `test_nc06b` are xfail.
-- ⚠️ **Substituting Paracetamol does not clear it.** Paracetamol declares `warfarin` as an
-  interaction, so R-02's own recommended substitute warns (gap **C**, `test_tc05` xfail).
-  *This is the single most damaging thing to discover live — demo it deliberately and name it.*
-- **Line to use:** *"This is why we wrote the test suite before the demo: it caught that our
-  own recommended substitute contradicts our own rule."*
+- **Line to use:** *"We flagged the interaction, named the substitute, and proved the substitute
+  is clean. What we still cannot do is warn on age — that field does not exist yet."*
 
 #### C3 — age / weight (⛔ not demoable)
 
@@ -187,7 +189,7 @@ Run the suite — it needs no server, no Supabase and no `.env`:
 cd backend && pytest -q -rx
 ```
 
-`13 passed, 16 xfailed` proves the engine matches our contract on everything the contract
+`19 passed, 10 xfailed` proves the engine matches our contract on everything the contract
 currently supports, and each xfail reason names the blocking gap. Read the reasons aloud;
 they *are* the gap report (#33).
 
@@ -202,15 +204,15 @@ Do not present any of the following as done:
 | "Rules are dentist-validated" | meeting never held; all expectations DRAFT | #1, #6, #11 |
 | "The model runs on X-rays" | no inference path | #30 |
 | "Findings map to the API" | taxonomy unreconciled | #28 |
-| "Contraindications are covered" | 16 of 29 assertions blocked | #33 |
+| "Contraindications are covered" | 10 of 29 assertions blocked | #33 |
 | "Age and weight are checked" | fields don't exist | #33 gap A |
-| "We show the alternative drug" | no substitution logic | #33 gap D |
+| "We cover the draft six drugs" | Dexamethasone still missing from `DRUGS_DATABASE` | #33 gap B |
 | "Patient data is protected" | leaked service-role key not yet rotated | #31 |
 
 **What we can honestly claim:** the repo has CI that enforces hygiene and runs tests; six
 synthetic profiles cover all three branches; 23 written test cases with 5 negative controls;
-a 29-test suite that passes 13 and documents 16 real gaps; and every open blocker is on the
-board.
+a 29-test suite that passes 19 and documents 10 real gaps (6 of the original 16 were closed
+within hours of the suite landing); and every open blocker is on the board.
 
 ---
 
