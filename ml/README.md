@@ -14,7 +14,7 @@ asset because they are 22.6 MB (see `CONTRIBUTING.md`).
 | Weights | [`v0.1-dental-yolov8s`](https://github.com/sayfeldinn/dental-xray-ai-assistant/releases/tag/v0.1-dental-yolov8s) → `best.pt` (22,601,514 bytes) |
 | SHA-256 | `df4455861a67fd683a0ab44b0f461b889624b513738b7cbb6c0ea3adc033a2ed` |
 | Notebook | [`train_dental_yolov8s.ipynb`](train_dental_yolov8s.ipynb) (outputs stripped) |
-| Inference path | **Not yet wired** — issue #30 (blocks #15/#17/#21) |
+| Inference path | `predict.py` ✓ — endpoint/ONNX still pending issue #30 (blocks #15/#17/#21) |
 | Metrics | Reported below; notebook outputs were stripped, so re-run to reproduce |
 
 ## Class taxonomy (authoritative)
@@ -67,12 +67,18 @@ Final run directory: `dental_clean_tufts_loki_p2`.
 These come from the original training logs. Notebook outputs were stripped to shrink the
 file, so re-running the notebook reproduces them from scratch.
 
-## Inference (once wired)
+## Inference
+
+```bash
+python ml/predict.py                                  # default test image, conf 0.25
+python ml/predict.py some_panorama.jpg --conf 0.10    # lower the bar
+python ml/predict.py some_panorama.jpg --save         # + annotated JPG in runs/detect/
+```
 
 ```python
 from ultralytics import YOLO
 
-model = YOLO("best.pt")          # download from the Release
+model = YOLO("best.pt")
 results = model.predict("panoramic.png", imgsz=1024, conf=0.25)
 for r in results:
     for box in r.boxes:
@@ -80,9 +86,22 @@ for r in results:
         print(model.names[cls], float(box.conf[0]))
 ```
 
-There is currently **no `predict.py`, ONNX export, or FastAPI inference endpoint** —
-the API still runs the placeholder `FindingTypeEnum`. Tracked in issue **#30**;
-blocked by the taxonomy reconciliation in **#28**.
+`predict.py` resolves `best.pt` and the default image relative to its own location, so it
+works from any working directory. It requires `ultralytics` and CPU torch; no GPU needed.
+
+A default `conf=0.25` finding nothing is a legitimate result — see "Reported results"
+above. Drop to `--conf 0.05` before assuming the pipeline is broken.
+
+Still missing, tracked in issue **#30** and blocked by the taxonomy reconciliation in
+**#28**:
+
+- **FastAPI inference endpoint** — `ml/api/app.py` exists but is not wired into the app
+  (note its `MODEL_PATH = "../best.pt"` is relative to the *working directory*; run it
+  from `ml/api/`)
+- **ONNX export**
+- The **backend** still runs the placeholder `FindingTypeEnum` — `MLInferenceService`
+  in `backend/app/services/ml_service.py` returns hardcoded mock findings
+  (`model_version = "mock-v1.0"`), so `/ml/predict` does **not** exercise this model
 
 ## Reproducing
 
