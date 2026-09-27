@@ -7,7 +7,7 @@ Owner: Person D — Integration/QA Engineer. See [docs/Week1_Execution_Plan.md](
 | `synthetic-patient-profiles.md` | Day 2 (Tue) | done (v1, **UNVALIDATED** — dentist meeting not held) |
 | `contraindication-test-cases.md` | Day 3 (Wed) | done (v1, **UNVALIDATED** — dentist meeting not held) |
 | `demo-script-outline.md` | Day 4 (Thu) | done (DRAFT — inference blocked by #30) |
-| `manual-test-log.md` | Day 4 (Thu) | done (**13 pass / 16 xfail** vs engine) |
+| `manual-test-log.md` | Day 4 (Thu) | done (run 2 after PR #35: **19 pass / 10 xfail**; run 1 was 13/16) |
 
 **Executable suite:** [`backend/tests/test_contraindications.py`](../../backend/tests/test_contraindications.py)
 executes every case in `contraindication-test-cases.md`. Run with `cd backend && pytest -q`.
@@ -17,11 +17,13 @@ It lights up the Backend CI job, which previously skipped with *"No tests yet"*.
 
 **Open QA findings:**
 
-- **#33 — engine contract gaps (16 of 29 tests are `xfail`).** Ten gaps found by executing the
-  cases: no age/weight/lifestyle parameter, two drugs missing from `DRUGS_DATABASE`,
-  Paracetamol contradicting R-02, no substitution logic, exact-string condition matching,
-  object-vs-string medications (would 500 the endpoint), no dose concept, four unrepresentable
-  findings, and an unmapped finding returning HTTP 400. **Blocks #17.**
+- **#33 — engine contract gaps (10 of 29 tests are `xfail`; was 16).** Opened with ten gaps
+  found by executing the cases. PR #35 closed six of them — `Azithromycin` added, Paracetamol's
+  spurious warfarin interaction removed, allergy warnings now name the allergen, and a
+  substitute is now offered. **Still open:** no age/weight/lifestyle parameter, Dexamethasone
+  still missing, exact-string condition matching, object-vs-string medications (would 500 the
+  endpoint), no dose concept, four unrepresentable findings, and an unmapped finding returning
+  HTTP 400. **Blocks #17.**
 - **R-06 / R-07 / R-08 have no covering profile** — no patient in `synthetic-patient-profiles.md`
   has liver disease, alcohol use, or a QT-prolonging co-medication, so TC-06, TC-16 and TC-17
   rely on QA-invented overrides. Needs either three appended profiles (P-007…P-009) or a scope

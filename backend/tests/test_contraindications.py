@@ -52,28 +52,12 @@ def test_tc01_amoxicillin_warns_on_penicillin_allergy(engine_check):
     assert len(result.warnings) >= 1, result.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        f"{GAP} gap E: warning text names the drug but not the allergen. "
-        "Emitted 'Allergy alert: Amoxicillin may cause allergic reaction'; "
-        "profiles S4 (P-003) requires the warning to name 'penicillin'."
-    ),
-)
 def test_tc01_warning_names_the_allergen(engine_check):
     """TC-01 -- the reason for the warning must be legible to the dentist."""
     result = engine_check("P-003", "Amoxicillin")
     assert "penicillin" in result.warning_text.lower(), result.warning_text
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        f"{GAP} gap B: Azithromycin is missing from DRUGS_DATABASE, so the check "
-        "returns \"Drug 'Azithromycin' not found in database\" instead of "
-        "proving R-01 does not fire on a non-beta-lactam."
-    ),
-)
 def test_tc02_azithromycin_must_not_cross_react(engine_check):
     """TC-02 -- azithromycin is the penicillin-allergy alternative; it must pass."""
     result = engine_check("P-003", "Azithromycin")
@@ -98,41 +82,18 @@ def test_tc04_ibuprofen_warns_on_warfarin(engine_check):
     assert "warfarin" in result.warning_text.lower(), result.warning_text
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        f"{GAP} gap D: the engine only appends warnings to a prescription it has "
-        "already built -- no substitution logic exists, so Paracetamol can never "
-        "be 'offered as the alternative' (profiles S4, P-004)."
-    ),
-)
 def test_tc04_offers_paracetamol_as_alternative(engine_check):
     """TC-04 -- flagging without an alternative leaves the dentist to solve it."""
     result = engine_check("P-004", "Ibuprofen")
     assert "paracetamol" in result.warning_text.lower(), result.warning_text
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        f"{GAP} gap C: Paracetamol declares interactions=['warfarin'], so R-02's "
-        "own substitute warns on the very patient it is prescribed to. "
-        "Observed: 'Drug interaction: Paracetamol with warfarin'."
-    ),
-)
 def test_tc05_paracetamol_cleared_after_substitution(engine_check):
     """TC-05 -- proves the engine is not just flagging P-004 forever."""
     result = engine_check("P-004", "Paracetamol")
     assert result.warnings == [], result.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        f"{GAP} gap B: Azithromycin is missing from DRUGS_DATABASE and the engine "
-        "has no R-08 QT-prolongation table, so amiodarone can never be cited."
-    ),
-)
 def test_tc06_azithromycin_cites_qt_co_medication(engine_check):
     """TC-06 -- R-08. Input is QA-supplied: no profile carries a QT drug (S6)."""
     result = engine_check(
@@ -164,14 +125,6 @@ def test_tc07_age_factor_shown_in_warning(engine_check):
     assert "age" in text and ("72" in text or "65" in text), result.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        f"{GAP} gap C: Paracetamol declares interactions=['warfarin'], so an "
-        "elderly warfarin patient is warned even on a non-NSAID. "
-        "R-03 must not fire here and R-02 must not fire on the substitute."
-    ),
-)
 def test_tc08_paracetamol_clean_for_elderly(engine_check):
     """TC-08 -- R-03 is NSAID-specific."""
     result = engine_check("P-004", "Paracetamol")

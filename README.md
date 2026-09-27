@@ -139,9 +139,11 @@ Full instructions, troubleshooting and the Week 1 checklist:
 
 ### Frontend
 - ✅ Authentication (login/signup)
-- ⬜ X-ray review screen — issues #4, #14
-- ⬜ Treatment confirmation screen — issues #9, #18
-- ⬜ Patient history viewer — no issue tracks this yet
+- ✅ Patient record viewer + X-ray scan list
+- ✅ X-ray review screen with bounding-box overlay
+- ✅ Treatment confirmation screen
+- ⬜ Wireframe sketches for the two screens above — issues #4, #9 (skipped: built straight to UI)
+- ⬜ Not yet CI-verified beyond `oxlint` — author marked PR #35 *"testing in progress"*
 
 ### ML
 - ✅ YOLOv8s detector trained (5 classes) — see [`ml/README.md`](ml/README.md)
