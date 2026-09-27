@@ -82,6 +82,23 @@ CREATE TABLE IF NOT EXISTS feedback (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Predictions table for storing ML inference results
+CREATE TABLE IF NOT EXISTS predictions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+    finding_type VARCHAR(50) NOT NULL,
+    confidence DECIMAL(5, 4) NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+    bbox_x INTEGER NOT NULL,
+    bbox_y INTEGER NOT NULL,
+    bbox_width INTEGER NOT NULL,
+    bbox_height INTEGER NOT NULL,
+    tooth_number INTEGER,
+    severity VARCHAR(20) DEFAULT 'moderate' CHECK (severity IN ('low', 'moderate', 'high', 'mild', 'severe')),
+    notes TEXT,
+    is_confirmed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_patients_dentist_id ON patients(dentist_id);
 CREATE INDEX idx_patients_email ON patients(email);
@@ -93,6 +110,8 @@ CREATE INDEX idx_treatments_dentist_id ON treatments(dentist_id);
 CREATE INDEX idx_treatments_status ON treatments(status);
 CREATE INDEX idx_prescriptions_treatment_id ON prescriptions(treatment_id);
 CREATE INDEX idx_feedback_scan_id ON feedback(scan_id);
+CREATE INDEX idx_predictions_scan_id ON predictions(scan_id);
+CREATE INDEX idx_predictions_finding_type ON predictions(finding_type);
 
 -- Row Level Security (RLS) Policies
 -- Enable RLS on all tables
@@ -182,6 +201,39 @@ CREATE POLICY "Dentists can view their own feedback"
 CREATE POLICY "Dentists can create feedback"
     ON feedback FOR INSERT
     WITH CHECK (auth.uid() = dentist_id);
+
+-- Predictions policies (accessible via scans)
+ALTER TABLE predictions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Dentists can view predictions for their scans"
+    ON predictions FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM scans
+            WHERE scans.id = predictions.scan_id
+            AND scans.dentist_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Dentists can create predictions for their scans"
+    ON predictions FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM scans
+            WHERE scans.id = predictions.scan_id
+            AND scans.dentist_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Dentists can update predictions for their scans"
+    ON predictions FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM scans
+            WHERE scans.id = predictions.scan_id
+            AND scans.dentist_id = auth.uid()
+        )
+    );
 
 -- Create storage bucket for X-ray images
 -- Run this separately in Supabase dashboard or use the Supabase client
