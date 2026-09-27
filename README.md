@@ -48,6 +48,13 @@ dental-xray-ai-assistant/
 ├── ml/                     # Training notebook + model card
 │   ├── README.md           # Class taxonomy, metrics, Release link
 │   └── train_dental_yolov8s.ipynb
+├── rag/                    # Clinical Knowledge Base & RAG Engine
+│   ├── convert.py          # Convert JSONL clinical dataset into document chunks
+│   ├── ingest.py           # Vectorize and index documents into Qdrant DB
+│   ├── rag.py              # Clinical RAG pipeline (Groq Cloud / Ollama support)
+│   ├── search.py           # Vector retrieval search tool
+│   ├── Dental_Cases_TrainingData.jsonl # Clinical dataset
+│   └── .env.example        # RAG environment variables template
 ├── scripts/                # Dev tooling
 │   ├── setup-week1-board.ps1
 │   ├── start-dev.sh

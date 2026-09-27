@@ -108,6 +108,11 @@ logs/
 exports/
 data_exports/
 
-# Python env markers
-.Python
+# Qdrant vector database & RAG generated data
+qdrant_data/
+rag/qdrant_data/
+rag/documents/
+rag/.env
+
+
 
