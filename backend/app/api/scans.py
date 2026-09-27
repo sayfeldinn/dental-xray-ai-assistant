@@ -249,3 +249,44 @@ async def delete_scan(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete scan: {str(e)}"
         )
+
+
+@router.get("/{scan_id}/predictions")
+async def get_scan_predictions(
+    scan_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(get_supabase_service)
+):
+    """
+    Get all predictions for a specific scan.
+    
+    Returns ML inference predictions with bounding boxes and confidence scores.
+    """
+    try:
+        # Verify scan belongs to current user
+        scan_result = supabase.table("scans").select("id").eq(
+            "id", scan_id
+        ).eq(
+            "dentist_id", current_user_id
+        ).single().execute()
+        
+        if not scan_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Scan not found"
+            )
+        
+        # Get predictions
+        predictions_result = supabase.table("predictions").select("*").eq(
+            "scan_id", scan_id
+        ).order("confidence", desc=True).execute()
+        
+        return predictions_result.data or []
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to get predictions: {str(e)}"
+        )

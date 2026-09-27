@@ -1,0 +1,23 @@
+╔════════════════════════════════════════════════════╗
+║     FIXED: Severity Constraint Violation          ║
+╚════════════════════════════════════════════════════╝
+
+✅ ISSUE: Database rejects "medium" severity
+   Database allows: low, mild, moderate, high, severe
+   Code was sending: medium ❌
+
+✅ FIXED: Changed MEDIUM → MODERATE in both files
+
+─────────────────────────────────────────────────────
+
+🚀 JUST RESTART BACKEND:
+
+cd backend
+# Press Ctrl+C
+uvicorn app.main:app --reload
+
+Then test Analyze again! ✅
+
+─────────────────────────────────────────────────────
+
+That's it! The analyze will work now! 🎉

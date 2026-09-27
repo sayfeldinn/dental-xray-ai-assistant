@@ -93,40 +93,34 @@ export default function Scans() {
       setUploading(true);
       setError('');
 
-      // Upload image to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Date.now()}_${selectedPatient}.${fileExt}`;
-      const filePath = `scans/${fileName}`;
+      // Use backend upload endpoint instead of direct Supabase upload
+      const formData = new FormData();
+      formData.append('file', selectedFile);
 
-      const { error: uploadError } = await supabase.storage
-        .from('xray-scans')
-        .upload(filePath, selectedFile);
+      // Upload via backend API with query parameters
+      const response = await api.post(
+        `/scans/upload?patient_id=${selectedPatient}&scan_type=panoramic`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
 
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('xray-scans')
-        .getPublicUrl(filePath);
-
-      // Create scan record in database
-      const scanData = {
-        patient_id: selectedPatient,
-        image_url: urlData.publicUrl,
-        scan_type: 'panoramic',
-        status: 'pending'
-      };
-
-      await api.post('/scans/', scanData);
+      console.log('Upload successful:', response.data);
 
       // Reset form and reload
       setShowUploadModal(false);
       setSelectedPatient('');
       setSelectedFile(null);
       loadData();
+      
+      alert('X-ray scan uploaded successfully!');
     } catch (err) {
       console.error('Upload error:', err);
-      setError(err.message || 'Failed to upload scan');
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to upload scan';
+      setError(errorMessage);
     } finally {
       setUploading(false);
     }

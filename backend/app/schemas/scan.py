@@ -18,11 +18,9 @@ class ScanStatusEnum(str, Enum):
 class FindingSeverityEnum(str, Enum):
     """Severity level of detected findings."""
     LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
     MILD = "mild"
     MODERATE = "moderate"
+    HIGH = "high"
     SEVERE = "severe"
 
 
