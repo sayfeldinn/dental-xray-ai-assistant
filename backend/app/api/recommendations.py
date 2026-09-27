@@ -161,3 +161,98 @@ async def list_finding_mappings():
         "mappings": recommendation_engine.FINDING_TO_TREATMENT_MAP,
         "note": "Week 1 placeholder data - to be validated by partner dentist"
     }
+
+
+@router.get("/{scan_id}")
+async def get_scan_recommendations(
+    scan_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(get_supabase_service)
+):
+    """
+    Get treatment recommendations for a scan based on ML predictions.
+    
+    This endpoint reads the predictions from the database for a specific scan,
+    then generates treatment recommendations for each finding.
+    """
+    try:
+        # Get scan details
+        scan_result = supabase.table("scans").select("*").eq("id", scan_id).single().execute()
+        if not scan_result.data:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        
+        scan = scan_result.data
+        
+        # Get patient details for contraindication checking
+        patient_result = supabase.table("patients").select("*").eq(
+            "id", scan["patient_id"]
+        ).single().execute()
+        
+        if not patient_result.data:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        
+        patient = patient_result.data
+        
+        # Get predictions for this scan
+        predictions_result = supabase.table("predictions").select("*").eq(
+            "scan_id", scan_id
+        ).execute()
+        
+        predictions = predictions_result.data or []
+        
+        # Generate recommendations for each prediction
+        recommendations = []
+        for pred in predictions:
+            # Create Finding object from prediction
+            finding = Finding(
+                type=pred.get("finding_type", "caries"),
+                severity=pred.get("severity", "moderate"),
+                confidence=pred.get("confidence", 0.8),
+                bbox_x=pred.get("bbox_x", 0),
+                bbox_y=pred.get("bbox_y", 0),
+                bbox_width=pred.get("bbox_width", 100),
+                bbox_height=pred.get("bbox_height", 100),
+                tooth_number=pred.get("tooth_number"),
+                notes=pred.get("notes", "")
+            )
+            
+            # Generate treatment recommendation
+            rec = recommendation_engine.recommend_treatment(
+                finding=finding,
+                patient_allergies=patient.get("allergies", []),
+                patient_medications=patient.get("current_medications", []),
+                patient_conditions=patient.get("medical_conditions", [])
+            )
+            
+            if rec:
+                # Convert to dict and add finding info
+                rec_dict = rec.model_dump()
+                rec_dict["finding_type"] = pred.get("finding_type")
+                rec_dict["severity"] = pred.get("severity")
+                rec_dict["tooth_number"] = pred.get("tooth_number")
+                rec_dict["confidence"] = pred.get("confidence")
+                
+                # Format medications for frontend
+                medications_formatted = []
+                for prescription in rec_dict.get("prescriptions", []):
+                    medications_formatted.append({
+                        "name": prescription.get("drug_name"),
+                        "dosage": f"{prescription.get('dosage')} {prescription.get('frequency')}",
+                        "duration": prescription.get("duration"),
+                        "instructions": prescription.get("instructions")
+                    })
+                
+                rec_dict["medications"] = medications_formatted
+                rec_dict["treatment"] = rec_dict.get("description", "")
+                
+                recommendations.append(rec_dict)
+        
+        return recommendations
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate recommendations: {str(e)}"
+        )

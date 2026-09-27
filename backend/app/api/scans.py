@@ -84,6 +84,7 @@ async def upload_scan(
 
 
 @router.get("", response_model=ScanListResponse)
+@router.get("/", response_model=ScanListResponse)
 async def list_scans(
     patient_id: Optional[str] = Query(None),
     page: int = Query(1, ge=1),

@@ -7,6 +7,10 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
+import Patients from './pages/Patients';
+import Scans from './pages/Scans';
+import Review from './pages/Review';
+import Treatments from './pages/Treatments';
 import './App.css';
 
 function App() {
@@ -28,16 +32,12 @@ function App() {
             }
           />
           
-          {/* Placeholder routes - to be implemented */}
+          {/* Week 2 - Full functional pages */}
           <Route
             path="/patients"
             element={
               <ProtectedRoute>
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                  <h1>Patients Management</h1>
-                  <p>Coming soon...</p>
-                  <a href="/dashboard">Back to Dashboard</a>
-                </div>
+                <Patients />
               </ProtectedRoute>
             }
           />
@@ -46,37 +46,25 @@ function App() {
             path="/scans"
             element={
               <ProtectedRoute>
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                  <h1>X-Ray Scans</h1>
-                  <p>Coming soon...</p>
-                  <a href="/dashboard">Back to Dashboard</a>
-                </div>
+                <Scans />
               </ProtectedRoute>
             }
           />
           
           <Route
-            path="/review"
+            path="/review/:scanId"
             element={
               <ProtectedRoute>
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                  <h1>Review Findings</h1>
-                  <p>Coming soon...</p>
-                  <a href="/dashboard">Back to Dashboard</a>
-                </div>
+                <Review />
               </ProtectedRoute>
             }
           />
           
           <Route
-            path="/treatments"
+            path="/treatments/:scanId"
             element={
               <ProtectedRoute>
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                  <h1>Treatments</h1>
-                  <p>Coming soon...</p>
-                  <a href="/dashboard">Back to Dashboard</a>
-                </div>
+                <Treatments />
               </ProtectedRoute>
             }
           />

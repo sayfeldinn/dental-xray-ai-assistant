@@ -71,6 +71,7 @@ async def sign_up(
         )
 
 
+@router.post("/login", response_model=AuthResponse)
 @router.post("/signin", response_model=AuthResponse)
 async def sign_in(
     request: SignInRequest,

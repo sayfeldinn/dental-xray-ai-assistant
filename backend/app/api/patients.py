@@ -32,6 +32,7 @@ async def create_patient(
 
 
 @router.get("", response_model=PatientListResponse)
+@router.get("/", response_model=PatientListResponse)
 async def list_patients(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
