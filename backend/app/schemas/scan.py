@@ -21,11 +21,19 @@ class FindingSeverityEnum(str, Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+    MILD = "mild"
+    MODERATE = "moderate"
+    SEVERE = "severe"
 
 
 class FindingTypeEnum(str, Enum):
     """Types of dental findings."""
     CAVITY = "cavity"
+    CARIES = "caries"
+    PERIAPICAL = "periapical"
+    PERICORONAL = "pericoronal"
+    INTER_RADICULAR = "inter_radicular"
+    NON_ODONTOGENIC = "non_odontogenic"
     ROOT_CANAL = "root_canal"
     CROWN = "crown"
     EXTRACTION = "extraction"
