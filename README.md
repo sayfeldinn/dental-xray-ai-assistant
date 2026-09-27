@@ -139,13 +139,13 @@ Full instructions, troubleshooting and the Week 1 checklist:
 
 ### Frontend
 - ✅ Authentication (login/signup)
-- ✅ X-ray review screen
-- ✅ Treatment confirmation screen
-- ✅ Patient history viewer
+- ⬜ X-ray review screen — issues #4, #14
+- ⬜ Treatment confirmation screen — issues #9, #18
+- ⬜ Patient history viewer — no issue tracks this yet
 
 ### ML
 - ✅ YOLOv8s detector trained (5 classes) — see [`ml/README.md`](ml/README.md)
-- ⬜ Inference path (`predict.py` / ONNX / API endpoint) — issue #12
+- ⬜ Inference path (`predict.py` / ONNX / API endpoint) — issue #30
 
 ## Environment Variables
 

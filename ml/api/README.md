@@ -9,7 +9,18 @@ This is a FastAPI wrapper for the YOLOv8 dental abnormality detection model.
    pip install -r requirements.txt
    ```
 
-2. Run the server:
+2. Fetch the model weights. They are **not** tracked in git (22.6 MB; the repo
+   guard fails CI on any committed `.pt` file — weights live on the Release so
+   clones stay small):
+   ```bash
+   # run from the repo root
+   gh release download v0.1-dental-yolov8s --pattern best.pt --dir ml
+   ```
+   Expected: `ml/best.pt`, 22,601,514 bytes, SHA-256
+   `df4455861a67fd683a0ab44b0f461b889624b513738b7cbb6c0ea3adc033a2ed`.
+   The server still starts without it, but `/predict` returns HTTP 500.
+
+3. Run the server:
    ```bash
    cd api
    uvicorn app:app --host 0.0.0.0 --port 8000 --reload

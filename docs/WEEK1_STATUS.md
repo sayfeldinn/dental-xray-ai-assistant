@@ -168,13 +168,13 @@ From Week1_Execution_Plan.md:
 - [x] Shared repo and project structure set up
 - [x] Patient record schema implemented
 - [x] Recommendation engine skeleton coded
-- [x] Review-screen and confirmation-screen UI shells
+- [ ] Review-screen and confirmation-screen UI shells — issues #4, #9, #14, #18
 - [ ] Dentist meeting completed (external dependency)
 - [ ] DENTEX + Tufts + Roboflow datasets prepared (ML Engineer task)
 - [ ] First model fine-tuning run started (ML Engineer task)
-- [ ] Five synthetic patient profiles drafted (QA Engineer task)
+- [x] Five synthetic patient profiles drafted (QA Engineer task) — #10, PR #26
 
-**Backend & Frontend Implementation: 100% Complete** ✅
+**Backend: complete. Frontend: authentication + dashboard only — the review and confirmation shells are still open (#4, #9, #14, #18).**
 
 ## 🎨 Design Decisions
 
