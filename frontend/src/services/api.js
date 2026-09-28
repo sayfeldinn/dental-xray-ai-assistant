@@ -2,7 +2,8 @@
  * API client for backend communication
  */
 import axios from 'axios';
-import { supabase } from './supabase';
+import { supabase, isDemoMode } from './supabase';
+import { demoAdapter } from './demoApi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const API_V1_PREFIX = import.meta.env.VITE_API_V1_PREFIX || '/api/v1';
@@ -14,6 +15,11 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Demo mode answers every request in the browser, so no backend is needed.
+if (isDemoMode) {
+  api.defaults.adapter = demoAdapter;
+}
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
