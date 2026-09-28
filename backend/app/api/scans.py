@@ -7,14 +7,18 @@ from datetime import datetime
 import uuid
 from app.schemas.scan import (
     ScanCreate,
+    ScanCreateByUrl,
     ScanUpdate,
     ScanResponse,
     ScanListResponse,
     ScanStatusEnum,
     Finding
 )
+from app.schemas.prediction import PredictionResponse, rows_to_predictions
+from app.services.prediction_service import load_prediction_rows
 from app.core.supabase import get_supabase_service
 from app.utils.auth import get_current_user_id
+from app.utils.records import require_scan, require_patient
 from supabase import Client
 
 router = APIRouter(prefix="/scans", tags=["Scans"])
@@ -83,6 +87,52 @@ async def upload_scan(
         )
 
 
+@router.post("", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
+async def create_scan(
+    scan: ScanCreateByUrl,
+    current_user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(get_supabase_service)
+):
+    """
+    Register a scan whose image the client already uploaded to storage.
+
+    The upload flow in the web app stores the file itself and posts only the
+    resulting URL, so this is the create path it uses (``/scans/upload`` takes
+    multipart bytes instead).
+    """
+    # The patient must belong to the signed-in dentist.
+    require_patient(supabase, scan.patient_id, current_user_id)
+
+    scan_data = {
+        "patient_id": scan.patient_id,
+        "dentist_id": current_user_id,
+        "scan_type": scan.scan_type,
+        "image_url": scan.image_url,
+        "status": scan.status.value,
+        "findings": [],
+        "notes": scan.notes,
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    try:
+        result = supabase.table("scans").insert(scan_data).execute()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create scan: {str(e)}"
+        )
+
+    if not result.data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to create scan record"
+        )
+
+    return ScanResponse(**result.data[0])
+
+
 @router.get("", response_model=ScanListResponse)
 @router.get("/", response_model=ScanListResponse)
 async def list_scans(
@@ -131,28 +181,25 @@ async def get_scan(
     supabase: Client = Depends(get_supabase_service)
 ):
     """Get a specific scan by ID."""
-    try:
-        result = supabase.table("scans").select("*").eq(
-            "id", scan_id
-        ).eq(
-            "dentist_id", current_user_id
-        ).single().execute()
-        
-        if not result.data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Scan not found"
-            )
-        
-        return ScanResponse(**result.data)
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to get scan: {str(e)}"
-        )
+    return ScanResponse(**require_scan(supabase, scan_id, current_user_id))
+
+
+@router.get("/{scan_id}/predictions", response_model=List[PredictionResponse])
+async def get_scan_predictions(
+    scan_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(get_supabase_service)
+):
+    """
+    List the detections stored for a scan.
+
+    The Review screen reads this endpoint directly, so it always returns a
+    list -- falling back to ``scans.findings`` for scans analysed before the
+    ``predictions`` table existed.
+    """
+    scan = require_scan(supabase, scan_id, current_user_id)
+    rows = await load_prediction_rows(supabase, scan, current_user_id)
+    return rows_to_predictions(rows)
 
 
 @router.put("/{scan_id}", response_model=ScanResponse)

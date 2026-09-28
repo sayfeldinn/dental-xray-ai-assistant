@@ -71,6 +71,14 @@ function App() {
           
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/*
+            Dashboard has cards for these two paths, but neither list screen was
+            ever built (ReviewFindings.jsx / TreatmentConfirmation.jsx are empty).
+            Point them at the scan list, which is where both flows actually start,
+            so the cards are not dead ends.
+          */}
+          <Route path="/review" element={<Navigate to="/scans" replace />} />
+          <Route path="/treatments" element={<Navigate to="/scans" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>

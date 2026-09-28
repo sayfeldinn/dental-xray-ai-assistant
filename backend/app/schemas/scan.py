@@ -72,6 +72,16 @@ class ScanCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class ScanCreateByUrl(ScanCreate):
+    """Schema for creating a scan whose image was uploaded by the client.
+
+    The frontend pushes the file to Supabase Storage itself and only posts the
+    resulting URL, so this path accepts a reference rather than multipart bytes.
+    """
+    image_url: str = Field(..., min_length=1)
+    status: ScanStatusEnum = ScanStatusEnum.PENDING
+
+
 class ScanUpdate(BaseModel):
     """Schema for updating a scan."""
     status: Optional[ScanStatusEnum] = None

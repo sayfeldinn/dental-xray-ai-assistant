@@ -1,10 +1,22 @@
 """
 FastAPI main application entry point.
 """
+import sys
+
+# Windows shells default to a legacy code page (cp1252), and the log lines
+# below contain non-ASCII characters. Without this, starting the app with
+# redirected output raises UnicodeEncodeError and startup aborts.
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(errors="replace")
+        sys.stderr.reconfigure(errors="replace")
+    except (ValueError, OSError):
+        pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import auth, patients, scans, recommendations, ml_inference, feedback
+from app.api import auth, patients, scans, recommendations, ml_inference, feedback, treatments
 
 # Create FastAPI application
 app = FastAPI(
@@ -53,6 +65,7 @@ app.include_router(patients.router, prefix=settings.API_V1_PREFIX)
 app.include_router(scans.router, prefix=settings.API_V1_PREFIX)
 app.include_router(recommendations.router, prefix=settings.API_V1_PREFIX)
 app.include_router(ml_inference.router, prefix=settings.API_V1_PREFIX)
+app.include_router(treatments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(feedback.router, prefix=settings.API_V1_PREFIX)
 app.include_router(feedback.finding_feedback_router, prefix=settings.API_V1_PREFIX)
 

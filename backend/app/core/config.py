@@ -21,6 +21,18 @@ class Settings(BaseSettings):
     # API
     API_V1_PREFIX: str = "/api/v1"
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
+
+    # ML
+    # The detector runs in its own process (ml/api) so torch never has to be
+    # importable by the web process. Point this elsewhere to use another
+    # deployment; set it to an empty string to force mock predictions.
+    ML_API_URL: str = "http://localhost:8001"
+    ML_TIMEOUT_SECONDS: float = 60.0
+    ML_ALLOW_MOCK_FALLBACK: bool = True
+    # Confidence floor applied to detector output. The reference model's best
+    # score on the bundled sample image is ~0.24, so anything higher silently
+    # returns nothing; findings below the floor are never shown to the dentist.
+    ML_DEFAULT_CONFIDENCE: float = 0.2
     
     # Supabase
     SUPABASE_URL: str

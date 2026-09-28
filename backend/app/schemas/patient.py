@@ -51,13 +51,29 @@ class PatientUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class MedicalHistoryItem(BaseModel):
+    """A condition the patient has, plus the drugs to avoid because of it.
+
+    The Treatment Confirmation screen renders this list and highlights any
+    medication appearing in ``contraindications``.
+    """
+    condition: str
+    contraindications: List[str] = Field(default_factory=list)
+
+
 class PatientResponse(PatientBase):
     """Schema for patient response."""
     id: str
     dentist_id: str
     created_at: datetime
     updated_at: datetime
-    
+
+    # Derived views of PatientBase, consumed by the Scans and Treatment
+    # screens (age, contact number, per-condition drug avoidance).
+    age: Optional[int] = None
+    contact_number: Optional[str] = None
+    medical_history: Optional[List[MedicalHistoryItem]] = None
+
     class Config:
         from_attributes = True
 

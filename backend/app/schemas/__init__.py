@@ -4,10 +4,13 @@ from app.schemas.patient import (
     PatientUpdate,
     PatientResponse,
     PatientListResponse,
+    MedicalHistoryItem,
     GenderEnum
 )
+from app.schemas.prediction import PredictionResponse
 from app.schemas.scan import (
     ScanCreate,
+    ScanCreateByUrl,
     ScanUpdate,
     ScanResponse,
     ScanListResponse,
@@ -32,9 +35,11 @@ __all__ = [
     "PatientUpdate",
     "PatientResponse",
     "PatientListResponse",
+    "MedicalHistoryItem",
     "GenderEnum",
     # Scan schemas
     "ScanCreate",
+    "ScanCreateByUrl",
     "ScanUpdate",
     "ScanResponse",
     "ScanListResponse",
@@ -42,6 +47,8 @@ __all__ = [
     "FindingTypeEnum",
     "FindingSeverityEnum",
     "ScanStatusEnum",
+    # Prediction schema
+    "PredictionResponse",
     # Treatment schemas
     "TreatmentCreate",
     "TreatmentUpdate",
