@@ -5,10 +5,13 @@ from fastapi import APIRouter, HTTPException, status, Depends, Body
 from typing import List, Optional
 from pydantic import BaseModel
 from app.schemas.scan import Finding
+from app.schemas.prediction import prediction_to_finding
 from app.schemas.treatment import TreatmentCreate
 from app.services.recommendation_engine import recommendation_engine
+from app.services.prediction_service import load_prediction_rows
 from app.core.supabase import get_supabase_service
 from app.utils.auth import get_current_user_id
+from app.utils.records import require_patient, require_scan
 from supabase import Client
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
@@ -176,46 +179,18 @@ async def get_scan_recommendations(
     then generates treatment recommendations for each finding.
     """
     try:
-        # Get scan details
-        scan_result = supabase.table("scans").select("*").eq("id", scan_id).single().execute()
-        if not scan_result.data:
-            raise HTTPException(status_code=404, detail="Scan not found")
-        
-        scan = scan_result.data
-        
-        # Get patient details for contraindication checking
-        patient_result = supabase.table("patients").select("*").eq(
-            "id", scan["patient_id"]
-        ).single().execute()
-        
-        if not patient_result.data:
-            raise HTTPException(status_code=404, detail="Patient not found")
-        
-        patient = patient_result.data
-        
-        # Get predictions for this scan
-        predictions_result = supabase.table("predictions").select("*").eq(
-            "scan_id", scan_id
-        ).execute()
-        
-        predictions = predictions_result.data or []
-        
+        # Both lookups are scoped to the signed-in dentist.
+        scan = require_scan(supabase, scan_id, current_user_id)
+        patient = require_patient(supabase, scan["patient_id"], current_user_id)
+
+        # Predictions for this scan (falls back to scans.findings for older scans)
+        predictions = await load_prediction_rows(supabase, scan, current_user_id)
+
         # Generate recommendations for each prediction
         recommendations = []
         for pred in predictions:
-            # Create Finding object from prediction
-            finding = Finding(
-                type=pred.get("finding_type", "caries"),
-                severity=pred.get("severity", "moderate"),
-                confidence=pred.get("confidence", 0.8),
-                bbox_x=pred.get("bbox_x", 0),
-                bbox_y=pred.get("bbox_y", 0),
-                bbox_width=pred.get("bbox_width", 100),
-                bbox_height=pred.get("bbox_height", 100),
-                tooth_number=pred.get("tooth_number"),
-                notes=pred.get("notes", "")
-            )
-            
+            finding = prediction_to_finding(pred)
+
             # Generate treatment recommendation
             rec = recommendation_engine.recommend_treatment(
                 finding=finding,
@@ -223,14 +198,14 @@ async def get_scan_recommendations(
                 patient_medications=patient.get("current_medications", []),
                 patient_conditions=patient.get("medical_conditions", [])
             )
-            
+
             if rec:
                 # Convert to dict and add finding info
                 rec_dict = rec.model_dump()
-                rec_dict["finding_type"] = pred.get("finding_type")
-                rec_dict["severity"] = pred.get("severity")
-                rec_dict["tooth_number"] = pred.get("tooth_number")
-                rec_dict["confidence"] = pred.get("confidence")
+                rec_dict["finding_type"] = pred.get("finding_type") or finding.type.value
+                rec_dict["severity"] = pred.get("severity") or finding.severity.value
+                rec_dict["tooth_number"] = pred.get("tooth_number") or finding.tooth_number
+                rec_dict["confidence"] = pred.get("confidence") or finding.confidence
                 
                 # Format medications for frontend
                 medications_formatted = []

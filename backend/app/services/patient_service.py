@@ -1,11 +1,86 @@
 """
 Patient service for business logic related to patient management.
 """
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from supabase import Client
-from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse
+from app.schemas.patient import (
+    MedicalHistoryItem,
+    PatientCreate,
+    PatientUpdate,
+    PatientResponse,
+)
 from app.core.supabase import get_supabase_service
+from app.services.recommendation_engine import recommendation_engine
+
+
+def _age_from_dob(value: Any) -> Optional[int]:
+    """Whole years between a date of birth and today."""
+    if isinstance(value, datetime):
+        dob = value
+    elif isinstance(value, str):
+        try:
+            dob = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    else:
+        return None
+
+    today = datetime.utcnow()
+    before_birthday = (today.month, today.day) < (dob.month, dob.day)
+    return today.year - dob.year - (1 if before_birthday else 0)
+
+
+def _avoided_drugs(condition: str) -> List[str]:
+    """Drugs the recommendation engine refuses for this single condition.
+
+    Allergies are checked separately by the UI, so only condition-driven
+    contraindications are reported here.
+    """
+    avoided: List[str] = []
+    for drug_name in recommendation_engine.DRUGS_DATABASE:
+        safety = recommendation_engine.check_prescription_safety(
+            drug_name=drug_name,
+            patient_allergies=[],
+            patient_medications=[],
+            patient_conditions=[condition],
+        )
+        if not safety.get("safe"):
+            avoided.append(drug_name)
+    return avoided
+
+
+def _needs_derived_history(value: Any) -> bool:
+    if not value:
+        return True
+    return any(isinstance(item, str) for item in value)
+
+
+def build_patient_response(row: Dict[str, Any]) -> PatientResponse:
+    """Attach the fields the Scans and Treatment screens read.
+
+    ``age``, ``contact_number`` and ``medical_history`` are derived from the
+    columns the schema actually stores (``date_of_birth``, ``phone``,
+    ``medical_conditions``) rather than requiring extra tables.
+    """
+    payload = dict(row)
+
+    if payload.get("age") is None:
+        payload["age"] = _age_from_dob(payload.get("date_of_birth"))
+
+    if not payload.get("contact_number"):
+        payload["contact_number"] = payload.get("phone")
+
+    if _needs_derived_history(payload.get("medical_history")):
+        payload["medical_history"] = [
+            MedicalHistoryItem(
+                condition=condition,
+                contraindications=_avoided_drugs(condition),
+            )
+            for condition in (payload.get("medical_conditions") or [])
+        ]
+
+    return PatientResponse(**payload)
 
 
 class PatientService:
@@ -37,7 +112,7 @@ class PatientService:
         if not result.data:
             raise ValueError("Failed to create patient")
         
-        return PatientResponse(**result.data[0])
+        return build_patient_response(result.data[0])
     
     async def get_patient(self, patient_id: str, dentist_id: str) -> Optional[PatientResponse]:
         """Get a patient by ID (with access control)."""
@@ -50,7 +125,7 @@ class PatientService:
         if not result.data:
             return None
         
-        return PatientResponse(**result.data)
+        return build_patient_response(result.data)
     
     async def list_patients(
         self, 
@@ -75,7 +150,7 @@ class PatientService:
         
         result = query.execute()
         
-        patients = [PatientResponse(**patient) for patient in result.data]
+        patients = [build_patient_response(patient) for patient in result.data]
         total = result.count or 0
         
         return patients, total
@@ -110,7 +185,7 @@ class PatientService:
         if not result.data:
             return None
         
-        return PatientResponse(**result.data[0])
+        return build_patient_response(result.data[0])
     
     async def delete_patient(self, patient_id: str, dentist_id: str) -> bool:
         """Delete a patient record (soft delete recommended in production)."""

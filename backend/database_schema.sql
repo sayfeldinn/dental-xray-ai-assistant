@@ -82,6 +82,28 @@ CREATE TABLE IF NOT EXISTS feedback (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Predictions table: flat detections drawn on the review canvas.
+-- Older scans keep their geometry in scans.findings; new runs write here so
+-- findings can be corrected, confirmed and fed back for active learning.
+CREATE TABLE IF NOT EXISTS predictions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+    dentist_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    finding_type VARCHAR(50) NOT NULL,
+    severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical', 'mild', 'moderate', 'severe')),
+    confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+    bbox_x REAL NOT NULL CHECK (bbox_x >= 0),
+    bbox_y REAL NOT NULL CHECK (bbox_y >= 0),
+    bbox_width REAL NOT NULL CHECK (bbox_width > 0),
+    bbox_height REAL NOT NULL CHECK (bbox_height > 0),
+    tooth_number VARCHAR(10),
+    notes TEXT,
+    confirmed BOOLEAN DEFAULT FALSE,
+    confirmed_by UUID,
+    confirmed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_patients_dentist_id ON patients(dentist_id);
 CREATE INDEX idx_patients_email ON patients(email);
@@ -93,6 +115,8 @@ CREATE INDEX idx_treatments_dentist_id ON treatments(dentist_id);
 CREATE INDEX idx_treatments_status ON treatments(status);
 CREATE INDEX idx_prescriptions_treatment_id ON prescriptions(treatment_id);
 CREATE INDEX idx_feedback_scan_id ON feedback(scan_id);
+CREATE INDEX idx_predictions_scan_id ON predictions(scan_id);
+CREATE INDEX idx_predictions_dentist_id ON predictions(dentist_id);
 
 -- Row Level Security (RLS) Policies
 -- Enable RLS on all tables
@@ -101,6 +125,7 @@ ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE treatments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prescriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE predictions ENABLE ROW LEVEL SECURITY;
 
 -- Patients policies
 CREATE POLICY "Dentists can view their own patients"
@@ -182,6 +207,23 @@ CREATE POLICY "Dentists can view their own feedback"
 CREATE POLICY "Dentists can create feedback"
     ON feedback FOR INSERT
     WITH CHECK (auth.uid() = dentist_id);
+
+-- Predictions policies
+CREATE POLICY "Dentists can view their own predictions"
+    ON predictions FOR SELECT
+    USING (auth.uid() = dentist_id);
+
+CREATE POLICY "Dentists can create predictions"
+    ON predictions FOR INSERT
+    WITH CHECK (auth.uid() = dentist_id);
+
+CREATE POLICY "Dentists can update their own predictions"
+    ON predictions FOR UPDATE
+    USING (auth.uid() = dentist_id);
+
+CREATE POLICY "Dentists can delete their own predictions"
+    ON predictions FOR DELETE
+    USING (auth.uid() = dentist_id);
 
 -- Create storage bucket for X-ray images
 -- Run this separately in Supabase dashboard or use the Supabase client

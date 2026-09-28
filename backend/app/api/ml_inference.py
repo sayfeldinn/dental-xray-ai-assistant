@@ -1,13 +1,22 @@
 """
 ML inference API endpoints.
-Week 2: Provides inference capabilities to the frontend.
+Provides inference capabilities to the frontend.
 """
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
+import time
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from supabase import Client
+
+from app.core.config import settings
+from app.core.supabase import get_supabase_service
+from app.schemas.prediction import PredictionResponse, findings_to_prediction_rows, rows_to_predictions
 from app.schemas.scan import Finding
 from app.services.ml_service import MLInferenceService, get_ml_service
+from app.services.prediction_service import save_predictions, save_scan_findings
 from app.utils.auth import get_current_user_id
+from app.utils.records import require_scan
 
 router = APIRouter(prefix="/ml", tags=["ML Inference"])
 
@@ -15,14 +24,30 @@ router = APIRouter(prefix="/ml", tags=["ML Inference"])
 class InferenceRequest(BaseModel):
     """Request schema for ML inference."""
     image_url: str
-    confidence_threshold: float = 0.5
+    confidence_threshold: float = settings.ML_DEFAULT_CONFIDENCE
 
 
 class InferenceResponse(BaseModel):
     """Response schema for ML inference."""
+    model_config = {"protected_namespaces": ()}
+
     findings: List[Finding]
     model_version: str
     processing_time_ms: float = 0.0
+
+
+class InferScanResponse(BaseModel):
+    """Response for the scan-scoped inference trigger used by the UI."""
+    model_config = {"protected_namespaces": ()}
+
+    scan_id: str
+    status: str
+    findings: List[Finding]
+    predictions: List[PredictionResponse]
+    model_version: str
+    mode: str
+    processing_time_ms: float
+    warning: Optional[str] = None
 
 
 @router.post("/predict", response_model=InferenceResponse)
@@ -33,33 +58,89 @@ async def run_inference(
 ):
     """
     Run ML inference on an X-ray image.
-    
-    This endpoint:
-    1. Takes an image URL from Supabase storage
-    2. Runs the detection model
-    3. Returns findings with bounding boxes
-    
-    Week 2: Returns mock predictions for demonstration.
+
+    Takes an image URL from Supabase storage (or a local path) and returns
+    findings with bounding boxes.
     """
+    started = time.perf_counter()
     try:
         findings = await ml_service.predict(
             request.image_url,
             request.confidence_threshold
         )
-        
-        model_info = ml_service.get_model_info()
-        
-        return InferenceResponse(
-            findings=findings,
-            model_version=model_info["model_version"],
-            processing_time_ms=125.0  # Mock processing time
-        )
-    
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Inference failed: {str(e)}"
         )
+
+    model_info = ml_service.get_model_info()
+
+    return InferenceResponse(
+        findings=findings,
+        model_version=model_info["model_version"],
+        processing_time_ms=round((time.perf_counter() - started) * 1000, 1)
+    )
+
+
+@router.post("/infer/{scan_id}", response_model=InferScanResponse, status_code=status.HTTP_201_CREATED)
+async def infer_scan(
+    scan_id: str,
+    confidence_threshold: Optional[float] = Query(
+        None, ge=0.0, le=1.0, description="Defaults to ML_DEFAULT_CONFIDENCE"
+    ),
+    current_user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(get_supabase_service),
+    ml_service: MLInferenceService = Depends(get_ml_service)
+):
+    """
+    Run inference for a stored scan and persist the detections.
+
+    This is what the Analyze button calls: it loads the scan, runs the model,
+    replaces the scan's ``predictions`` rows and marks the scan completed.
+    Failures to persist are reported as ``warning`` rather than failing the
+    request, so the caller still gets the detections that were produced.
+    """
+    scan = require_scan(supabase, scan_id, current_user_id)
+    threshold = (
+        settings.ML_DEFAULT_CONFIDENCE
+        if confidence_threshold is None
+        else confidence_threshold
+    )
+
+    started = time.perf_counter()
+    try:
+        findings = await ml_service.predict(scan.get("image_url"), threshold)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Inference failed: {str(e)}"
+        )
+    elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
+
+    updated_at = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+    warnings = [
+        warning
+        for warning in (
+            await save_predictions(supabase, scan, current_user_id, findings),
+            await save_scan_findings(supabase, scan_id, findings, "completed", updated_at),
+        )
+        if warning
+    ]
+
+    model_info = ml_service.get_model_info()
+    rows = findings_to_prediction_rows(findings, scan_id=scan_id, dentist_id=current_user_id)
+
+    return InferScanResponse(
+        scan_id=scan_id,
+        status="completed",
+        findings=findings,
+        predictions=rows_to_predictions(rows),
+        model_version=model_info["model_version"],
+        mode=model_info["mode"],
+        processing_time_ms=elapsed_ms,
+        warning="; ".join(warnings) if warnings else None,
+    )
 
 
 @router.get("/model-info")
@@ -68,7 +149,8 @@ async def get_model_info(
 ):
     """
     Get information about the loaded ML model.
-    
-    Returns model version, supported findings, and status.
+
+    Returns the model version, supported findings, configured detector URL and
+    whether that detector is currently answering.
     """
-    return ml_service.get_model_info()
+    return await ml_service.probe()

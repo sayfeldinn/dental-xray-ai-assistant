@@ -59,6 +59,7 @@ export default function Treatments() {
           scan_id: scanId,
           patient_id: patient.id,
           finding_type: rec.finding_type,
+          treatment_type: rec.treatment_type,
           treatment_plan: rec.treatment,
           medications: rec.medications,
           status: 'planned'
