@@ -1,0 +1,1 @@
+case_id,finding_number,quadrant,tooth,original_disease,target_disease,disease_confidence,tooth_confidence,association_confidence,disease_detector_model,learning_status,curator_status,curator_note,approved_for_training,correction_signature,duplicate_candidate

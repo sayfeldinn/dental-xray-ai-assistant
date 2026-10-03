@@ -1,0 +1,60 @@
+{
+  "model": "RandomForestClassifier",
+  "variant": "Step_51_RF_300",
+  "n_estimators": 300,
+  "min_samples_leaf": 2,
+  "class_weight": "balanced",
+  "random_state": 42,
+  "feature_names": [
+    "quadrant",
+    "cx",
+    "cy",
+    "w",
+    "h",
+    "disease",
+    "area",
+    "aspect",
+    "anatomical_x",
+    "anatomical_y",
+    "q_x",
+    "q_y",
+    "disease_x",
+    "disease_y",
+    "disease_anatomical_x"
+  ],
+  "disease_map": {
+    "0": "Impacted",
+    "1": "Caries",
+    "2": "Periapical Lesion",
+    "3": "Deep Caries"
+  },
+  "tooth_map": {
+    "1": "Tooth_1",
+    "2": "Tooth_2",
+    "3": "Tooth_3",
+    "4": "Tooth_4",
+    "5": "Tooth_5",
+    "6": "Tooth_6",
+    "7": "Tooth_7",
+    "8": "Tooth_8"
+  },
+  "coordinator_raw_to_actual_quadrant": {
+    "0": 2,
+    "1": 1,
+    "2": 3,
+    "3": 4
+  },
+  "coordinator_model": "D:/pes/dentex_week3_FINAL/dentex_week3/production/coordinator_best.pt",
+  "disease_model": "D:/pes/dentex_week3_FINAL/dentex_week3/production/disease_detector_best.pt",
+  "enumerator_used": false,
+  "validation_status": "final untouched evaluation completed",
+  "held_out_files": 23,
+  "held_out_detections": 122,
+  "final_tooth_accuracy": 0.7622950819672131,
+  "final_disease_accuracy": 0.9754098360655737,
+  "final_full_accuracy": 0.7540983606557377,
+  "coordinator_model_path": "coordinator_best.pt",
+  "disease_model_path": "disease_detector_best.pt",
+  "tooth_model_path": "tooth_association_rf_300.joblib",
+  "portable": true
+}

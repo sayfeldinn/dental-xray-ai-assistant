@@ -1,0 +1,11 @@
+case_id,finding_number,quadrant,tooth,original_disease,corrected_disease,disease_confidence,tooth_confidence,association_confidence,correction_type,coordinator_model,disease_detector_model,tooth_association_model
+f357d8dd-9739-4015-8972-89ba7f2da152,1,1,Tooth_6,Caries,,0.774,0.821,0.636,correct,coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+f357d8dd-9739-4015-8972-89ba7f2da152,2,2,Tooth_6,Caries,,0.75,0.629,0.472,correct,coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+f357d8dd-9739-4015-8972-89ba7f2da152,3,4,Tooth_7,Caries,Impacted,0.741,0.597,0.442,wrong_disease,coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+f357d8dd-9739-4015-8972-89ba7f2da152,4,4,Tooth_8,Caries,,0.308,0.938,0.289,correct,coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+04c5f0c9-ee10-426d-b2bd-01a2d53bba84,1,2,Tooth_6,Caries,,0.774,0.821,0.636,correct,coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+04c5f0c9-ee10-426d-b2bd-01a2d53bba84,2,4,Tooth_8,Caries,,0.75,0.629,0.472,correct,coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+04c5f0c9-ee10-426d-b2bd-01a2d53bba84,3,1,Tooth_6,Caries,Impacted,0.741,0.597,0.442,wrong_disease,coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+04c5f0c9-ee10-426d-b2bd-01a2d53bba84,4,4,Tooth_7,Caries,,0.308,0.938,0.289,correct,coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+2026-10-03T12:51:16.416788,string,0,0,string,True,string,string
+2026-10-03T12:57:15.131745,my_test_xray.jpeg,4,8,Impacted,False,Duplicate,Model double-counted this impacted wisdom tooth. Removing the duplicate.
