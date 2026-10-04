@@ -147,4 +147,5 @@ async def submit_report_feedback(feedback: ReportFeedback):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    # Port 8001 to avoid conflict with backend (8000) and frontend dev server (5173)
+    uvicorn.run("app:app", host="0.0.0.0", port=8001, reload=True)

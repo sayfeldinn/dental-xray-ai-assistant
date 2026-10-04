@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { supabase } from '../services/supabase';
 
 export default function Scans() {
   const navigate = useNavigate();
@@ -93,31 +92,18 @@ export default function Scans() {
       setUploading(true);
       setError('');
 
-      // Upload image to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Date.now()}_${selectedPatient}.${fileExt}`;
-      const filePath = `scans/${fileName}`;
+      // Use backend upload endpoint which handles storage with service role
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('patient_id', selectedPatient);
+      formData.append('scan_type', 'panoramic');
+      formData.append('notes', '');
 
-      const { error: uploadError } = await supabase.storage
-        .from('xray-scans')
-        .upload(filePath, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('xray-scans')
-        .getPublicUrl(filePath);
-
-      // Create scan record in database
-      const scanData = {
-        patient_id: selectedPatient,
-        image_url: urlData.publicUrl,
-        scan_type: 'panoramic',
-        status: 'pending'
-      };
-
-      await api.post('/scans/', scanData);
+      await api.post('/scans/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       // Reset form and reload
       setShowUploadModal(false);
@@ -126,7 +112,7 @@ export default function Scans() {
       loadData();
     } catch (err) {
       console.error('Upload error:', err);
-      setError(err.message || 'Failed to upload scan');
+      setError(err.response?.data?.detail || err.message || 'Failed to upload scan');
     } finally {
       setUploading(false);
     }

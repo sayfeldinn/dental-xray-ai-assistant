@@ -1,7 +1,7 @@
 """
 X-ray scan management endpoints.
 """
-from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Query
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Query, Form
 from typing import Optional, List
 from datetime import datetime
 import uuid
@@ -26,49 +26,65 @@ router = APIRouter(prefix="/scans", tags=["Scans"])
 
 @router.post("/upload", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
 async def upload_scan(
-    patient_id: str = Query(...),
-    scan_type: str = Query(default="panoramic"),
-    notes: Optional[str] = Query(None),
     file: UploadFile = File(...),
+    patient_id: Optional[str] = Form(None),
+    scan_type: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    patient_id_q: Optional[str] = Query(None, alias="patient_id"),
+    scan_type_q: Optional[str] = Query(None, alias="scan_type"),
+    notes_q: Optional[str] = Query(None, alias="notes"),
     current_user_id: str = Depends(get_current_user_id),
     supabase: Client = Depends(get_supabase_service)
 ):
     """
     Upload a new X-ray scan image.
+    Uses service role client to bypass storage and database RLS.
     """
-    # Validate file type
-    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/dicom"]
-    if file.content_type not in allowed_types:
+    effective_patient_id = patient_id or patient_id_q
+    if not effective_patient_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
+            detail="patient_id is required"
+        )
+    effective_scan_type = scan_type or scan_type_q or "panoramic"
+    effective_notes = notes or notes_q
+
+    # Validate file type
+    content_type = file.content_type or "image/jpeg"
+    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/dicom", "application/octet-stream"]
+    if content_type not in allowed_types and not (file.filename and file.filename.lower().endswith(('.jpg', '.jpeg', '.png', '.dcm'))):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type {content_type}. Allowed: {', '.join(allowed_types)}"
         )
     
     try:
         # Generate unique filename
-        file_ext = file.filename.split('.')[-1]
-        unique_filename = f"{patient_id}/{uuid.uuid4()}.{file_ext}"
+        file_ext = file.filename.split('.')[-1] if (file.filename and '.' in file.filename) else "jpg"
+        timestamp = int(datetime.utcnow().timestamp() * 1000)
+        unique_id = str(uuid.uuid4())
+        unique_filename = f"scans/{timestamp}_{unique_id}.{file_ext}"
         
-        # Upload to Supabase Storage
+        # Upload to Supabase Storage using service role (bypasses RLS)
         file_content = await file.read()
         storage_response = supabase.storage.from_("xray-scans").upload(
             unique_filename,
             file_content,
-            {"content-type": file.content_type}
+            {"content-type": content_type, "upsert": "true"}
         )
         
         # Get public URL
         image_url = supabase.storage.from_("xray-scans").get_public_url(unique_filename)
         
-        # Create scan record in database
+        # Create scan record in database using service role (bypasses RLS)
         scan_data = {
-            "patient_id": patient_id,
+            "patient_id": effective_patient_id,
             "dentist_id": current_user_id,
-            "scan_type": scan_type,
+            "scan_type": effective_scan_type,
             "image_url": image_url,
             "status": ScanStatusEnum.PENDING.value,
             "findings": [],
-            "notes": notes,
+            "notes": effective_notes,
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }

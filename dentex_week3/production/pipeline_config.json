@@ -44,8 +44,8 @@
     "2": 3,
     "3": 4
   },
-  "coordinator_model": "D:/pes/dentex_week3_FINAL/dentex_week3/production/coordinator_best.pt",
-  "disease_model": "D:/pes/dentex_week3_FINAL/dentex_week3/production/disease_detector_best.pt",
+  "coordinator_model": "coordinator_best.pt",
+  "disease_model": "disease_detector_best.pt",
   "enumerator_used": false,
   "validation_status": "final untouched evaluation completed",
   "held_out_files": 23,

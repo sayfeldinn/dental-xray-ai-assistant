@@ -29,8 +29,8 @@ with open(
 
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-COORDINATOR_PATH = CONFIG["coordinator_model"]
-DISEASE_PATH = CONFIG["disease_model"]
+COORDINATOR_PATH = os.path.join(PACKAGE_DIR, CONFIG["coordinator_model"])
+DISEASE_PATH = os.path.join(PACKAGE_DIR, CONFIG["disease_model"])
 
 TOOTH_RF_PATH = os.path.join(
     PACKAGE_DIR,
