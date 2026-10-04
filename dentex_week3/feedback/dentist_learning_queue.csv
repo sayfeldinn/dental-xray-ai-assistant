@@ -1,0 +1,3 @@
+case_id,finding_number,quadrant,tooth,original_disease,target_disease,disease_confidence,tooth_confidence,association_confidence,disease_detector_model,learning_status,curator_status,curator_note,approved_for_training,correction_signature,duplicate_candidate
+f357d8dd-9739-4015-8972-89ba7f2da152,3,4,Tooth_7,Caries,Impacted,0.741,0.597,0.442,disease_detector_best.pt,pending_review,pending_review,,False,Caries -> Impacted | Tooth_7 | 4,False
+04c5f0c9-ee10-426d-b2bd-01a2d53bba84,3,1,Tooth_6,Caries,Impacted,0.741,0.597,0.442,disease_detector_best.pt,pending_review,pending_review,,False,Caries -> Impacted | Tooth_6 | 1,False

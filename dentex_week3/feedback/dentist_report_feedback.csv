@@ -1,0 +1,12 @@
+case_id,timestamp_utc,report_action,ai_summary,ai_report_text,dentist_report_text,coordinator_model,disease_detector_model,tooth_association_model
+04c5f0c9-ee10-426d-b2bd-01a2d53bba84,2026-09-30T11:00:42.129960+00:00,accept,Multiple carious lesions were identified across four teeth.,,"Finding 1: Q2 | Tooth_6 | Caries
+Finding 2: Q4 | Tooth_8 | Caries
+Finding 3: Q1 | Tooth_6 | Caries
+Finding 4: Q4 | Tooth_7 | Caries",coordinator_best.pt,disease_detector_best.pt,Step_51_RF_300
+2026-10-03T12:58:13.166180,my_test_xray.jpeg,False,"Clinical Radiographic Findings:
+
+- Tooth 8 (Quadrant 1) appears to be impacted.
+- Tooth 8 (Quadrant 2) appears to be impacted.
+- Tooth 8 (Quadrant 4) appears to be impacted.
+
+Recommendation: Clinical correlation and vitality testing advised for the noted areas.",I removed the duplicate lines and cleaned up the 'Tooth Tooth_8' text formatting.
