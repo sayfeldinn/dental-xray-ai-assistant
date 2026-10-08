@@ -6,13 +6,13 @@ import time
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from supabase import Client
 
 from app.core.config import settings
 from app.core.supabase import get_supabase_service
 from app.schemas.prediction import PredictionResponse, findings_to_prediction_rows, rows_to_predictions
-from app.schemas.scan import Finding
+from app.schemas.scan import Finding, Quadrant
 from app.services.ml_service import MLInferenceService, get_ml_service
 from app.services.prediction_service import save_predictions, save_scan_findings
 from app.utils.auth import get_current_user_id
@@ -34,6 +34,8 @@ class InferenceResponse(BaseModel):
     findings: List[Finding]
     model_version: str
     processing_time_ms: float = 0.0
+    ai_report: Optional[str] = None
+    quadrants: List[Quadrant] = Field(default_factory=list)
 
 
 class InferScanResponse(BaseModel):
@@ -47,6 +49,8 @@ class InferScanResponse(BaseModel):
     model_version: str
     mode: str
     processing_time_ms: float
+    ai_report: Optional[str] = None
+    quadrants: List[Quadrant] = Field(default_factory=list)
     warning: Optional[str] = None
 
 
@@ -79,7 +83,9 @@ async def run_inference(
     return InferenceResponse(
         findings=findings,
         model_version=model_info["model_version"],
-        processing_time_ms=round((time.perf_counter() - started) * 1000, 1)
+        processing_time_ms=round((time.perf_counter() - started) * 1000, 1),
+        ai_report=ml_service.ai_report,
+        quadrants=ml_service.quadrants,
     )
 
 
@@ -118,12 +124,25 @@ async def infer_scan(
         )
     elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
 
+    # Read the extras off the service after predict(); they belong to the call
+    # that just happened, not to the service's configuration.
+    ai_report = ml_service.ai_report
+    quadrants = ml_service.quadrants
+
     updated_at = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
     warnings = [
         warning
         for warning in (
             await save_predictions(supabase, scan, current_user_id, findings),
-            await save_scan_findings(supabase, scan_id, findings, "completed", updated_at),
+            await save_scan_findings(
+                supabase,
+                scan_id,
+                findings,
+                "completed",
+                updated_at,
+                ai_report=ai_report,
+                quadrants=quadrants,
+            ),
         )
         if warning
     ]
@@ -139,6 +158,8 @@ async def infer_scan(
         model_version=model_info["model_version"],
         mode=model_info["mode"],
         processing_time_ms=elapsed_ms,
+        ai_report=ai_report,
+        quadrants=quadrants,
         warning="; ".join(warnings) if warnings else None,
     )
 

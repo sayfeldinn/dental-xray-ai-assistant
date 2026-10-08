@@ -48,16 +48,40 @@ class ReportFeedback(BaseModel):
     dentist_comments: Optional[str] = None
 
 # --- Report Generator ---
+def tooth_label(detection):
+    """Clinically readable tooth identifier, in FDI notation.
+
+    Detections carry ``tooth`` as the model's class label ("Tooth_8") and
+    ``tooth_id`` as the bare digit. Interpolating the label straight after the
+    word "Tooth" produced "Tooth Tooth_8", so the quadrant and tooth digits are
+    combined into the FDI number the rest of the app already uses ("48").
+    """
+    quadrant = detection.get('quadrant')
+    tooth = detection.get('tooth_id')
+    if tooth is None:
+        label = detection.get('tooth')
+        if isinstance(label, str):
+            tooth = label.rsplit('_', 1)[-1]
+        else:
+            tooth = label
+    try:
+        if quadrant is not None and tooth is not None:
+            return f"{int(quadrant)}{int(tooth)}"
+    except (TypeError, ValueError):
+        pass
+    return str(tooth if tooth is not None else 'Unknown')
+
+
 def generate_clinical_report(detections):
     if not detections:
         return "Clinical Findings: No abnormalities detected in the provided panoramic radiograph. Routine monitoring recommended."
-    
+
     report = "Clinical Radiographic Findings:\n\n"
     for d in detections:
         quad = d.get('quadrant', 'Unknown')
-        tooth = d.get('tooth', 'Unknown')
+        tooth = tooth_label(d)
         disease = d.get('disease', 'Unknown')
-        
+
         if disease.lower() == 'impacted':
             report += f"- Tooth {tooth} (Quadrant {quad}) appears to be impacted.\n"
         elif disease.lower() == 'caries':
@@ -68,7 +92,7 @@ def generate_clinical_report(detections):
             report += f"- Periapical radiolucency / lesion associated with Tooth {tooth} (Quadrant {quad}).\n"
         else:
             report += f"- {disease} identified on Tooth {tooth} (Quadrant {quad}).\n"
-    
+
     report += "\nRecommendation: Clinical correlation and vitality testing advised for the noted areas."
     return report
 

@@ -38,6 +38,7 @@ from app.schemas.prediction import (  # noqa: E402
 )
 from app.schemas.patient import GenderEnum  # noqa: E402
 from app.schemas.scan import BoundingBox, Finding, FindingSeverityEnum, FindingTypeEnum  # noqa: E402
+import app.services.ml_service as ml_service_module  # noqa: E402
 from app.services.ml_service import MLInferenceService, _to_finding  # noqa: E402
 from app.services.patient_service import build_patient_response  # noqa: E402
 
@@ -216,27 +217,71 @@ def test_multimodel_response_maps_to_finding_with_tooth_number():
     assert finding.bounding_box.width == 20
 
 
-def test_detector_unreachable_falls_back_to_labelled_mock():
-    service = MLInferenceService(
-        api_url="http://127.0.0.1:9", timeout=2.0, allow_mock_fallback=True
-    )
+def test_detector_unreachable_raises_rather_than_inventing_findings():
+    """An unreachable detector must fail, never substitute fabricated boxes.
+
+    The service used to return three hardcoded findings here. Those were
+    persisted as real predictions and drawn on the review canvas, so this
+    asserts the failure is loud instead.
+    """
+    service = MLInferenceService(api_url="http://127.0.0.1:9", timeout=2.0)
 
     # Empty source fails before any socket is opened, so this stays offline.
-    findings = asyncio.run(service.predict("", 0.5))
+    with pytest.raises(Exception):
+        asyncio.run(service.predict("", 0.5))
 
-    assert findings, "mock fallback should still return detections"
     info = service.get_model_info()
-    assert info["mode"] == "mock"
-    assert info["model_version"] == "mock-v1.0"
+    assert info["mode"] == "live", "a configured detector is never 'mock'"
     assert info["last_error"]
 
 
-def test_mock_fallback_can_be_disabled(tmp_path):
-    service = MLInferenceService(
-        api_url="http://127.0.0.1:9", timeout=2.0, allow_mock_fallback=False
-    )
+def test_unconfigured_detector_raises_rather_than_inventing_findings():
+    service = MLInferenceService(api_url="")
+
     with pytest.raises(Exception):
         asyncio.run(service.predict("", 0.5))
+
+    info = service.get_model_info()
+    assert info["mode"] == "unconfigured"
+    assert info["model_loaded"] is False
+
+
+def test_model_version_names_the_pipeline_that_answered():
+    """Version comes from the detector's own payload, not a hardcoded string."""
+    service = MLInferenceService(api_url="http://localhost:8001")
+    service.last_result = {
+        "model": {
+            "coordinator": "best.pt",
+            "disease": "best.pt",
+            "tooth": "Step_51_RF_300",
+            "enumerator": False,
+        }
+    }
+
+    assert service._detector_model_version() == "dentex_week3/Step_51_RF_300"
+
+
+def test_report_and_quadrants_are_exposed_from_the_payload():
+    service = MLInferenceService(api_url="http://localhost:8001")
+    service.last_result = {
+        "ai_generated_report": "Clinical Radiographic Findings:\n- Caries on 37.",
+        "quadrants": [{"quadrant": 1, "confidence": 0.86, "box": [1, 2, 3, 4]}],
+    }
+
+    assert "Caries on 37" in service.ai_report
+    assert service.quadrants[0]["quadrant"] == 1
+
+    # Absent or blank values stay empty rather than inventing content.
+    service.last_result = {"ai_generated_report": "   "}
+    assert service.ai_report is None
+    assert service.quadrants == []
+
+
+def test_unexpected_detector_payload_raises():
+    """An unrecognised shape must not read as 'a clean X-ray'."""
+    service = MLInferenceService(api_url="http://localhost:8001")
+    with pytest.raises(ValueError):
+        ml_service_module._extract_detections({"unexpected": "shape"})
 
 
 def test_load_image_reads_local_file(tmp_path):

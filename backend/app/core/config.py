@@ -23,12 +23,13 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     # ML
-    # The detector runs in its own process (ml/api) so torch never has to be
-    # importable by the web process. Point this elsewhere to use another
-    # deployment; set it to an empty string to force mock predictions.
+    # The detector (dentex_week3) runs in its own process on :8001 so torch
+    # never has to be importable by the web process. Point this elsewhere to
+    # use another deployment. There is no mock fallback: an empty or dead URL
+    # makes inference raise and the API answers 502, rather than substituting
+    # invented findings that would be persisted and shown to a dentist.
     ML_API_URL: str = "http://localhost:8001"
     ML_TIMEOUT_SECONDS: float = 60.0
-    ML_ALLOW_MOCK_FALLBACK: bool = True
     # Confidence floor applied to detector output. The reference model's best
     # score on the bundled sample image is ~0.24, so anything higher silently
     # returns nothing; findings below the floor are never shown to the dentist.

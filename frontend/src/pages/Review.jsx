@@ -24,10 +24,10 @@ export default function Review() {
   }, [scanId]);
 
   useEffect(() => {
-    if (imageLoaded && predictions.length > 0) {
+    if (imageLoaded) {
       drawBoundingBoxes();
     }
-  }, [imageLoaded, predictions, showBoundingBoxes, selectedPrediction]);
+  }, [imageLoaded, predictions, showBoundingBoxes, selectedPrediction, scan]);
 
   const loadScanData = async () => {
     try {
@@ -79,6 +79,32 @@ export default function Review() {
     // Scale factors (predictions are in original image coordinates)
     const scaleX = image.offsetWidth / image.naturalWidth;
     const scaleY = image.offsetHeight / image.naturalHeight;
+
+    // Quadrant boxes from the coordinator model, drawn faintly and dashed so
+    // they read as context behind the findings rather than as detections.
+    (scan?.quadrants || []).forEach((q) => {
+      if (!Array.isArray(q.box) || q.box.length !== 4) return;
+      const [qx1, qy1, qx2, qy2] = q.box;
+      const qx = qx1 * scaleX;
+      const qy = qy1 * scaleY;
+      const qw = (qx2 - qx1) * scaleX;
+      const qh = (qy2 - qy1) * scaleY;
+
+      ctx.save();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = 'rgba(107, 114, 128, 0.65)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(qx, qy, qw, qh);
+      ctx.restore();
+
+      const label = `Q${q.quadrant}`;
+      ctx.font = '12px Arial';
+      const metrics = ctx.measureText(label);
+      ctx.fillStyle = 'rgba(107, 114, 128, 0.8)';
+      ctx.fillRect(qx + 2, qy + 2, metrics.width + 8, 16);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, qx + 6, qy + 14);
+    });
 
     predictions.forEach((pred) => {
       const isSelected = selectedPrediction?.id === pred.id;
@@ -256,6 +282,18 @@ export default function Review() {
           <h3 style={styles.findingsTitle}>
             AI-Detected Findings ({predictions.length})
           </h3>
+
+          {scan.ai_report && (
+            <div style={styles.reportCard}>
+              <div style={styles.reportHeader}>
+                <span style={styles.reportBadge}>AI-generated</span>
+                <span style={styles.reportHint}>
+                  Draft for review — not a diagnosis
+                </span>
+              </div>
+              <p style={styles.reportText}>{scan.ai_report}</p>
+            </div>
+          )}
 
           {predictions.length > 0 ? (
             <div style={styles.findingsList}>
@@ -457,6 +495,41 @@ const styles = {
     margin: '0 0 16px 0',
     fontSize: '20px',
     color: '#333',
+  },
+  reportCard: {
+    backgroundColor: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    borderLeft: '3px solid #2563eb',
+    borderRadius: '6px',
+    padding: '14px 16px',
+    marginBottom: '20px',
+  },
+  reportHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '10px',
+    flexWrap: 'wrap',
+  },
+  reportBadge: {
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
+    borderRadius: '10px',
+    padding: '2px 8px',
+    fontSize: '11px',
+    fontWeight: '600',
+  },
+  reportHint: {
+    fontSize: '11px',
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+  reportText: {
+    margin: 0,
+    fontSize: '13px',
+    lineHeight: 1.6,
+    color: '#334155',
+    whiteSpace: 'pre-wrap',
   },
   findingsList: {
     display: 'flex',

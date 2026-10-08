@@ -89,6 +89,13 @@ class ScanUpdate(BaseModel):
     findings: Optional[List[Finding]] = None
 
 
+class Quadrant(BaseModel):
+    """One quadrant box the coordinator model located, in image pixels."""
+    quadrant: int
+    confidence: float = Field(..., ge=0, le=1)
+    box: List[float] = Field(..., min_length=4, max_length=4)
+
+
 class ScanResponse(BaseModel):
     """Schema for scan response."""
     id: str
@@ -98,6 +105,11 @@ class ScanResponse(BaseModel):
     image_url: str
     status: ScanStatusEnum
     findings: List[Finding] = Field(default_factory=list)
+    # Detector output that describes the scan as a whole rather than one
+    # finding. Optional so scans analysed before these columns existed still
+    # validate.
+    ai_report: Optional[str] = None
+    quadrants: List[Quadrant] = Field(default_factory=list)
     notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
