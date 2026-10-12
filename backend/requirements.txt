@@ -1,0 +1,30 @@
+# ==============================================================================
+# DentalAI Backend - Python Dependencies
+# FastAPI backend for IEEE IC-FTAI competition
+# ==============================================================================
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# HTTP Client for ML service communication
+httpx>=0.24,<0.26
+
+# Supabase Client
+supabase==2.3.4
+
+# Data Validation & Settings (Python 3.14 compatible versions)
+pydantic[email]>=2.10.0
+pydantic-settings>=2.7.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Image Processing (optional, for future enhancements)
+# Pillow==10.2.0  # Disabled due to Python 3.14 compatibility issues
+# Use Python 3.11 or 3.12 if image processing is needed
+
+# Testing (optional)
+pytest==7.4.4
+pytest-asyncio==0.23.3

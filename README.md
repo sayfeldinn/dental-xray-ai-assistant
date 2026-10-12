@@ -66,63 +66,63 @@ dental-xray-ai-assistant/
 
 ### Prerequisites
 
-- Python **3.11 or 3.12** (3.14 breaks `pydantic-core` — see `docs/SETUP_GUIDE.md`)
-- Node.js 18+
-- Supabase account (free tier)
+- Python **3.11 or 3.12** (3.14 breaks `pydantic-core`)
+- Supabase account (free tier) - Phase 1 complete
+- Database schema deployed (run `supabase/schema.sql` in Supabase dashboard)
 
-### Backend Setup
+### Backend Setup (Phase 2 ✅)
 
-1. Navigate to backend directory:
+1. Navigate to backend directory and start server:
 ```bash
 cd backend
+./start.sh
 ```
 
-2. Create virtual environment:
+This will:
+- Create virtual environment if needed
+- Install dependencies
+- Start FastAPI on http://localhost:8000
+
+**API Documentation:** http://localhost:8000/docs
+
+### ML Service (dentex_week3)
+
+Start the AI inference microservice:
 ```bash
-python -m venv venv
-source venv/bin/activate  # On macOS/Linux
+cd dentex_week3/api
+./start.sh
 ```
 
-3. Install dependencies:
+Runs on http://localhost:8001
+
+### Frontend Setup (Phase 5 - Not Yet Built)
+
+Frontend will be built in Phase 5 using React + Vite + Tailwind CSS.
+
+### Testing the Backend
+
+Run the API test script:
 ```bash
-pip install -r requirements.txt
+cd backend
+python3 test_api.py
 ```
 
-4. Create `.env` file from `.env.example` and fill in your Supabase credentials
-
-5. Run the development server:
+Or test individual endpoints:
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
+# Health check
+curl http://localhost:8000/health
 
-Backend will be available at: http://localhost:8000
-API documentation: http://localhost:8000/docs
-
-### Frontend Setup
-
-1. Navigate to frontend directory:
-```bash
-cd frontend
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Create `.env.local` file from `.env.example` and fill in your Supabase credentials
-
-4. Run the development server:
-```bash
-npm run dev
-```
-
-Frontend will be available at: http://localhost:5173
-
-### Or start both at once
-
-```bash
-./scripts/start-dev.sh
+# Create a patient
+curl -X POST "http://localhost:8000/api/v1/patients" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "Ahmed",
+    "last_name": "Hassan",
+    "date_of_birth": "1985-03-15",
+    "gender": "male",
+    "weight_kg": 75.0,
+    "allergies": []
+  }'
 ```
 
 Full instructions, troubleshooting and the Week 1 checklist:
