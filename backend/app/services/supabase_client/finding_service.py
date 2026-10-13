@@ -27,7 +27,7 @@ class FindingService:
         Returns:
             Created finding
         """
-        data = finding_data.model_dump(exclude_unset=True)
+        data = finding_data.model_dump(exclude_unset=True, mode='json')
         
         response = self.client.table(self.table).insert(data).execute()
         
@@ -134,7 +134,7 @@ class FindingService:
         Returns:
             Updated finding if found, None otherwise
         """
-        data = finding_data.model_dump(exclude_unset=True)
+        data = finding_data.model_dump(exclude_unset=True, mode='json')
         
         if not data:
             return await self.get_finding(finding_id)

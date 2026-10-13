@@ -26,7 +26,7 @@ class PatientService:
         Returns:
             Created patient
         """
-        data = patient_data.model_dump(exclude_unset=True)
+        data = patient_data.model_dump(exclude_unset=True, mode='json')
         
         response = self.client.table(self.table).insert(data).execute()
         
@@ -106,7 +106,7 @@ class PatientService:
         Returns:
             Updated patient if found, None otherwise
         """
-        data = patient_data.model_dump(exclude_unset=True)
+        data = patient_data.model_dump(exclude_unset=True, mode='json')
         
         if not data:
             # No fields to update

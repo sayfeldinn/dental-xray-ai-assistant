@@ -63,7 +63,7 @@ class ScanService:
         Returns:
             Created scan
         """
-        data = scan_data.model_dump(exclude_unset=True)
+        data = scan_data.model_dump(exclude_unset=True, mode='json')
         
         response = self.client.table(self.table).insert(data).execute()
         
@@ -145,7 +145,7 @@ class ScanService:
         Returns:
             Updated scan if found, None otherwise
         """
-        data = scan_data.model_dump(exclude_unset=True)
+        data = scan_data.model_dump(exclude_unset=True, mode='json')
         
         if not data:
             return await self.get_scan(scan_id)
