@@ -3,11 +3,12 @@ DentalAI - Main FastAPI Application
 Clean backend service for IEEE IC-FTAI competition.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+from app.domain.errors import ConflictError, NotFoundError, RuleViolationError
 from app.api.v1 import api_router
 
 # Create FastAPI application
@@ -60,6 +61,17 @@ async def health_check():
 
 # Include API v1 routes
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+
+def _domain_error_handler(status_code: int):
+    async def handler(request: Request, exc: Exception):
+        return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+    return handler
+
+
+app.add_exception_handler(NotFoundError, _domain_error_handler(404))
+app.add_exception_handler(ConflictError, _domain_error_handler(409))
+app.add_exception_handler(RuleViolationError, _domain_error_handler(422))
 
 
 @app.exception_handler(Exception)

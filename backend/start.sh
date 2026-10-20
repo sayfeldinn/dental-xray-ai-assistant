@@ -18,7 +18,13 @@ echo "==============================================="
 # Check if virtual environment exists
 if [ ! -d "venv" ]; then
     echo -e "${YELLOW}Virtual environment not found. Creating...${NC}"
-    python3 -m venv venv
+    # Python 3.11/3.12 only: 3.14 breaks pydantic-core and the Supabase client.
+    PYTHON_BIN=$(command -v python3.12 || command -v python3.11 || true)
+    if [ -z "$PYTHON_BIN" ]; then
+        echo -e "${RED}ERROR: Python 3.11 or 3.12 is required (python3.14 is not supported).${NC}"
+        exit 1
+    fi
+    "$PYTHON_BIN" -m venv venv
     echo -e "${GREEN}Virtual environment created.${NC}"
 fi
 

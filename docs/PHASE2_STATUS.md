@@ -3,6 +3,8 @@
 **Date**: January 2025  
 **Status**: ✅ Complete and Ready for Testing
 
+> **Update:** Phase 3 is complete (`docs/PHASE3_STATUS.md`). Bugs found in Phase 2 while building it were fixed there (confirmed-findings filter, reviewer FK placeholder, dependency pins). Where this file says "Phase 3 feature", read it as done.
+
 ---
 
 ## Phase 2 Objectives

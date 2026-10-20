@@ -9,9 +9,9 @@ Owner: Person D — Integration/QA Engineer. See [docs/Week1_Execution_Plan.md](
 | `demo-script-outline.md` | Day 4 (Thu) | done (DRAFT — inference blocked by #30) |
 | `manual-test-log.md` | Day 4 (Thu) | done (run 2 after PR #35: **19 pass / 10 xfail**; run 1 was 13/16) |
 
-**Executable suite:** [`backend/tests/test_contraindications.py`](../../backend/tests/test_contraindications.py)
-executes every case in `contraindication-test-cases.md`. Run with `cd backend && pytest -q`.
-It lights up the Backend CI job, which previously skipped with *"No tests yet"*.
+> **Reconciliation note (Phase 3):** the backend was restarted in commit `6f7014b`; the old `test_contraindications.py`, the old engine, PR #33/#35 and issues #17/#28 no longer exist in this tree (they live in git history before `6f7014b`). The case IDs below are now covered by the new suite:
+> `TC-01…TC-06` and profiles `P-001…P-006` → [`backend/tests/test_contraindication.py`](../../backend/tests/test_contraindication.py); the three demo branches → [`backend/tests/test_recommendation_engine.py`](../../backend/tests/test_recommendation_engine.py). Run with `cd backend && pytest -q` (the CI Backend job now runs it).
+> Where these QA drafts disagree with [`docs/CLINICAL_GUIDELINES.md`](../CLINICAL_GUIDELINES.md), the guidelines win; the resolutions are in its §5 (penicillin alternative = Clindamycin for infection / Azithromycin for prophylaxis; paracetamol cap 3 g/day; Dexamethasone not in the catalog).
 
 **Dependency note:** `contraindication-test-cases.md` must be handed to the Backend Engineer by end of Day 3. If the dentist meeting has slipped, every case is marked `UNVALIDATED` rather than blocking delivery.
 

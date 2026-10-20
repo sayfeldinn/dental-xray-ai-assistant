@@ -9,8 +9,8 @@ This backend implements the 6-step clinical loop:
 1. **Scan Ingestion** → Upload panoramic X-ray to Supabase Storage
 2. **AI Detection** → Call dentex_week3 microservice for analysis
 3. **Dentist Validation** → Review and confirm/reject/modify findings
-4. **Recommendation Engine** → Generate treatment recommendations (Phase 3)
-5. **Dentist Confirmation** → Approve prescriptions with contraindication checks (Phase 3)
+4. **Recommendation Engine** → Rule-based treatment + drug proposals (Phase 3 ✅)
+5. **Dentist Confirmation** → Accept/modify/reject prescriptions behind contraindication gates (Phase 3 ✅)
 6. **Feedback Logging** → Audit trail for active learning (Phase 4)
 
 ## Directory Structure
@@ -21,20 +21,26 @@ backend/
 │   ├── api/v1/              # API endpoints
 │   │   ├── patients.py      # Patient CRUD
 │   │   ├── scans.py         # Scan upload & analysis
-│   │   └── findings.py      # Finding review
+│   │   ├── findings.py      # Finding review
+│   │   ├── recommendations.py  # Step 4: generate proposals
+│   │   ├── treatments.py    # Step 5: review/decide treatments
+│   │   └── prescriptions.py # Step 5: safety check + decide prescriptions
+│   ├── api/deps.py          # get_workflow() dependency
 │   ├── core/                # Core configuration
 │   │   ├── config.py        # Settings management
 │   │   └── supabase_client.py  # Supabase client factory
 │   ├── domain/              # Pydantic domain models
-│   │   ├── patient.py
-│   │   ├── scan.py
-│   │   └── finding.py
+│   │   ├── patient.py, scan.py, finding.py
+│   │   ├── treatment.py, prescription.py, recommendation.py
+│   │   └── errors.py        # NotFound/Conflict/RuleViolation -> 404/409/422
 │   ├── services/            # Business logic layer
 │   │   ├── ml_client/       # Dentex ML service client
 │   │   ├── supabase_client/ # Database services
-│   │   ├── recommendation/  # (Phase 3)
-│   │   └── contraindication/  # (Phase 3)
+│   │   ├── contraindication/  # PURE safety rules (catalog, matcher, checker)
+│   │   ├── recommendation/    # PURE finding -> treatment + drugs
+│   │   └── clinical_workflow.py  # orchestration + dentist-decision policy
 │   └── main.py              # FastAPI application
+├── tests/                   # pytest suite (121 tests, no network)
 └── requirements.txt         # Python dependencies
 ```
 
@@ -42,7 +48,7 @@ backend/
 
 ### 1. Prerequisites
 
-- Python 3.11 or 3.12
+- Python 3.11 or 3.12 (**not 3.14**; `start.sh` enforces this)
 - Virtual environment tool (venv, conda, etc.)
 - Supabase project configured (Phase 1 complete)
 - dentex_week3 ML service running on port 8001
@@ -54,7 +60,7 @@ backend/
 cd backend
 
 # Create virtual environment
-python3 -m venv venv
+python3.12 -m venv venv
 
 # Activate virtual environment
 source venv/bin/activate  # macOS/Linux
@@ -111,8 +117,26 @@ The API will be available at:
 - `GET /api/v1/findings` - List findings (by patient or scan)
 - `GET /api/v1/findings/{id}` - Get finding details
 - `POST /api/v1/findings/review` - Dentist review finding
-- `GET /api/v1/findings/scan/{scan_id}/confirmed` - Get confirmed findings
+- `GET /api/v1/findings/scan/{scan_id}/confirmed` - Get dentist-validated (confirmed + modified) findings
 - `PUT /api/v1/findings/{id}` - Update finding
+
+### Recommendations (`/api/v1/recommendations`) — Phase 3
+- `POST /api/v1/recommendations/scans/{scan_id}` - Generate treatment + drug proposals (body optional: `clinical_context.active_infection` / `pain`)
+
+### Treatments (`/api/v1/treatments`) — Phase 3
+- `POST /api/v1/treatments` - Dentist-authored treatment (stored confirmed)
+- `GET /api/v1/treatments?scan_id=|patient_id=` - List with prescriptions
+- `GET /api/v1/treatments/{id}` - Get one
+- `POST /api/v1/treatments/{id}/decision` - Confirm / modify / cancel
+
+### Prescriptions (`/api/v1/prescriptions`) — Phase 3
+- `POST /api/v1/prescriptions` - Dentist-authored prescription on a decided treatment (safety-checked, still needs a decision)
+- `GET /api/v1/prescriptions?treatment_id=|patient_id=` - List
+- `GET /api/v1/prescriptions/{id}` - Get one
+- `POST /api/v1/prescriptions/check` - Stateless contraindication check
+- `POST /api/v1/prescriptions/{id}/decision` - Accept / modify / reject (`acknowledge_warnings`, `override_reason`)
+
+Full behaviour: `docs/PHASE3_STATUS.md`. Rules: `docs/CLINICAL_GUIDELINES.md` §4-5.
 
 ## Testing the API
 
@@ -143,6 +167,13 @@ curl -X POST "http://localhost:8000/api/v1/scans/upload" \
   -F "auto_analyze=true"
 ```
 
+## Testing
+
+```bash
+source venv/bin/activate
+pytest -q        # 121 tests, <1 s, no network, no .env needed
+```
+
 ## Phase 2 Status
 
 ✅ **Completed:**
@@ -156,11 +187,11 @@ curl -X POST "http://localhost:8000/api/v1/scans/upload" \
 - Automatic scan upload and AI analysis
 - Finding review workflow
 
-⬜ **Not Yet Implemented (Future Phases):**
-- Recommendation engine (Phase 3)
-- Contraindication checking (Phase 3)
-- Treatment and Prescription endpoints (Phase 3-4)
+✅ **Phase 3 (see `docs/PHASE3_STATUS.md`):** recommendation engine, contraindication checker, treatment/prescription endpoints, tests.
+
+⬜ **Not Yet Implemented:**
 - Feedback logging to clinical_feedback_logs (Phase 4)
+- Authentication / `dentist_id` (Phase 5)
 
 ## Development Notes
 
@@ -181,12 +212,9 @@ All service methods are `async` for non-blocking I/O, even though Supabase clien
 - Timeout configured via settings (default: 60s)
 - Automatic parsing of ML output to Finding records
 
-## Next Steps (Phase 3)
+## Next Steps (Phase 4)
 
-1. Implement recommendation engine with ADA/AHA clinical rules
-2. Build contraindication checker
-3. Add treatment and prescription endpoints
-4. Create unit tests for business logic
+Write `clinical_feedback_logs` from finding reviews, treatment/prescription modifications and overrides, and forward corrections to the ML service.
 
 ## Troubleshooting
 

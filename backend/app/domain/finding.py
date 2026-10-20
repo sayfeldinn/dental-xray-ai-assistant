@@ -3,11 +3,14 @@ DentalAI - Finding Domain Models
 Individual tooth pathology detections with dentist validation.
 """
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 from .base import BaseEntity, TimestampedEntity, IdentifiedEntity
+
+# Pathology classes emitted by dentex_week3 (see docs/CLINICAL_GUIDELINES.md §1).
+DISEASE_LABELS = ("Caries", "Deep Caries", "Periapical Lesion", "Impacted")
 
 
 class FindingBase(BaseEntity):
@@ -51,6 +54,11 @@ class Finding(FindingBase, IdentifiedEntity, TimestampedEntity):
     reviewed_at: Optional[datetime] = None
     reviewed_by: Optional[UUID] = None
 
+    @property
+    def effective_disease(self) -> str:
+        """Disease label to act on: the dentist's correction wins over the AI's."""
+        return self.confirmed_disease or self.disease
+
 
 class FindingListResponse(BaseEntity):
     """List of findings for a scan."""
@@ -67,3 +75,11 @@ class FindingReviewRequest(BaseEntity):
     confirmed_disease: Optional[str] = None
     dentist_notes: Optional[str] = None
     dentist_id: Optional[UUID] = None
+
+    @model_validator(mode="after")
+    def _check_disease_labels(self) -> "FindingReviewRequest":
+        if self.review_status == "modified" and not self.confirmed_disease:
+            raise ValueError("confirmed_disease is required when review_status is 'modified'")
+        if self.confirmed_disease and self.confirmed_disease not in DISEASE_LABELS:
+            raise ValueError(f"confirmed_disease must be one of {DISEASE_LABELS}")
+        return self

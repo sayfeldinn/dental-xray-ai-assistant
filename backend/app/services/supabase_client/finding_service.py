@@ -5,7 +5,7 @@ Database operations for tooth pathology findings.
 
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.supabase_client import supabase_admin
 from app.domain.finding import Finding, FindingCreate, FindingUpdate
 
@@ -154,7 +154,7 @@ class FindingService:
         self,
         finding_id: UUID,
         review_status: str,
-        dentist_id: UUID,
+        dentist_id: Optional[UUID] = None,
         confirmed_disease: Optional[str] = None,
         dentist_notes: Optional[str] = None
     ) -> Optional[Finding]:
@@ -164,7 +164,8 @@ class FindingService:
         Args:
             finding_id: Finding UUID
             review_status: 'confirmed', 'rejected', or 'modified'
-            dentist_id: Reviewing dentist UUID
+            dentist_id: Reviewing dentist UUID (None until auth exists; reviewed_by
+                        references auth.users, so a placeholder UUID would violate the FK)
             confirmed_disease: Corrected disease if modified
             dentist_notes: Dentist's notes
         
@@ -173,9 +174,11 @@ class FindingService:
         """
         data = {
             'review_status': review_status,
-            'reviewed_by': str(dentist_id),
-            'reviewed_at': datetime.utcnow().isoformat()
+            'reviewed_at': datetime.now(timezone.utc).isoformat()
         }
+
+        if dentist_id:
+            data['reviewed_by'] = str(dentist_id)
         
         if confirmed_disease:
             data['confirmed_disease'] = confirmed_disease
@@ -196,19 +199,23 @@ class FindingService:
     
     async def get_confirmed_findings(self, scan_id: UUID) -> List[Finding]:
         """
-        Get only confirmed findings for a scan (for treatment recommendations).
-        
+        Get dentist-validated findings for a scan (for treatment recommendations).
+
+        Includes 'modified' findings: the dentist accepted the detection but
+        corrected the disease label (see Finding.effective_disease).
+        Rejected and pending findings never feed the recommendation engine.
+
         Args:
             scan_id: Scan UUID
-        
+
         Returns:
-            List of confirmed findings
+            List of confirmed or modified findings
         """
         response = (
             self.client.table(self.table)
             .select("*")
             .eq("scan_id", str(scan_id))
-            .eq("review_status", "confirmed")
+            .in_("review_status", ["confirmed", "modified"])
             .order("quadrant")
             .order("tooth_id")
             .execute()

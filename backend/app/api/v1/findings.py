@@ -87,7 +87,7 @@ async def review_finding(review_request: FindingReviewRequest):
     finding = await finding_service.review_finding(
         finding_id=review_request.finding_id,
         review_status=review_request.review_status,
-        dentist_id=review_request.dentist_id or UUID('00000000-0000-0000-0000-000000000000'),
+        dentist_id=review_request.dentist_id,
         confirmed_disease=review_request.confirmed_disease,
         dentist_notes=review_request.dentist_notes
     )
@@ -101,7 +101,7 @@ async def review_finding(review_request: FindingReviewRequest):
 @router.get("/scan/{scan_id}/confirmed", response_model=FindingListResponse)
 async def get_confirmed_findings(scan_id: UUID):
     """
-    Get only confirmed findings for a scan.
+    Get dentist-validated (confirmed or modified) findings for a scan.
     
     **Step 3→4 Transition**: Retrieve validated findings for treatment recommendations.
     """

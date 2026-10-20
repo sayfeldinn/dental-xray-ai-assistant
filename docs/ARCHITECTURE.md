@@ -55,27 +55,32 @@ dental-xray-ai-assistant/
 ├── supabase/
 │   ├── schema.sql                # Complete Supabase DDL schema, RLS, indexes, and storage
 │   └── seed.sql                  # Synthetic demo patient records for competition branches
-├── backend/                      # TO BE BUILT IN PHASE 2 (Clean FastAPI backend)
+├── backend/                      # BUILT (Phases 2-3): clean FastAPI backend
 │   ├── app/
-│   │   ├── main.py               # FastAPI entry point
-│   │   ├── core/                 # Config, security, logging
-│   │   ├── domain/               # Core clinical entities and validation models
+│   │   ├── main.py               # FastAPI entry point, domain-error -> HTTP mapping
+│   │   ├── core/                 # Config, Supabase client factory
+│   │   ├── domain/               # Pydantic entities (patient, scan, finding, treatment, prescription,
+│   │   │                         #   recommendation) + errors.py. No I/O.
 │   │   ├── services/
-│   │   │   ├── recommendation/   # Deterministic ADA/AHA clinical recommendation rules
-│   │   │   ├── contraindication/ # Allergy, medication, and clinical condition safety checker
+│   │   │   ├── contraindication/ # PURE safety rules R-01..R-22 (catalog, matcher, checker)
+│   │   │   ├── recommendation/   # PURE finding -> treatment + candidate drugs
+│   │   │   ├── clinical_workflow.py  # orchestration: load, run engines, dentist-decision policy, save
 │   │   │   ├── ml_client/        # HTTP client communicating with dentex_week3
-│   │   │   └── supabase_client/  # Typed data access layer
-│   │   └── api/v1/               # Clean REST routers (/scans, /findings, /recommendations, /feedback)
-│   ├── tests/                    # Unit & integration test suite
+│   │   │   └── supabase_client/  # Typed data access layer (patients, scans, findings, treatments, prescriptions)
+│   │   └── api/                  # deps.py + v1/ REST routers (patients, scans, findings,
+│   │                             #   recommendations, treatments, prescriptions; /feedback = Phase 4)
+│   ├── tests/                    # 121 pytest tests (no network)
 │   └── requirements.txt
-├── frontend/                     # TO BE BUILT IN PHASE 5 (React + Vite + Tailwind)
+├── frontend/                     # NOT IN TREE YET - Phase 5 (React + Vite + Tailwind)
 │   ├── src/
 │   │   ├── components/           # Reusable UI widgets (Viewer, Alerts, Badges)
 │   │   ├── features/             # Feature slices (scan-review, treatment-plan, feedback-log)
 │   │   └── lib/                  # Supabase client and API clients
 │   └── package.json
-├── docs/                         # Team specifications and guides
+├── docs/                         # Team specifications and guides (start at AGENT_ONBOARDING.md)
 │   ├── ARCHITECTURE.md           # This document
+│   ├── AGENT_ONBOARDING.md       # 5-minute orientation for new developers/agents
+│   ├── PHASE2_STATUS.md, PHASE3_STATUS.md  # What each phase delivered
 │   ├── DATABASE_SPEC.md          # Database dictionary, relations, and altering rules
 │   ├── CLINICAL_GUIDELINES.md    # ADA/AHA/AAPD pharmacology and contraindication rules
 │   └── TEAM_WORKFLOW.md          # Multi-developer collaboration and PR workflow
@@ -96,9 +101,9 @@ dental-xray-ai-assistant/
 ### 4.2 Backend Service (`backend/`)
 - **Port:** 8000
 - **Role:** Business logic, clinical safety verification, data persistence, and orchestration.
-- **Rule Engine:**
+- **Rule Engine** (authoritative detail: `CLINICAL_GUIDELINES.md` §4-5; the dentist supplies `clinical_context` flags `active_infection` / `pain` because an X-ray cannot show them):
   - Caries with no signs of infection: Generates **restorative treatment referral only** (No systemic antibiotics).
-  - Active infection / abscess: Recommends first-line antibiotic (**Amoxicillin**), but cross-checks patient allergies. If allergic to penicillins, switches to **Clindamycin** or **Azithromycin**.
+  - Active infection / abscess (dentist-reported): Recommends first-line antibiotic (**Amoxicillin**), but cross-checks patient allergies. If allergic to penicillins, switches to **Clindamycin** (infection) or **Azithromycin** (cardiac prophylaxis only).
   - Cardiac risk patients: Flags need for **pre-procedure prophylaxis** (single dose 30–60m before procedure). Note: Clindamycin is strictly forbidden for cardiac prophylaxis per AHA 2021 guidelines.
   - Pain management: Recommends **Ibuprofen**, unless patient has active GI ulcers, renal impairment, asthma, or anticoagulant therapy, falling back to **Paracetamol**.
 

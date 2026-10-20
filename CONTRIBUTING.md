@@ -54,7 +54,7 @@ Cross-role changes (e.g. Backend editing `docs/qa/`) require a ping to the owner
 ## 5. Documentation Rules
 
 - `docs/` is the source of truth. If it isn't documented, it isn't agreed.
-- Clinical tables (finding-to-treatment, drug list, contraindications) are owned by the Team Lead and can only be edited from validated dentist output. Mark anything unvalidated with **`UNVALIDATED`**.
+- Clinical tables (finding-to-treatment, drug list, contraindications) are owned by the Team Lead. With no clinic partner available, a change must cite a published guideline (ADA / AHA / AAPD / regulator) in `docs/CLINICAL_GUIDELINES.md` §4-6, or be marked **PROJECT** with its rationale. Clinician sign-off is a standing recommendation, not a blocker.
 - No real patient data anywhere in this repo — synthetic/anonymized only.
 
 ## 6. What Must Never Land

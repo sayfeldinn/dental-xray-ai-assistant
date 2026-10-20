@@ -35,7 +35,7 @@ rest credible. Do not cut it.
 | 2 | `frontend` running | | demo the two UI shells against mock data |
 | 3 | Auth token (`POST` login) — every recommendation route has `Depends(get_current_user_id)` | | blocks *all* API branches |
 | 4 | Six profiles seeded into `patients`, with `dentist_id` matching the logged-in user | | branches return **404 Patient not found** |
-| 5 | `backend/tests/test_contraindications.py` green | 19 passed / 10 xfailed | stop — see §4 |
+| 5 | `cd backend && pytest -q` green | 90 passed (Phase 3 suite; the old 19 passed / 10 xfailed log is historical) | stop — see §4 |
 | 6 | Model weights available (`v0.1-dental-yolov8s` Release asset) | | inference segment cannot run — #30 |
 
 **Known seeding problem (gap A, #33):** `age_years` and `weight_kg` are **not columns in the

@@ -15,7 +15,7 @@ This guide establishes the rules of engagement for developers collaborating on t
 
 ## 2. Local Environment Setup
 
-### 2.1 Backend & ML Environment (Python 3.10+)
+### 2.1 Backend & ML Environment (Python 3.11 or 3.12; 3.14 is not supported)
 ```bash
 # In project root:
 cp .env.example .env
@@ -28,15 +28,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 python app.py  # Runs on http://localhost:8001
 
-# 2. Main Backend (Once scaffolded in Phase 2)
+# 2. Main Backend (or simply: cd backend && ./start.sh)
 cd ../../backend
-python -m venv .venv
-source .venv/bin/activate
+python3.12 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 2.2 Frontend Environment (Node 18+)
+### 2.2 Frontend Environment (Node 18+) — Phase 5
+The `frontend/` folder does not exist yet; once it does:
 ```bash
 cd frontend
 npm install
@@ -49,9 +50,10 @@ npm run dev  # Runs on http://localhost:5173
 
 ### 3.1 Adding a New Clinical Rule or Dosing Logic
 1. Open `docs/CLINICAL_GUIDELINES.md` and document the clinical guideline citation (ADA/AHA).
-2. Modify `backend/app/services/recommendation/` or `backend/app/services/contraindication/`.
-3. Add a corresponding test case in `backend/tests/test_recommendations.py`.
-4. Run `pytest` to confirm all test branches pass.
+2. Append a rule to the register (`CLINICAL_GUIDELINES.md` §4; never renumber IDs).
+3. Modify `backend/app/services/contraindication/` (`catalog.py`, `checker.py`) or `backend/app/services/recommendation/` (`rules.py`, `engine.py`).
+4. Add a test in `backend/tests/test_contraindication.py` or `test_recommendation_engine.py`.
+5. Run `cd backend && pytest -q` to confirm all pass.
 
 ### 3.2 Modifying the Database Schema
 1. Create a timestamped SQL migration script in `supabase/migrations/` (e.g. `20261011_add_patient_field.sql`).
@@ -69,11 +71,12 @@ npm run dev  # Runs on http://localhost:5173
 ## 4. Pre-Commit / Pre-Demo Checklist
 
 Before presenting or merging code, verify:
-- [ ] Backend runs without error: `curl http://localhost:8000/api/v1/health` returns `200 OK`.
+- [ ] Backend runs without error: `curl http://localhost:8000/health` returns `200 OK`.
+- [ ] `cd backend && pytest -q` passes.
 - [ ] ML microservice is online: `curl http://localhost:8001/` returns `{"status":"ok","models_loaded":true}`.
 - [ ] Database connection works: `python scripts/verify_supabase.py` passes.
-- [ ] The 3 demo branches test successfully:
+- [ ] The 3 demo branches test successfully (`tests/test_recommendation_engine.py`). Branches 2-3 are run with `POST /api/v1/recommendations/scans/{id}` and body `{"clinical_context": {"active_infection": true}}`: antibiotics are only proposed when the dentist reports infection.
   - Branch 1: Caries with no infection -> Restorative referral, 0 drugs.
   - Branch 2: Periapical lesion with no allergy -> Amoxicillin 500mg q8h.
-  - Branch 3: Periapical lesion with penicillin allergy -> Warning shown, Clindamycin suggested.
+  - Branch 3: Periapical lesion with penicillin allergy -> Warning shown (R-18), Clindamycin 300mg suggested.
 

@@ -8,23 +8,27 @@ fastapi==0.109.0
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
 
-# HTTP Client for ML service communication
+# HTTP Client for ML service communication (supabase 2.3.4 requires httpx < 0.26)
 httpx>=0.24,<0.26
 
 # Supabase Client
 supabase==2.3.4
+# gotrue 2.9+ passes `proxy=` to httpx, which httpx < 0.26 rejects ("unexpected keyword
+# argument 'proxy'"). Keep gotrue below 2.9 while supabase is pinned at 2.3.4.
+gotrue>=2.0,<2.9
 
-# Data Validation & Settings (Python 3.14 compatible versions)
-pydantic[email]>=2.10.0
-pydantic-settings>=2.7.0
+# Data Validation & Settings
+pydantic[email]>=2.10.0,<3
+pydantic-settings>=2.7.0,<3
 
 # Environment Variables
 python-dotenv==1.0.0
 
 # Image Processing (optional, for future enhancements)
-# Pillow==10.2.0  # Disabled due to Python 3.14 compatibility issues
-# Use Python 3.11 or 3.12 if image processing is needed
+# Pillow==10.2.0
 
-# Testing (optional)
+# Python: use 3.11 or 3.12 (CI runs 3.12). 3.14 breaks pydantic-core / supabase wheels.
+
+# Testing (backend/tests, run with `pytest -q`)
 pytest==7.4.4
 pytest-asyncio==0.23.3

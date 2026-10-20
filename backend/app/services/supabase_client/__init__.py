@@ -3,9 +3,13 @@
 from .patient_service import PatientService, patient_service
 from .scan_service import ScanService, scan_service
 from .finding_service import FindingService, finding_service
+from .treatment_service import TreatmentService, treatment_service
+from .prescription_service import PrescriptionService, prescription_service
 
 __all__ = [
     'PatientService', 'patient_service',
     'ScanService', 'scan_service',
-    'FindingService', 'finding_service'
+    'FindingService', 'finding_service',
+    'TreatmentService', 'treatment_service',
+    'PrescriptionService', 'prescription_service'
 ]

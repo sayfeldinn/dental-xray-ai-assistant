@@ -1,5 +1,7 @@
 # Phase 2 Installation Notes & Troubleshooting
 
+> **RESOLVED (Phase 3):** use Python 3.12 (`backend/venv`). `requirements.txt` now pins a set that installs cleanly on 3.12 and passes the test suite: `supabase==2.3.4`, `httpx<0.26`, `gotrue<2.9`. The `gotrue` / `proxy` error described below is fixed by that `gotrue` pin; the Python 3.14 notes are kept for history. See `docs/PHASE3_STATUS.md` §4.
+
 **Date**: January 2025  
 **Status**: Backend Complete - Dependency Resolution Required
 
