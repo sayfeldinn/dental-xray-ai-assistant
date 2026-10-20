@@ -3,7 +3,7 @@ DentalAI - Finding API Endpoints
 Tooth pathology findings review and validation.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from uuid import UUID
 
@@ -13,6 +13,8 @@ from app.domain.finding import (
     FindingListResponse,
     FindingReviewRequest
 )
+from app.api.deps import get_workflow
+from app.services.clinical_workflow import ClinicalWorkflowService
 from app.services.supabase_client import finding_service
 
 router = APIRouter(prefix="/findings", tags=["findings"])
@@ -73,29 +75,20 @@ async def update_finding(finding_id: UUID, finding_data: FindingUpdate):
 
 
 @router.post("/review", response_model=Finding)
-async def review_finding(review_request: FindingReviewRequest):
+async def review_finding(
+    review_request: FindingReviewRequest, workflow: ClinicalWorkflowService = Depends(get_workflow),
+):
     """
     Dentist review of an AI-detected finding.
-    
+
     **Step 3 in Clinical Loop**: Dentist Finding Validation
-    
+
     The dentist can:
     - **Confirm**: Accept AI detection as-is
-    - **Reject**: Mark as false positive
-    - **Modify**: Change disease classification
+    - **Reject**: Mark as false positive (logged to the feedback ledger)
+    - **Modify**: Change disease classification (logged as a misclassification)
     """
-    finding = await finding_service.review_finding(
-        finding_id=review_request.finding_id,
-        review_status=review_request.review_status,
-        dentist_id=review_request.dentist_id,
-        confirmed_disease=review_request.confirmed_disease,
-        dentist_notes=review_request.dentist_notes
-    )
-    
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
-    
-    return finding
+    return await workflow.review_finding(review_request)
 
 
 @router.get("/scan/{scan_id}/confirmed", response_model=FindingListResponse)

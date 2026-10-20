@@ -14,7 +14,7 @@ Do not swap these without Team Lead sign-off.
 | --- | --- | --- |
 | Backend | **FastAPI** (Python) | Already scaffolded |
 | Database / Auth / Storage | **Supabase** | Postgres + RLS + Storage |
-| Frontend | **React** (Vite) | Already scaffolded |
+| Frontend | **React** (Vite + Tailwind) | Built in Phase 5 |
 | Detection model | **Ultralytics YOLOv8s** | Weights published as a [Release](https://github.com/sayfeldinn/dental-xray-ai-assistant/releases) |
 
 **No drug-interaction API.** The RxNav DDI endpoint returns 404 — it has been retired.
@@ -31,9 +31,9 @@ dental-xray-ai-assistant/
 │   │   ├── core/           # Config, Supabase client
 │   │   ├── domain/         # Pydantic entities + errors
 │   │   └── services/       # contraindication/, recommendation/, ml_client/, supabase_client/, clinical_workflow.py
-│   ├── tests/              # pytest suite (121 tests)
+│   ├── tests/              # pytest suite (147 tests)
 │   └── requirements.txt
-├── frontend/               # React frontend - NOT IN TREE YET (rebuilt in Phase 5)
+├── frontend/               # React + Vite + Tailwind clinician UI (Phase 5)
 ├── ml/                     # Training notebook + model card
 │   ├── README.md           # Class taxonomy, metrics, Release link
 │   └── train_dental_yolov8s.ipynb
@@ -84,9 +84,15 @@ cd dentex_week3/api
 
 Runs on http://localhost:8001
 
-### Frontend Setup (Phase 5 - Not Yet Built)
+### Frontend Setup (Phase 5 ✅)
 
-The frontend was removed in the restart (`6f7014b`) and will be rebuilt in Phase 5 using React + Vite + Tailwind CSS.
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173, talks to the backend at VITE_API_URL (default http://localhost:8000)
+```
+
+See [`frontend/README.md`](frontend/README.md).
 
 ### Testing the Backend
 
@@ -126,8 +132,8 @@ Full instructions, troubleshooting and the Week 1 checklist:
 | 1 | Supabase schema, storage, seed data | ✅ |
 | 2 | Backend: scan ingestion, AI detection, finding review (loop steps 1-3) | ✅ |
 | 3 | Recommendation + contraindication engine, treatment/prescription endpoints (steps 4-5) | ✅ [`docs/PHASE3_STATUS.md`](docs/PHASE3_STATUS.md) |
-| 4 | Feedback logging / active learning (step 6) | ⬜ |
-| 5 | React frontend (review UI, decision drawer) | ⬜ |
+| 4 | Feedback logging / active learning (step 6) | ✅ [`docs/PHASE4_STATUS.md`](docs/PHASE4_STATUS.md) |
+| 5 | React frontend (review UI, decision drawer) | ✅ [`docs/PHASE5_STATUS.md`](docs/PHASE5_STATUS.md) |
 
 The active ML service is `dentex_week3/`. `ml/`, `MLv2/` and `dentex_production_portable_run3/` are earlier/alternative models kept for reference. **New here? Read [`docs/AGENT_ONBOARDING.md`](docs/AGENT_ONBOARDING.md).**
 
@@ -140,12 +146,11 @@ SUPABASE_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_KEY=your_supabase_service_key
 ```
 
-### Frontend (.env.local)
+### Frontend (frontend/.env.local)
 ```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 VITE_API_URL=http://localhost:8000
 ```
+The frontend only talks to the backend; it holds no Supabase key.
 
 Never commit `.env` files, and never prefix the service-role key with `VITE_`.
 
@@ -173,7 +178,10 @@ pytest
 ```
 
 ### Frontend Tests
-Phase 5 (no `frontend/` yet).
+```bash
+cd frontend
+npm run typecheck && npm test   # 21 tests (vitest)
+```
 
 ### Connection check
 ```bash

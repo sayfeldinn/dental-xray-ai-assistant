@@ -110,10 +110,10 @@ With no dentist meeting possible, the provisional values were replaced by resear
 1. **Not clinician-reviewed.** Values are source-backed (and AHA/Beers/FDA/interaction items were confirmed from search summaries, not full text, see guidelines §6). Recommended before any real use: a clinician pass over `CLINICAL_GUIDELINES.md` §2 and §4.
 2. **Not modelled:** pregnancy/lactation, renal dose adjustment, severity grades of liver/kidney disease, penicillin-reaction severity (the schema has no fields for them). Documented in guidelines §5.14.
 3. **No auth yet:** `dentist_id` is optional everywhere and stays NULL (Phase 5 wires Supabase Auth).
-4. **Step 6 not built:** overrides, modifications and rejections are stored on the rows but **not yet written to `clinical_feedback_logs`** (Phase 4). The decision endpoints are the hook points.
+4. **Step 6:** built in Phase 4 (`docs/PHASE4_STATUS.md`); this note describes the state at the end of Phase 3.
 5. **Vocabulary-based matching:** unknown free-text terms are ignored by design (extend `catalog.py` aliases).
 6. A prescription's frequency is parsed from free text for the daily-limit check; an unparseable frequency skips only that check.
 
-## 8. Next: Phase 4 — Active feedback & logging
+## 8. Next: Phase 4 — delivered
 
-Write `clinical_feedback_logs` rows from: finding reviews (`false_positive`, `misclassification`), treatment `modified`, prescription `accepted` over a flag (`drug_override`), prescription `modified` (`dosage_adjusted`), and forward them to `DentexClient.submit_feedback`.
+See `docs/PHASE4_STATUS.md`. (Test count there: 147, including the 121 from this phase.)

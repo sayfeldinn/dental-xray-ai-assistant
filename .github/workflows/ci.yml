@@ -90,7 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The frontend is rebuilt in Phase 5; until frontend/ exists this job must not fail the pipeline.
+      # Guarded so a branch without frontend/ still passes.
       - name: Detect frontend
         id: detect
         run: echo "present=$([ -f frontend/package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
@@ -107,9 +107,9 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Lint
+      - name: Typecheck and test
         if: steps.detect.outputs.present == 'true'
-        run: npm run lint
+        run: npm run typecheck && npm test
         working-directory: frontend
 
       - name: Build

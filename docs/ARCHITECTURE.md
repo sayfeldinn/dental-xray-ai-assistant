@@ -68,10 +68,10 @@ dental-xray-ai-assistant/
 │   │   │   ├── ml_client/        # HTTP client communicating with dentex_week3
 │   │   │   └── supabase_client/  # Typed data access layer (patients, scans, findings, treatments, prescriptions)
 │   │   └── api/                  # deps.py + v1/ REST routers (patients, scans, findings,
-│   │                             #   recommendations, treatments, prescriptions; /feedback = Phase 4)
-│   ├── tests/                    # 121 pytest tests (no network)
+│   │                             #   recommendations, treatments, prescriptions; /feedback = Phase 4, built)
+│   ├── tests/                    # 147 pytest tests (no network)
 │   └── requirements.txt
-├── frontend/                     # NOT IN TREE YET - Phase 5 (React + Vite + Tailwind)
+├── frontend/                     # BUILT (Phase 5): React + Vite + Tailwind, see frontend/README.md
 │   ├── src/
 │   │   ├── components/           # Reusable UI widgets (Viewer, Alerts, Badges)
 │   │   ├── features/             # Feature slices (scan-review, treatment-plan, feedback-log)
@@ -115,3 +115,4 @@ dental-xray-ai-assistant/
   2. **Review Checklist:** Dentist can quickly click "Confirm", "Reject", or "Edit" on each finding.
   3. **Decision Drawer:** Shows condition-specific treatment paths and drug recommendations. Critical contraindication alerts are rendered in bold amber/red banners that cannot be silently skipped.
   4. **Feedback Table:** A live-updating corrections ledger demonstrating Step 6 audit logging.
+- **As built (Phase 5):** `frontend/src/features/{patients,scan-review,treatment-plan,feedback-log}`; one typed API client (`src/lib/api.ts`); server state via TanStack Query. Details: `docs/PHASE5_STATUS.md`.

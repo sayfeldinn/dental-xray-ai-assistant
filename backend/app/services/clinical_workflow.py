@@ -5,11 +5,14 @@ services/contraindication; this module only loads data, applies the dentist-deci
 and saves. Dependencies are injected so tests can run it against in-memory fakes.
 """
 
+import logging
 from datetime import date, datetime, timezone
-from typing import Callable, Dict, List, Optional
+from typing import Awaitable, Callable, Dict, List, Optional
 from uuid import UUID
 
 from app.domain.errors import ConflictError, NotFoundError, RuleViolationError
+from app.domain.feedback import FeedbackListResponse, FeedbackLog, FeedbackLogCreate, FeedbackSummary, MissedFindingReport
+from app.domain.finding import Finding, FindingReviewRequest
 from app.domain.prescription import (
     Prescription, PrescriptionCheckRequest, PrescriptionCreate,
     PrescriptionDecisionRequest, PrescriptionManualCreate, SafetyCheckResult,
@@ -19,7 +22,13 @@ from app.domain.treatment import (
     Treatment, TreatmentCreate, TreatmentDecisionRequest, TreatmentManualCreate, TreatmentWithPrescriptions,
 )
 from app.services.contraindication import ContraindicationChecker, PatientSafetyProfile
+from app.services.feedback import (
+    finding_feedback, missed_finding_feedback, ml_finding_feedback, prescription_feedback, summarize,
+    treatment_feedback,
+)
 from app.services.recommendation import RecommendationEngine
+
+logger = logging.getLogger(__name__)
 
 
 class ClinicalWorkflowService:
@@ -33,6 +42,8 @@ class ClinicalWorkflowService:
         engine: Optional[RecommendationEngine] = None,
         checker: Optional[ContraindicationChecker] = None,
         today: Callable[[], date] = date.today,
+        feedback=None,
+        ml_feedback: Optional[Callable[..., Awaitable]] = None,
     ):
         self.patients = patients
         self.scans = scans
@@ -42,6 +53,8 @@ class ClinicalWorkflowService:
         self.checker = checker or ContraindicationChecker()
         self.engine = engine or RecommendationEngine(self.checker)
         self._today = today
+        self.feedback = feedback          # clinical_feedback_logs service; None disables the ledger
+        self.ml_feedback = ml_feedback    # DentexClient.submit_feedback; None disables forwarding
 
     # --- Step 4: recommendation ----------------------------------------------
 
@@ -234,7 +247,10 @@ class ClinicalWorkflowService:
         if request.dentist_id:
             changes["dentist_id"] = str(request.dentist_id)
 
-        return await self.prescriptions.update_prescription(prescription_id, changes)
+        updated = await self.prescriptions.update_prescription(prescription_id, changes)
+        if treatment and updated:
+            await self._record(prescription_feedback(rx, updated, treatment.scan_id, request.dentist_id))
+        return updated
 
     async def decide_treatment(self, treatment_id: UUID, request: TreatmentDecisionRequest) -> Treatment:
         """Confirm, modify, or cancel a proposed treatment."""
@@ -253,7 +269,77 @@ class ClinicalWorkflowService:
         if request.dentist_id:
             changes["dentist_id"] = str(request.dentist_id)
 
-        return await self.treatments.update_treatment(treatment_id, changes)
+        updated = await self.treatments.update_treatment(treatment_id, changes)
+        if updated:
+            await self._record(treatment_feedback(treatment, updated, request.dentist_id))
+        return updated
+
+    # --- Step 3 (with Step 6 logging): finding review -------------------------
+
+    async def review_finding(self, request: FindingReviewRequest) -> Finding:
+        """Apply the dentist's review of an AI detection and log any correction of the AI."""
+        before = await self.findings.get_finding(request.finding_id)
+        if not before:
+            raise NotFoundError("Finding not found")
+        updated = await self.findings.review_finding(
+            finding_id=request.finding_id,
+            review_status=request.review_status,
+            dentist_id=request.dentist_id,
+            confirmed_disease=request.confirmed_disease,
+            dentist_notes=request.dentist_notes,
+        )
+        if not updated:
+            raise NotFoundError("Finding not found")
+        await self._record(finding_feedback(
+            before, request.review_status, request.confirmed_disease, request.dentist_notes, request.dentist_id))
+        return updated
+
+    async def report_missed_finding(self, report: MissedFindingReport) -> FeedbackLog:
+        """The dentist saw a lesion the AI did not flag. Logged as a false negative."""
+        if not await self.scans.get_scan(report.scan_id):
+            raise NotFoundError("Scan not found")
+        entry = missed_finding_feedback(report)
+        log = await self._ledger().create_log(entry)   # this IS the request, so a failed write must surface
+        await self._forward(entry, log)
+        return log
+
+    # --- Step 6: feedback ledger ----------------------------------------------
+
+    async def list_feedback(self, scan_id=None, stage=None, correction_type=None) -> FeedbackListResponse:
+        logs = await self._ledger().list_logs(scan_id=scan_id, stage=stage, correction_type=correction_type)
+        return FeedbackListResponse(logs=logs, total=len(logs))
+
+    async def feedback_summary(self, scan_id=None) -> FeedbackSummary:
+        return summarize(await self._ledger().list_logs(scan_id=scan_id))
+
+    async def _record(self, entry: Optional[FeedbackLogCreate]) -> Optional[FeedbackLog]:
+        """
+        Append a ledger row, then forward detection corrections to the ML service's retraining queue.
+        Best effort by design: the dentist's decision is already saved, so a ledger or ML outage is logged
+        for follow-up instead of failing the request or undoing a clinical decision.
+        """
+        if entry is None or self.feedback is None:
+            return None
+        try:
+            log = await self.feedback.create_log(entry)
+        except Exception:
+            logger.exception("Feedback ledger write failed; decision was saved: %s/%s", entry.stage, entry.correction_type)
+            return None
+        await self._forward(entry, log)
+        return log
+
+    async def _forward(self, entry: FeedbackLogCreate, log: FeedbackLog) -> None:
+        payload = ml_finding_feedback(entry)
+        if payload and self.ml_feedback:
+            try:
+                await self.ml_feedback(**payload)
+            except Exception:
+                logger.exception("Forwarding feedback to the ML service failed; ledger row %s kept", log.id)
+
+    def _ledger(self):
+        if self.feedback is None:
+            raise RuleViolationError("The feedback ledger is not configured")
+        return self.feedback
 
     # --- reads ---------------------------------------------------------------
 

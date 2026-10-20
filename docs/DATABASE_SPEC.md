@@ -115,7 +115,7 @@ Proposed by the recommendation engine, decided by the dentist.
 | `prescribed_at` | `TIMESTAMPTZ` | nullable | Set on accept/modify |
 
 ### 2.6 `clinical_feedback_logs`
-Immutable audit log (written in Phase 4).
+Immutable audit log, written by `ClinicalWorkflowService` (Phase 4; see `docs/PHASE4_STATUS.md`). The application only inserts and reads rows.
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |

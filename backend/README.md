@@ -11,7 +11,7 @@ This backend implements the 6-step clinical loop:
 3. **Dentist Validation** → Review and confirm/reject/modify findings
 4. **Recommendation Engine** → Rule-based treatment + drug proposals (Phase 3 ✅)
 5. **Dentist Confirmation** → Accept/modify/reject prescriptions behind contraindication gates (Phase 3 ✅)
-6. **Feedback Logging** → Audit trail for active learning (Phase 4)
+6. **Feedback Logging** → Audit trail for active learning (Phase 4 ✅)
 
 ## Directory Structure
 
@@ -40,7 +40,7 @@ backend/
 │   │   ├── recommendation/    # PURE finding -> treatment + drugs
 │   │   └── clinical_workflow.py  # orchestration + dentist-decision policy
 │   └── main.py              # FastAPI application
-├── tests/                   # pytest suite (121 tests, no network)
+├── tests/                   # pytest suite (147 tests, no network)
 └── requirements.txt         # Python dependencies
 ```
 
@@ -136,6 +136,13 @@ The API will be available at:
 - `POST /api/v1/prescriptions/check` - Stateless contraindication check
 - `POST /api/v1/prescriptions/{id}/decision` - Accept / modify / reject (`acknowledge_warnings`, `override_reason`)
 
+### Feedback (`/api/v1/feedback`) — Phase 4
+- `GET /api/v1/feedback?scan_id=&stage=&correction_type=` - Corrections ledger, newest first
+- `GET /api/v1/feedback/summary?scan_id=` - Counts by stage and correction type
+- `POST /api/v1/feedback/missed-findings` - Report a lesion the AI missed (false negative)
+
+`POST /api/v1/findings/review` now also writes the ledger (false positive / misclassification) and forwards it to the ML service. Behaviour: `docs/PHASE4_STATUS.md`.
+
 Full behaviour: `docs/PHASE3_STATUS.md`. Rules: `docs/CLINICAL_GUIDELINES.md` §4-5.
 
 ## Testing the API
@@ -171,7 +178,7 @@ curl -X POST "http://localhost:8000/api/v1/scans/upload" \
 
 ```bash
 source venv/bin/activate
-pytest -q        # 121 tests, <1 s, no network, no .env needed
+pytest -q        # 147 tests, <1 s, no network, no .env needed
 ```
 
 ## Phase 2 Status
@@ -190,7 +197,6 @@ pytest -q        # 121 tests, <1 s, no network, no .env needed
 ✅ **Phase 3 (see `docs/PHASE3_STATUS.md`):** recommendation engine, contraindication checker, treatment/prescription endpoints, tests.
 
 ⬜ **Not Yet Implemented:**
-- Feedback logging to clinical_feedback_logs (Phase 4)
 - Authentication / `dentist_id` (Phase 5)
 
 ## Development Notes
@@ -212,9 +218,9 @@ All service methods are `async` for non-blocking I/O, even though Supabase clien
 - Timeout configured via settings (default: 60s)
 - Automatic parsing of ML output to Finding records
 
-## Next Steps (Phase 4)
+## Next Steps (Phase 5)
 
-Write `clinical_feedback_logs` from finding reviews, treatment/prescription modifications and overrides, and forward corrections to the ML service.
+React + Vite + Tailwind clinician interface, then authentication (`dentist_id`).
 
 ## Troubleshooting
 

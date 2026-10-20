@@ -36,8 +36,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 2.2 Frontend Environment (Node 18+) — Phase 5
-The `frontend/` folder does not exist yet; once it does:
+### 2.2 Frontend Environment (Node 20+)
 ```bash
 cd frontend
 npm install

@@ -111,3 +111,4 @@ data_exports/
 # Python env markers
 .Python
 
+.playwright-mcp/

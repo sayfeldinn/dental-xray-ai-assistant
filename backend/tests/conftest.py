@@ -19,6 +19,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from app.domain.feedback import FeedbackLog
 from app.domain.finding import Finding
 from app.domain.patient import Patient
 from app.domain.prescription import Prescription
@@ -81,6 +82,20 @@ class FakeFindings:
 
     async def get_finding(self, finding_id):
         return next((f for f in self.rows if f.id == finding_id), None)
+
+    async def review_finding(self, finding_id, review_status, dentist_id=None, confirmed_disease=None,
+                             dentist_notes=None):
+        f = await self.get_finding(finding_id)
+        if not f:
+            return None
+        changes = {"review_status": review_status, "reviewed_at": NOW}
+        if confirmed_disease:
+            changes["confirmed_disease"] = confirmed_disease
+        if dentist_notes:
+            changes["dentist_notes"] = dentist_notes
+        updated = Finding(**{**f.model_dump(), **changes})
+        self.rows[self.rows.index(f)] = updated
+        return updated
 
     async def get_confirmed_findings(self, scan_id):
         return [f for f in self.rows if f.scan_id == scan_id and f.review_status in ("confirmed", "modified")]
@@ -151,6 +166,25 @@ class FakePrescriptions(_Table):
         self.rows = {k: p for k, p in self.rows.items() if p.treatment_id in self.treatments.rows}
 
 
+class FakeFeedback:
+    """Stand-in for the clinical_feedback_logs service; can be told to fail."""
+
+    def __init__(self):
+        self.rows: List[FeedbackLog] = []
+        self.fail = False
+
+    async def create_log(self, data):
+        if self.fail:
+            raise RuntimeError("ledger down")
+        log = FeedbackLog(**data.model_dump(), id=uuid4(), created_at=NOW)
+        self.rows.append(log)
+        return log
+
+    async def list_logs(self, scan_id=None, stage=None, correction_type=None):
+        return [l for l in reversed(self.rows) if (not scan_id or l.scan_id == scan_id)
+                and (not stage or l.stage == stage) and (not correction_type or l.correction_type == correction_type)]
+
+
 class World:
     """A patient with one scan, wired into a ClinicalWorkflowService on fakes."""
 
@@ -163,8 +197,18 @@ class World:
         self.treatments = FakeTreatments()
         self.prescriptions = FakePrescriptions(self.treatments)
         self.scan_id = self.scans.add(patient.id)
+        self.feedback = FakeFeedback()
+        self.ml_calls: List[dict] = []
+        self.ml_fail = False
+
+        async def ml_feedback(**payload):
+            if self.ml_fail:
+                raise RuntimeError("ml down")
+            self.ml_calls.append(payload)
+
         self.workflow = ClinicalWorkflowService(
-            self.patients, self.scans, self.findings, self.treatments, self.prescriptions, today=lambda: TODAY)
+            self.patients, self.scans, self.findings, self.treatments, self.prescriptions, today=lambda: TODAY,
+            feedback=self.feedback, ml_feedback=ml_feedback)
 
     def add_finding(self, **kwargs) -> Finding:
         f = make_finding(scan_id=self.scan_id, patient_id=self.patient.id, **kwargs)
