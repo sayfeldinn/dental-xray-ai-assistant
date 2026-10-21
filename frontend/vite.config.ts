@@ -4,6 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // One .env for the whole repo: Vite exposes only VITE_-prefixed variables to the browser.
+  envDir: "..",
   server: { port: 5173 },
   test: {
     environment: "jsdom",

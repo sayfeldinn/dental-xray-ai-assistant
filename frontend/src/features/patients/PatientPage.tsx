@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { ageFrom, dateTime } from "../../lib/format";
 import type { Patient } from "../../lib/types";
 import { Badge, Button, Card, Empty, ErrorNote, Spinner } from "../../components/common/ui";
+import { PatientForm } from "./PatientForm";
 
 const SCAN_TONE = { uploaded: "slate", processing: "violet", analyzed: "sky", reviewed: "emerald", failed: "rose" } as const;
 
@@ -21,6 +22,7 @@ export function PatientPage() {
     <div className="space-y-4">
       <Link to="/" className="text-sm text-brand-700 hover:underline">← Patients</Link>
       <ProfileCard p={p} />
+      <PatientActions p={p} />
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <h2 className="border-b border-slate-200 px-4 py-2.5 font-semibold">Panoramic scans</h2>
@@ -49,7 +51,7 @@ function ProfileCard({ p }: { p: Patient }) {
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h1 className="text-xl font-semibold">{p.first_name} {p.last_name}</h1>
+        <h1 className="display text-3xl">{p.first_name} {p.last_name}</h1>
         <span className="text-sm text-slate-600">{ageFrom(p.date_of_birth)} years · {p.gender} · {p.weight_kg ? `${p.weight_kg} kg` : "weight not recorded"}</span>
       </div>
       <p className="mt-1 text-xs text-slate-500">These fields drive the contraindication checks. Keep them current before generating a plan.</p>
@@ -59,6 +61,39 @@ function ProfileCard({ p }: { p: Patient }) {
         <div><dt className="mb-1 text-xs font-medium uppercase text-slate-500">Conditions</dt><dd className="flex flex-wrap gap-1">{chips(p.medical_conditions, "amber", "None recorded")}</dd></div>
       </dl>
     </Card>
+  );
+}
+
+function PatientActions({ p }: { p: Patient }) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
+  const update = useMutation({
+    mutationFn: (data: Parameters<typeof api.updatePatient>[1]) => api.updatePatient(p.id, data),
+    onSuccess: () => { setEditing(false); qc.invalidateQueries({ queryKey: ["patient", p.id] }); qc.invalidateQueries({ queryKey: ["patients"] }); },
+  });
+  const remove = useMutation({
+    mutationFn: () => api.deletePatient(p.id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["patients"] }); navigate("/"); },
+  });
+  const confirmDelete = () => {
+    if (window.confirm(`Delete ${p.first_name} ${p.last_name} and ALL their scans, findings, treatments and prescriptions? This cannot be undone.`)) remove.mutate();
+  };
+
+  if (editing) {
+    return (
+      <Card className="p-4">
+        <h2 className="mb-3 font-semibold">Edit patient</h2>
+        <PatientForm initial={p} submitLabel="Save changes" busy={update.isPending} error={update.error} onSubmit={(d) => update.mutate(d)} onCancel={() => setEditing(false)} />
+      </Card>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button variant="secondary" onClick={() => setEditing(true)}>Edit patient</Button>
+      <Button variant="ghost" className="text-rose-700" disabled={remove.isPending} onClick={confirmDelete}>Delete patient</Button>
+      <ErrorNote error={remove.error} />
+    </div>
   );
 }
 

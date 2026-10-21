@@ -133,4 +133,5 @@ Immutable audit log, written by `ClinicalWorkflowService` (Phase 4; see `docs/PH
 1. **No untracked edits in the Supabase UI.** Put every change in a timestamped SQL file under `supabase/migrations/` (create the folder with the first migration, e.g. `20261101_add_column_x.sql`) **and** reflect it in `supabase/schema.sql`.
 2. **Update this document** (tables + ERD) in the same PR.
 3. **Update the Pydantic models** in `backend/app/domain/` and the Literal types that mirror CHECK constraints (`treatment.py`, `prescription.py`).
-4. **Preserve RLS and cascades.** A new table linked to `patients` or `scans` must state `ON DELETE CASCADE` or `SET NULL` explicitly and get RLS policies.
+4. **Access model (Phase 6):** RLS is ON with **no policies for client roles**: only the backend (service role) reads/writes, and it enforces per-dentist ownership through `patients.dentist_id`. The `xray-scans` bucket is private (signed URLs). Do not add `anon`/`authenticated` policies without a security review.
+5. **Preserve RLS and cascades.** A new table linked to `patients` or `scans` must state `ON DELETE CASCADE` or `SET NULL` explicitly and get RLS policies.

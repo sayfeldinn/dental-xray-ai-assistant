@@ -67,7 +67,7 @@ export function TreatmentCard({ t, finding, alerts, onChanged }: { t: TreatmentW
 
       {(t.prescriptions.length > 0 || decided) && (
         <div className="mt-4 space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Prescriptions</h3>
+          <h3 className="title text-sm text-ink/70">Prescriptions</h3>
           {t.prescriptions.map((rx) => <PrescriptionCard key={rx.id} rx={rx} locked={t.status === "cancelled"} onChanged={onChanged} />)}
           {decided && (addingRx
             ? <ManualPrescriptionForm treatment={t} onDone={() => { setAddingRx(false); onChanged(); }} onCancel={() => setAddingRx(false)} />

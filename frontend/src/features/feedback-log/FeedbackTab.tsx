@@ -36,7 +36,7 @@ export function FeedbackTab({ scanId }: { scanId: string }) {
         {!!logs.data?.total && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-brand-100 text-left text-xs font-semibold text-ink/55">
                 <tr><th className="px-4 py-2">When</th><th className="px-4 py-2">Stage</th><th className="px-4 py-2">Correction</th><th className="px-4 py-2">AI → Dentist</th><th className="px-4 py-2">Notes</th></tr>
               </thead>
               <tbody>

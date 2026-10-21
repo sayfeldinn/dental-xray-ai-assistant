@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { dateTime } from "../../lib/format";
-import { Card, Empty, ErrorNote, Spinner } from "../../components/common/ui";
+import { Button, Card, Empty, ErrorNote, Spinner } from "../../components/common/ui";
 import { XrayViewer } from "./XrayViewer";
 import { FindingCard } from "./FindingCard";
 import { MissedFindingForm } from "./MissedFindingForm";
@@ -15,11 +15,22 @@ type Tab = (typeof TABS)[number][0];
 
 export function ScanPage() {
   const { scanId = "" } = useParams();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("findings");
   const [selected, setSelected] = useState<string | null>(null);
   const scan = useQuery({ queryKey: ["scan", scanId], queryFn: () => api.getScan(scanId) });
   const findings = useQuery({ queryKey: ["findings", scanId], queryFn: () => api.listFindings(scanId) });
   const patient = useQuery({ queryKey: ["patient", scan.data?.patient_id], queryFn: () => api.getPatient(scan.data!.patient_id), enabled: !!scan.data });
+
+  const reanalyze = useMutation({
+    mutationFn: () => api.reanalyzeScan(scanId),
+    onSettled: () => { qc.invalidateQueries({ queryKey: ["scan", scanId] }); qc.invalidateQueries({ queryKey: ["findings", scanId] }); },
+  });
+  const remove = useMutation({
+    mutationFn: () => api.deleteScan(scanId),
+    onSuccess: () => navigate(scan.data ? `/patients/${scan.data.patient_id}` : "/"),
+  });
 
   if (scan.isLoading) return <Spinner />;
   if (scan.error) return <ErrorNote error={scan.error} />;
@@ -36,7 +47,17 @@ export function ScanPage() {
           ← {patient.data ? `${patient.data.first_name} ${patient.data.last_name}` : "Patient"}
         </Link>
         <span className="text-sm text-slate-500">Scan of {dateTime(s.created_at)} · {s.status}</span>
+        <span className="ml-auto flex gap-2">
+          {list.every((f) => f.review_status === "pending") && (
+            <Button variant="secondary" disabled={reanalyze.isPending} onClick={() => reanalyze.mutate()}
+              title="Run the AI again (only before any finding is reviewed)">{reanalyze.isPending ? "Analysing…" : "Re-run AI analysis"}</Button>
+          )}
+          <Button variant="ghost" className="text-rose-700" disabled={remove.isPending}
+            onClick={() => window.confirm("Delete this scan with its findings, treatments and feedback? This cannot be undone.") && remove.mutate()}>Delete scan</Button>
+        </span>
       </div>
+      <ErrorNote error={reanalyze.error ?? remove.error} />
+      {s.status === "failed" && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-800 ring-1 ring-rose-200">The AI analysis failed for this scan{s.notes ? `: ${s.notes}` : ""}. Start the ML service and re-run the analysis.</p>}
 
       <nav className="flex gap-1 border-b border-slate-200" role="tablist">
         {TABS.map(([key, label]) => (

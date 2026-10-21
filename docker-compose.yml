@@ -1,0 +1,39 @@
+# Whole system: ML service (8001), backend API (8000), clinician UI (8080).
+#   cp .env.example .env   # fill in Supabase values
+#   docker compose up --build
+# Model weights must be present in dentex_week3/production/ (not in git).
+services:
+  ml:
+    build:
+      context: ./dentex_week3
+      dockerfile: ../deploy/ml.Dockerfile
+    ports: ["8001:8001"]
+    volumes:
+      - ml-feedback:/srv/dentex/feedback      # dentist corrections queued for retraining
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      ML_SERVICE_URL: http://ml:8001
+      ENVIRONMENT: production
+      DEBUG: "false"
+      CORS_ORIGINS: '["http://localhost:8080"]'
+    ports: ["8000:8000"]
+    depends_on: [ml]
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    ports: ["8080:80"]
+    depends_on: [backend]
+    restart: unless-stopped
+
+volumes:
+  ml-feedback:

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.domain.errors import ConflictError, NotFoundError, RuleViolationError
+from app.domain.errors import ConflictError, NotFoundError, RuleViolationError, UpstreamError
 from app.api.v1 import api_router
 
 # Create FastAPI application
@@ -72,6 +72,7 @@ def _domain_error_handler(status_code: int):
 app.add_exception_handler(NotFoundError, _domain_error_handler(404))
 app.add_exception_handler(ConflictError, _domain_error_handler(409))
 app.add_exception_handler(RuleViolationError, _domain_error_handler(422))
+app.add_exception_handler(UpstreamError, _domain_error_handler(502))
 
 
 @app.exception_handler(Exception)

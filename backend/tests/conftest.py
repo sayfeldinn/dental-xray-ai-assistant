@@ -25,17 +25,19 @@ from app.domain.patient import Patient
 from app.domain.prescription import Prescription
 from app.domain.treatment import Treatment
 
+DENTIST_ID = UUID("00000000-0000-4000-8000-00000000d001")   # the signed-in dentist in HTTP tests
+OTHER_DENTIST_ID = UUID("00000000-0000-4000-8000-00000000d002")
 TODAY = date(2026, 10, 20)   # fixed so ages never drift
 NOW = datetime(2026, 10, 20, 9, 0, tzinfo=timezone.utc)
 
 
 def make_patient(age: int = 35, weight_kg: Optional[float] = 78, allergies=(), medications=(), conditions=(),
-                 patient_id: Optional[UUID] = None) -> Patient:
+                 patient_id: Optional[UUID] = None, dentist_id: Optional[UUID] = DENTIST_ID) -> Patient:
     return Patient(
         id=patient_id or uuid4(), first_name="Test", last_name="Patient", gender="male",
         date_of_birth=date(TODAY.year - age - 1, 1, 1),   # birthday already passed this year -> exact age
         weight_kg=weight_kg, allergies=list(allergies), current_medications=list(medications),
-        medical_conditions=list(conditions), created_at=NOW, updated_at=NOW,
+        medical_conditions=list(conditions), dentist_id=dentist_id, created_at=NOW, updated_at=NOW,
     )
 
 
@@ -214,6 +216,26 @@ class World:
         f = make_finding(scan_id=self.scan_id, patient_id=self.patient.id, **kwargs)
         self.findings.rows.append(f)
         return f
+
+
+def http_client(w: "World", dentist_id: UUID = DENTIST_ID):
+    """An HTTP client for the app wired to a World's fakes, signed in as `dentist_id`."""
+    import httpx
+    from app.api.deps import get_access, get_current_dentist, get_workflow
+    from app.core.auth import AuthenticatedDentist
+    from app.main import app
+    from app.services.access import AccessService
+    app.dependency_overrides[get_workflow] = lambda: w.workflow
+    app.dependency_overrides[get_current_dentist] = lambda: AuthenticatedDentist(id=dentist_id, email="dentist@test")
+    app.dependency_overrides[get_access] = lambda: AccessService(w.patients, w.scans, w.findings, w.treatments, w.prescriptions)
+    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+
+
+@pytest.fixture(autouse=True)
+def _clear_overrides():
+    yield
+    from app.main import app
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture

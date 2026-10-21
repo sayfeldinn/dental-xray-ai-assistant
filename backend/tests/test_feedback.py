@@ -2,20 +2,17 @@
 
 from uuid import uuid4
 
-import httpx
 import pytest
 from pydantic import ValidationError
 
-from app.api.deps import get_workflow
 from app.domain.errors import NotFoundError
 from app.domain.feedback import MissedFindingReport
 from app.domain.finding import FindingReviewRequest
 from app.domain.prescription import PrescriptionDecisionRequest
 from app.domain.recommendation import RecommendationRequest
 from app.domain.treatment import TreatmentDecisionRequest
-from app.main import app
 from app.services.feedback import ml_finding_feedback, missed_finding_feedback, summarize
-from tests.conftest import make_finding, make_patient
+from tests.conftest import http_client, make_finding, make_patient
 
 INFECTION = RecommendationRequest(clinical_context={"active_infection": True})
 
@@ -227,10 +224,7 @@ async def test_without_a_configured_ledger_reads_are_refused_and_decisions_still
 @pytest.fixture
 def api(world):
     w = world()
-    app.dependency_overrides[get_workflow] = lambda: w.workflow
-    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
-    yield w, client
-    app.dependency_overrides.clear()
+    yield w, http_client(w)
 
 
 async def test_feedback_over_http(api):
@@ -244,8 +238,9 @@ async def test_feedback_over_http(api):
 
     listing = (await client.get("/api/v1/feedback", params={"scan_id": str(w.scan_id)})).json()
     assert listing["total"] == 2
-    assert (await client.get("/api/v1/feedback", params={"stage": "prescription_dosing"})).json()["total"] == 0
-    summary = (await client.get("/api/v1/feedback/summary")).json()
+    assert (await client.get("/api/v1/feedback", params={"scan_id": str(w.scan_id), "stage": "prescription_dosing"})).json()["total"] == 0
+    assert (await client.get("/api/v1/feedback")).status_code == 422          # the ledger is read per scan
+    summary = (await client.get("/api/v1/feedback/summary", params={"scan_id": str(w.scan_id)})).json()
     assert summary["by_correction_type"] == {"false_positive": 1, "false_negative": 1}
 
 
@@ -257,4 +252,4 @@ async def test_http_validation_and_not_found(api):
                               json={"scan_id": str(w.scan_id), "tooth_fdi": "99", "disease": "Caries"})).status_code == 422
     assert (await client.post("/api/v1/feedback/missed-findings",
                               json={"scan_id": str(uuid4()), "tooth_fdi": "11", "disease": "Caries"})).status_code == 404
-    assert (await client.get("/api/v1/feedback", params={"stage": "bogus"})).status_code == 422
+    assert (await client.get("/api/v1/feedback", params={"scan_id": str(w.scan_id), "stage": "bogus"})).status_code == 422

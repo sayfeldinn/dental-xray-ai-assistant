@@ -1,12 +1,30 @@
 @import "tailwindcss";
 
+/* Rose palette after the reference design: crimson brand, blush tints, deep wine ink. */
 @theme {
-  --color-brand-50: #eef6ff;
-  --color-brand-100: #d9eaff;
-  --color-brand-600: #1d5fb8;
-  --color-brand-700: #174b92;
-  --color-brand-900: #0f2f5c;
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #fff4f6;
+  --color-brand-100: #fce4e9;
+  --color-brand-200: #f8c6d1;
+  --color-brand-500: #ea3d62;
+  --color-brand-600: #db2550;
+  --color-brand-700: #b81942;
+  --color-brand-900: #3a0e1c;
+
+  --color-ink: #24141a;
+  --color-petal: #fbf6f7;
 }
 
 html, body, #root { height: 100%; }
-body { @apply bg-slate-50 text-slate-900 antialiased; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { @apply bg-petal text-ink antialiased; }
+
+/* Expanded heavy cut of Archivo for headlines (the reference's poster-like titles). */
+.display { font-stretch: 118%; font-weight: 800; letter-spacing: -0.01em; line-height: 0.98; text-transform: uppercase; }
+.title { font-stretch: 110%; font-weight: 700; letter-spacing: -0.005em; }
+
+:focus-visible { outline: 2px solid var(--color-brand-600); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

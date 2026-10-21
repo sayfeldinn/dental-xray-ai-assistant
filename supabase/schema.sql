@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS findings (
     confirmed_disease VARCHAR(50),   -- Populated if dentist overrides pathology class
     dentist_notes TEXT,
     reviewed_at TIMESTAMPTZ,
-    reviewed_by UUID REFERENCES auth.users(id),
+    reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -238,85 +238,24 @@ ALTER TABLE treatments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prescriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinical_feedback_logs ENABLE ROW LEVEL SECURITY;
 
--- Development & Authenticated Policies
--- Allows authenticated dentists full access to records they manage.
--- For local demo and service-role testing, allow access if auth.uid() is null or matches dentist_id.
-
-CREATE POLICY "Allow authenticated read patients" ON patients
-    FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY "Allow authenticated insert patients" ON patients
-    FOR INSERT TO authenticated, anon WITH CHECK (true);
-CREATE POLICY "Allow authenticated update patients" ON patients
-    FOR UPDATE TO authenticated, anon USING (true);
-CREATE POLICY "Allow authenticated delete patients" ON patients
-    FOR DELETE TO authenticated, anon USING (true);
-
-CREATE POLICY "Allow read scans" ON scans
-    FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY "Allow insert scans" ON scans
-    FOR INSERT TO authenticated, anon WITH CHECK (true);
-CREATE POLICY "Allow update scans" ON scans
-    FOR UPDATE TO authenticated, anon USING (true);
-CREATE POLICY "Allow delete scans" ON scans
-    FOR DELETE TO authenticated, anon USING (true);
-
-CREATE POLICY "Allow read findings" ON findings
-    FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY "Allow insert findings" ON findings
-    FOR INSERT TO authenticated, anon WITH CHECK (true);
-CREATE POLICY "Allow update findings" ON findings
-    FOR UPDATE TO authenticated, anon USING (true);
-CREATE POLICY "Allow delete findings" ON findings
-    FOR DELETE TO authenticated, anon USING (true);
-
-CREATE POLICY "Allow read treatments" ON treatments
-    FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY "Allow insert treatments" ON treatments
-    FOR INSERT TO authenticated, anon WITH CHECK (true);
-CREATE POLICY "Allow update treatments" ON treatments
-    FOR UPDATE TO authenticated, anon USING (true);
-CREATE POLICY "Allow delete treatments" ON treatments
-    FOR DELETE TO authenticated, anon USING (true);
-
-CREATE POLICY "Allow read prescriptions" ON prescriptions
-    FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY "Allow insert prescriptions" ON prescriptions
-    FOR INSERT TO authenticated, anon WITH CHECK (true);
-CREATE POLICY "Allow update prescriptions" ON prescriptions
-    FOR UPDATE TO authenticated, anon USING (true);
-CREATE POLICY "Allow delete prescriptions" ON prescriptions
-    FOR DELETE TO authenticated, anon USING (true);
-
-CREATE POLICY "Allow read feedback" ON clinical_feedback_logs
-    FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY "Allow insert feedback" ON clinical_feedback_logs
-    FOR INSERT TO authenticated, anon WITH CHECK (true);
+-- No policies for the anon/authenticated roles: with RLS on, client roles are denied by default.
+-- Only the backend (service-role key, which bypasses RLS) touches these tables, and it scopes
+-- every request to the signed-in dentist (backend/app/services/access.py). The frontend holds the
+-- publishable key for Supabase Auth only. See supabase/migrations/20261020_auth_lockdown.sql.
 
 -- ------------------------------------------------------------------------------
 -- 7. STORAGE BUCKET CONFIGURATION (xray-scans)
 -- ------------------------------------------------------------------------------
+-- Private bucket: radiographs are patient data. The backend uploads with the service-role key
+-- and returns short-lived signed URLs; no storage.objects policies are granted to client roles.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
     'xray-scans',
     'xray-scans',
-    true,
+    false,
     52428800, -- 50 MB
     ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/tiff']
 )
 ON CONFLICT (id) DO UPDATE SET
-    public = true,
+    public = false,
     file_size_limit = 52428800;
-
--- Storage bucket access policies
-CREATE POLICY "Allow public read xray-scans" ON storage.objects
-    FOR SELECT TO public USING (bucket_id = 'xray-scans');
-
-CREATE POLICY "Allow upload xray-scans" ON storage.objects
-    FOR INSERT TO public WITH CHECK (bucket_id = 'xray-scans');
-
-CREATE POLICY "Allow update xray-scans" ON storage.objects
-    FOR UPDATE TO public USING (bucket_id = 'xray-scans');
-
-CREATE POLICY "Allow delete xray-scans" ON storage.objects
-    FOR DELETE TO public USING (bucket_id = 'xray-scans');
-

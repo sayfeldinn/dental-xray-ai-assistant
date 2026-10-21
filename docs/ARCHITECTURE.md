@@ -15,6 +15,7 @@ DentalAI is built for clinical decision support in dental clinics under the **IE
    - **Inference Layer:** Standalone Python microservice (`dentex_week3` on port 8001).
    - **Backend Service Layer:** FastAPI (`backend/` on port 8000) housing domain models, recommendation rules, contraindication checks, and database adapters.
    - **Clinician Frontend Layer:** React + Vite + Tailwind CSS (`frontend/` on port 5173).
+   - **Identity & access (Phase 6):** Supabase Auth issues the dentist's token; the backend verifies it (`app/core/auth.py`) and scopes every request to the dentist's own patients (`app/services/access.py`). Clients have no direct table or storage access (RLS with no client policies, private bucket, signed URLs).
 
 ---
 

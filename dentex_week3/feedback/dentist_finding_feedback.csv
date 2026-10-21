@@ -10,3 +10,6 @@ f357d8dd-9739-4015-8972-89ba7f2da152,4,4,Tooth_8,Caries,,0.308,0.938,0.289,corre
 2026-10-03T12:51:16.416788,string,0,0,string,True,string,string
 2026-10-03T12:57:15.131745,my_test_xray.jpeg,4,8,Impacted,False,Duplicate,Model double-counted this impacted wisdom tooth. Removing the duplicate.
 2026-10-20T22:27:19.094978,55fb2d82-4fd1-4652-ae3d-9bce10484447,3,8,Impacted,False,,
+2026-10-21T03:25:11.855986,5f586daf-b797-4d07-a5e6-0b51513c3b82,2,7,Caries,False,,
+2026-10-21T03:25:14.853106,5f586daf-b797-4d07-a5e6-0b51513c3b82,2,6,Caries,False,,
+2026-10-21T03:29:20.505958,8f99df7e-2b06-4a4a-836c-e776dcc7ab5f,3,8,Impacted,False,Deep Caries,

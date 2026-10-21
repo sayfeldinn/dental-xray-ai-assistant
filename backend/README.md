@@ -40,7 +40,7 @@ backend/
 │   │   ├── recommendation/    # PURE finding -> treatment + drugs
 │   │   └── clinical_workflow.py  # orchestration + dentist-decision policy
 │   └── main.py              # FastAPI application
-├── tests/                   # pytest suite (147 tests, no network)
+├── tests/                   # pytest suite (171 tests, no network)
 └── requirements.txt         # Python dependencies
 ```
 
@@ -106,8 +106,9 @@ The API will be available at:
 - `DELETE /api/v1/patients/{id}` - Delete patient
 
 ### Scans (`/api/v1/scans`)
-- `POST /api/v1/scans/upload` - Upload & analyze X-ray
-- `GET /api/v1/scans` - List scans (with filters)
+- `POST /api/v1/scans/upload` - Upload & analyze X-ray (JPEG/PNG/WebP, max 20 MB; AI failure = 502, scan kept)
+- `POST /api/v1/scans/{id}/reanalyze` - Re-run AI on the stored image (409 once any finding is reviewed)
+- `GET /api/v1/scans?patient_id=` - List a patient's scans (image URLs are signed, 1 h)
 - `GET /api/v1/scans/{id}` - Get scan details
 - `GET /api/v1/scans/{id}/findings` - Get findings for scan
 - `PUT /api/v1/scans/{id}` - Update scan
@@ -178,7 +179,7 @@ curl -X POST "http://localhost:8000/api/v1/scans/upload" \
 
 ```bash
 source venv/bin/activate
-pytest -q        # 147 tests, <1 s, no network, no .env needed
+pytest -q        # 171 tests, <1 s, no network, no .env needed
 ```
 
 ## Phase 2 Status
@@ -197,7 +198,6 @@ pytest -q        # 147 tests, <1 s, no network, no .env needed
 ✅ **Phase 3 (see `docs/PHASE3_STATUS.md`):** recommendation engine, contraindication checker, treatment/prescription endpoints, tests.
 
 ⬜ **Not Yet Implemented:**
-- Authentication / `dentist_id` (Phase 5)
 
 ## Development Notes
 
@@ -210,8 +210,8 @@ All service methods are `async` for non-blocking I/O, even though Supabase clien
 - Global exception handler for uncaught errors
 
 ### Database Access
-- Uses service_role key to bypass RLS (for backend operations)
-- RLS policies still enforced for future direct frontend access
+- Uses the service-role key (bypasses RLS); clients have no table access (no client RLS policies)
+- Every `/api/v1` call needs `Authorization: Bearer <Supabase access token>`; data is scoped to the signed-in dentist (`app/services/access.py`)
 
 ### ML Service Communication
 - `DentexClient` wraps all HTTP communication with dentex_week3
@@ -220,7 +220,7 @@ All service methods are `async` for non-blocking I/O, even though Supabase clien
 
 ## Next Steps (Phase 5)
 
-React + Vite + Tailwind clinician interface, then authentication (`dentist_id`).
+All six loop steps, the UI and authentication are built. Remaining: clinician review of the rule content, clinic-level sharing. See `docs/PHASE6_STATUS.md`.
 
 ## Troubleshooting
 

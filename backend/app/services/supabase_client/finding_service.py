@@ -197,6 +197,10 @@ class FindingService:
             return Finding(**response.data[0])
         return None
     
+    async def delete_findings_by_scan(self, scan_id: UUID) -> None:
+        """Remove a scan's findings before re-analysis (treatments keep running: finding_id is SET NULL)."""
+        self.client.table(self.table).delete().eq("scan_id", str(scan_id)).execute()
+
     async def get_confirmed_findings(self, scan_id: UUID) -> List[Finding]:
         """
         Get dentist-validated findings for a scan (for treatment recommendations).

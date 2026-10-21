@@ -1,306 +1,95 @@
 # DentalAI Setup Guide
 
-Single entry point for getting the project running. Everything the old
-`QUICK_START.md`, `START_HERE.md` and `SETUP_INSTRUCTIONS.md` covered is merged here.
+The single entry point for running the complete system: Supabase (database, auth, storage),
+the ML service (`dentex_week3`, port 8001), the backend API (port 8000) and the clinician UI
+(port 5173 in development, 8080 with Docker).
 
-## Table of contents
+## 1. Supabase project (once)
 
-- [Prerequisites](#prerequisites)
-- [5-minute quick start](#5-minute-quick-start)
-- [Supabase setup](#supabase-setup)
-- [Backend setup](#backend-setup)
-- [Frontend setup](#frontend-setup)
-- [Environment variables](#environment-variables)
-- [Python version notes](#python-version-notes)
-- [Verify the install](#verify-the-install)
-- [Useful commands](#useful-commands)
-- [Troubleshooting](#troubleshooting)
-- [Week 1 checklist](#week-1-checklist)
-- [API reference](#api-reference)
+1. Create a project at supabase.com. From **Project Settings → API** copy the Project URL, the
+   `anon`/publishable key and the `service_role` key.
+2. **SQL Editor:** run `supabase/schema.sql` (tables, constraints, indexes, RLS, private `xray-scans` bucket).
+   Optional demo data: `supabase/seed.sql`.
+3. **Existing projects created before Phase 6:** also run `supabase/migrations/20261020_auth_lockdown.sql`.
+   It removes the old development policies that let anyone holding the anon key read and change
+   every clinical table, and makes the X-ray bucket private. **Do this before deploying the frontend**:
+   the anon key is shipped to the browser for sign-in.
+   Verify: `SELECT * FROM pg_policies WHERE schemaname = 'public';` returns no rows, and
+   `SELECT public FROM storage.buckets WHERE id = 'xray-scans';` returns `false`.
+4. **Authentication → URL Configuration:** set the Site URL to where the UI runs
+   (`http://localhost:5173` in development) so confirmation and password-reset links come back to the app.
 
-## Prerequisites
-
-- **Python 3.11 or 3.12** (3.14 is broken — see [Python version notes](#python-version-notes))
-- Node.js 18+
-- Supabase account (free tier)
-- Git
-
-## 5-minute quick start
-
-**1. Supabase (2 min)** — create a project, copy the Project URL, `anon public` key and
-`service_role` key, run `backend/database_schema.sql` in the SQL Editor, and create a
-Storage bucket named `xray-scans` (public for now).
-
-**2. Backend (1 min)**
+## 2. Configuration
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env          # then fill in your Supabase credentials
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+cp .env.example .env      # repo root; never commit .env
 ```
 
-**3. Frontend (1 min)** — in a new terminal:
+Fill in `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (and the other Supabase
+values), plus `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` for the UI. The frontend reads the same
+root `.env`; only `VITE_*` values reach the browser. **Never prefix the service-role key with `VITE_`.**
+
+Access tokens are verified against the project's public signing keys (JWKS). Only projects still on
+the legacy shared JWT secret need `SUPABASE_JWT_SECRET`.
+
+## 3. Run it (development)
+
+Python **3.11 or 3.12** (3.14 breaks `pydantic-core`), Node **20+**.
 
 ```bash
-cd frontend
-npm install
-cp .env.example .env.local    # then fill in your Supabase credentials
-npm run dev
+# ML service (needs the model weights in dentex_week3/production/, published as a GitHub Release)
+cd dentex_week3/api && ./start.sh                 # http://localhost:8001
+
+# Backend
+cd backend && ./start.sh                          # http://localhost:8000/docs
+
+# Frontend
+cd frontend && npm install && npm run dev         # http://localhost:5173
 ```
 
-**4. Test it** — open http://localhost:5173, click **Sign Up**, create an account.
+## 4. First sign-in
 
-## Supabase setup
+- **Self sign-up** on the login page works; Supabase sends a confirmation email first.
+- **Or create a ready-to-use account** (no email step):
+  ```bash
+  cd backend && source venv/bin/activate
+  python -m scripts.create_dentist --email dr@clinic.eg --name "Dr Sara Adel"   # prompts for the password
+  ```
+- **Demo data:** patients created before authentication existed have no owner and are invisible to everyone.
+  Give them to a dentist:
+  ```bash
+  python -m scripts.assign_unowned_patients --email dr@clinic.eg          # dry run
+  python -m scripts.assign_unowned_patients --email dr@clinic.eg --apply
+  ```
 
-### 1. Create a project
+Each dentist sees only their own patients; another dentist's records answer 404.
 
-1. Go to [supabase.com](https://supabase.com) → **New Project**
-2. Name: `dentalai`, pick a region, save the database password
-
-### 2. Get API credentials
-
-**Settings → API**, copy:
-
-- `Project URL` (`https://xxxxx.supabase.co`)
-- `anon public` key
-- `service_role` key — **keep this secret, never commit it**
-
-### 3. Create the storage bucket
-
-**Storage → New bucket** → name `xray-scans` → Public → Create.
-
-### 4. Apply the schema
-
-1. **SQL Editor → New query**
-2. Paste the entire contents of `backend/database_schema.sql`
-3. Run it. You should see "Success. No rows returned"
-4. **Table Editor** should now show: `patients`, `scans`, `treatments`, `prescriptions`, `feedback`
-
-## Backend setup
+## 5. Run it with Docker
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env          # fill in Supabase credentials
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+docker compose up --build      # UI http://localhost:8080 · API http://localhost:8000 · ML http://localhost:8001
 ```
 
-Generate a `SECRET_KEY` for `.env`:
+The weights must be in `dentex_week3/production/` before building. Add `http://localhost:8080` to the
+Supabase Site URL / redirect URLs. Dentist feedback queued by the ML service is kept in the `ml-feedback` volume.
+
+## 6. Checks
 
 ```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+cd backend && pytest -q                          # 171 tests, no network
+cd frontend && npm run typecheck && npm test     # 25 tests
+curl http://localhost:8000/health                # public
+curl -i http://localhost:8000/api/v1/patients    # 401 without a token (expected)
 ```
 
-Running at:
+## 7. Troubleshooting
 
-- API: http://localhost:8000
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-## Frontend setup
-
-```bash
-cd frontend
-npm install
-cp .env.example .env.local    # fill in Supabase credentials
-npm run dev
-```
-
-Running at http://localhost:5173.
-
-Use the **same** `SUPABASE_URL` and anon key in both `.env` and `.env.local`.
-
-## Environment variables
-
-### Backend (`backend/.env`)
-
-```env
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_KEY=your_anon_key
-SUPABASE_SERVICE_KEY=your_service_key
-SECRET_KEY=generate_with_python_secrets
-```
-
-### Frontend (`frontend/.env.local`)
-
-```env
-VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key
-VITE_API_URL=http://localhost:8000
-VITE_API_V1_PREFIX=/api/v1
-```
-
-Variables exposed to the browser **must** start with `VITE_`. Never put the
-`service_role` key in a `VITE_` variable.
-
-## Python version notes
-
-**Python 3.14 does not work** — `pydantic-core` (pulled in by `pydantic==2.5.3`) has no
-3.14 wheels yet, so `pip install -r requirements.txt` fails. Use 3.11 or 3.12.
-
-Check what you have:
-
-```bash
-python --version
-```
-
-**Option 1 — Homebrew:**
-
-```bash
-brew install python@3.12
-cd backend && rm -rf venv
-python3.12 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-**Option 2 — pyenv:**
-
-```bash
-pyenv install 3.12
-pyenv local 3.12
-cd backend && rm -rf venv
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-**Option 3 — no admin rights?** Install just the runtime deps from PyPI wheels:
-
-```bash
-cd backend
-rm -rf venv
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-pip install fastapi uvicorn supabase-py python-dotenv \
-  "python-jose[cryptography]" "passlib[bcrypt]" python-multipart \
-  email-validator pydantic-settings
-uvicorn app.main:app --reload
-```
-
-## Verify the install
-
-**Backend:**
-
-```bash
-curl http://localhost:8000/health
-```
-
-Expected:
-
-```json
-{ "status": "healthy", "app": "DentalAI", "version": "1.0.0" }
-```
-
-**Connection test:**
-
-```bash
-python scripts/test_supabase_connection.py
-```
-
-Loads `backend/.env` and confirms the Supabase client connects. If it reports missing
-tables, re-run the schema SQL.
-
-**Frontend:** open http://localhost:5173, sign up with a test account
-(`test@example.com` / `password123`), and confirm you land on the Dashboard.
-
-## Useful commands
-
-```bash
-# Start both servers (macOS/Linux)
-./scripts/start-dev.sh
-
-# Backend only
-cd backend && source venv/bin/activate && uvicorn app.main:app --reload
-
-# Frontend only
-cd frontend && npm run dev
-
-# Supabase connection check
-python scripts/test_supabase_connection.py
-
-# Tests (when they land)
-cd backend && pytest
-cd frontend && npm run lint
-```
-
-**URLs**
-
-| Service | URL |
-| --- | --- |
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:8000 |
-| API docs | http://localhost:8000/docs |
-| Supabase dashboard | https://app.supabase.com |
-
-## Troubleshooting
-
-**`ModuleNotFoundError: No module named 'fastapi'`** — you are not in the virtual
-environment: `cd backend && source venv/bin/activate`
-
-**`Connection refused` / `ECONNREFUSED`** — the backend is not running:
-`cd backend && source venv/bin/activate && uvicorn app.main:app --reload`
-
-**`Missing Supabase environment variables`** — `backend/.env` or `frontend/.env.local`
-is missing or incomplete. Frontend vars must start with `VITE_`.
-
-**`Invalid credentials` on login** — the schema SQL was never applied; re-run it in the
-SQL Editor.
-
-**`pydantic-core` / Python 3.14 build failure** — see [Python version notes](#python-version-notes).
-
-**Port already in use:**
-
-```bash
-# macOS/Linux
-lsof -ti:8000 | xargs kill -9
-lsof -ti:5173 | xargs kill -9
-
-# Windows
-netstat -ano | findstr :8000
-taskkill /PID <pid> /F
-```
-
-**`Network Error` / CORS error** — the backend is down, or `VITE_API_URL` does not point
-at http://localhost:8000.
-
-**Storage bucket not working** — Supabase dashboard → Storage → `xray-scans` → Policies
-→ add a `SELECT` policy for role `public` with definition `true`.
-
-## Week 1 checklist
-
-- [ ] Supabase project created
-- [ ] Database schema executed
-- [ ] `xray-scans` storage bucket created
-- [ ] Backend running on port 8000 (`/health` returns healthy)
-- [ ] Frontend running on port 5173
-- [ ] `scripts/test_supabase_connection.py` passes
-- [ ] Can create an account and log in
-- [ ] Dashboard loads
-
-All checked → you're ready for Week 2.
-
-## API reference
-
-- **Swagger:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
-
-| Group | Endpoints |
-| --- | --- |
-| Auth | `POST /api/v1/auth/signup`, `/signin`, `/signout`, `GET /api/v1/auth/me` |
-| Patients | `GET/POST /api/v1/patients`, `GET/PUT/DELETE /api/v1/patients/{id}` |
-| Scans | `GET/POST /api/v1/scans`, `POST /api/v1/scans/upload`, `GET/PUT/DELETE /api/v1/scans/{id}` |
-| Recommendations | `POST /api/v1/recommendations/treatment`, `POST /api/v1/recommendations/check-contraindication`, `GET /api/v1/recommendations/drugs`, `GET /api/v1/recommendations/finding-mappings` |
-
-## Next steps
-
-- Test endpoints in Swagger
-- Review `backend/app/services/recommendation_engine.py`
-- Week 1 QA artifacts live in [`docs/qa/`](qa/README.md)
-- ML weights and the model card live in [`ml/`](../ml/README.md)
+| Symptom | Cause / fix |
+| :--- | :--- |
+| Login page says Supabase Auth is not configured | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` missing from the root `.env`; restart `npm run dev` |
+| Every API call returns 401 "Session expired" | Token from another Supabase project, or clock skew; sign out and in again |
+| Patient list is empty after signing in | Patients belong to their creator; run `scripts.assign_unowned_patients` for demo data |
+| Upload returns 502 "AI analysis failed" | ML service not running on `ML_SERVICE_URL`; the scan is kept: start the service and use **Re-run AI analysis** |
+| X-ray image does not load | Signed URLs expire after `SIGNED_URL_TTL_SECONDS` (default 1 h); reload the page |
+| `Client.__init__() got an unexpected keyword argument 'proxy'` | Old venv: `pip install -r backend/requirements.txt` (pins `gotrue<2.9`) |
+| Testing writes to `dentex_week3/feedback/*.csv` | Expected while the ML service runs (Phase 4 forwarding); `git checkout` that file after test sessions |

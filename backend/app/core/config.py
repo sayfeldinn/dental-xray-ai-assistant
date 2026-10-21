@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     SUPABASE_SECRET_KEY: str
     SUPABASE_SERVICE_ROLE_KEY: str
     SUPABASE_STORAGE_BUCKET: str = "xray-scans"
+    # Only for projects still on the legacy shared-secret (HS256) JWTs; projects with asymmetric
+    # signing keys are verified against the public JWKS and need no secret.
+    SUPABASE_JWT_SECRET: str = ""
+    SIGNED_URL_TTL_SECONDS: int = 3600
+    MAX_UPLOAD_MB: int = 20
     
     # AI Microservice (dentex_week3)
     ML_SERVICE_URL: str = "http://localhost:8001"
@@ -38,6 +43,10 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = '["http://localhost:5173","http://localhost:3000","http://127.0.0.1:5173"]'
     
+    @property
+    def auth_issuer(self) -> str:
+        return f"{self.SUPABASE_URL.rstrip('/')}/auth/v1"
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from JSON string."""

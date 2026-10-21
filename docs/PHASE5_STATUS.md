@@ -29,8 +29,8 @@ Patient with penicillin allergy and warfarin; 9 AI findings from a seed scan.
 Bugs found and fixed during the walkthrough: duplicate React keys for repeated plan alerts; stale acknowledge box while a check was in flight; finding list re-ordering after each review (now sorted by tooth); "Decision: — → modified" noise in the ledger view; missing favicon.
 
 ## Known limitations
-1. **No authentication** (`dentist_id` stays NULL). Supabase Auth is the next step; until then anyone who can reach the UI can act.
+1. ~~No authentication~~: done in Phase 6 (`docs/PHASE6_STATUS.md`).
 2. **Plan alerts** (e.g. duplicate drug skipped) are shown only right after generation; they are not stored, so a reload hides them.
 3. **Mobile width not verified** in the browser (layout uses responsive grids and scrollable tables).
-4. **Patient editing** (PUT) and scan deletion are not in the UI; use the API.
+4. ~~Patient editing and scan deletion~~: added in Phase 6.
 5. **Test pollution:** with the ML service running, finding corrections are forwarded to `dentex_week3/feedback/*.csv`. One test row was appended during the walkthrough and reverted.

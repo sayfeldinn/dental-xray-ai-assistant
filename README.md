@@ -31,7 +31,8 @@ dental-xray-ai-assistant/
 │   │   ├── core/           # Config, Supabase client
 │   │   ├── domain/         # Pydantic entities + errors
 │   │   └── services/       # contraindication/, recommendation/, ml_client/, supabase_client/, clinical_workflow.py
-│   ├── tests/              # pytest suite (147 tests)
+│   ├── scripts/            # create_dentist, assign_unowned_patients
+│   ├── tests/              # pytest suite (171 tests)
 │   └── requirements.txt
 ├── frontend/               # React + Vite + Tailwind clinician UI (Phase 5)
 ├── ml/                     # Training notebook + model card
@@ -53,77 +54,20 @@ dental-xray-ai-assistant/
 
 ## Quick Start
 
-### Prerequisites
+Full instructions: **[`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md)**. In short:
 
-- Python **3.11 or 3.12** (3.14 breaks `pydantic-core`; `backend/start.sh` enforces it)
-- Supabase account (free tier) - Phase 1 complete
-- Database schema deployed (run `supabase/schema.sql` in Supabase dashboard)
+1. Run `supabase/schema.sql` in the Supabase SQL editor (existing projects: also `supabase/migrations/20261020_auth_lockdown.sql`).
+2. `cp .env.example .env` and fill in the Supabase values.
+3. Start the three services (Python 3.11/3.12, Node 20+):
+   ```bash
+   cd dentex_week3/api && ./start.sh        # ML service   :8001
+   cd backend && ./start.sh                 # API          :8000 (docs at /docs)
+   cd frontend && npm install && npm run dev  # UI         :5173
+   ```
+   Or everything at once: `docker compose up --build` (UI on :8080).
+4. Sign up on the login page, or `cd backend && python -m scripts.create_dentist --email you@clinic.eg --name "Dr You"`.
 
-### Backend Setup (Phases 2-3 ✅)
-
-1. Navigate to backend directory and start server:
-```bash
-cd backend
-./start.sh
-```
-
-This will:
-- Create virtual environment if needed
-- Install dependencies
-- Start FastAPI on http://localhost:8000
-
-**API Documentation:** http://localhost:8000/docs
-
-### ML Service (dentex_week3)
-
-Start the AI inference microservice:
-```bash
-cd dentex_week3/api
-./start.sh
-```
-
-Runs on http://localhost:8001
-
-### Frontend Setup (Phase 5 ✅)
-
-```bash
-cd frontend
-npm install
-npm run dev        # http://localhost:5173, talks to the backend at VITE_API_URL (default http://localhost:8000)
-```
-
-See [`frontend/README.md`](frontend/README.md).
-
-### Testing the Backend
-
-Run the API test script:
-```bash
-cd backend
-python3 test_api.py
-```
-
-Run the automated suite (no network needed): `cd backend && pytest -q`.
-
-Or test individual endpoints:
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Create a patient
-curl -X POST "http://localhost:8000/api/v1/patients" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "first_name": "Ahmed",
-    "last_name": "Hassan",
-    "date_of_birth": "1985-03-15",
-    "gender": "male",
-    "weight_kg": 75.0,
-    "allergies": []
-  }'
-```
-
-Full instructions, troubleshooting and the Week 1 checklist:
-**[`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md)**.
+Tests: `cd backend && pytest -q` (171) · `cd frontend && npm test` (25).
 
 ## Project Status
 
@@ -134,25 +78,15 @@ Full instructions, troubleshooting and the Week 1 checklist:
 | 3 | Recommendation + contraindication engine, treatment/prescription endpoints (steps 4-5) | ✅ [`docs/PHASE3_STATUS.md`](docs/PHASE3_STATUS.md) |
 | 4 | Feedback logging / active learning (step 6) | ✅ [`docs/PHASE4_STATUS.md`](docs/PHASE4_STATUS.md) |
 | 5 | React frontend (review UI, decision drawer) | ✅ [`docs/PHASE5_STATUS.md`](docs/PHASE5_STATUS.md) |
+| 6 | Login (Supabase Auth), per-dentist access, security lockdown, Docker | ✅ [`docs/PHASE6_STATUS.md`](docs/PHASE6_STATUS.md) |
 
 The active ML service is `dentex_week3/`. `ml/`, `MLv2/` and `dentex_production_portable_run3/` are earlier/alternative models kept for reference. **New here? Read [`docs/AGENT_ONBOARDING.md`](docs/AGENT_ONBOARDING.md).**
 
 ## Environment Variables
 
-### Backend (.env)
-```
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_KEY=your_supabase_service_key
-```
-
-### Frontend (frontend/.env.local)
-```
-VITE_API_URL=http://localhost:8000
-```
-The frontend only talks to the backend; it holds no Supabase key.
-
-Never commit `.env` files, and never prefix the service-role key with `VITE_`.
+One `.env` at the repo root, copied from [`.env.example`](.env.example), serves the backend and the frontend
+(Vite exposes only `VITE_*` values to the browser). Never commit `.env`, and never prefix the service-role
+key with `VITE_`.
 
 ## Documentation
 
@@ -162,7 +96,7 @@ See the `/docs` folder for detailed project documentation:
 - `docs/Project_Context.md` - Full project context and scope
 - `docs/AGENT_ONBOARDING.md` - 5-minute orientation (start here)
 - `docs/ARCHITECTURE.md` - System design and layer rules
-- `docs/PHASE2_STATUS.md`, `docs/PHASE3_STATUS.md` - What each phase delivered
+- `docs/PHASE2_STATUS.md` … `docs/PHASE6_STATUS.md` - What each phase delivered
 - `docs/CLINICAL_GUIDELINES.md` - Clinical rules, rule register, resolved conflicts
 - `docs/DATABASE_SPEC.md` - Schema guide
 - `docs/Week1_Execution_Plan.md` - Week 1 plan (historical)

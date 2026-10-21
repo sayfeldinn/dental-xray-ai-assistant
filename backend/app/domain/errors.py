@@ -19,3 +19,7 @@ class ConflictError(DomainError):
 
 class RuleViolationError(DomainError):
     """The request breaks a clinical-safety rule, e.g. a missing override reason (HTTP 422)."""
+
+
+class UpstreamError(DomainError):
+    """A dependency (the ML service, storage) failed; the request may be retried (HTTP 502)."""

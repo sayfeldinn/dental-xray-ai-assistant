@@ -53,6 +53,26 @@ class ScanService:
         
         return public_url, storage_path
     
+    def signed_url(self, scan: Scan) -> Scan:
+        """
+        Copy of the scan whose image_url is a short-lived signed URL. The bucket is private
+        (supabase/migrations/20261020_auth_lockdown.sql), so stored public URLs do not load.
+        Scans without a storage_path (e.g. seeded with an external URL) are returned unchanged.
+        """
+        if not scan.storage_path:
+            return scan
+        signed = self.client.storage.from_(self.bucket).create_signed_url(
+            scan.storage_path, settings.SIGNED_URL_TTL_SECONDS)
+        url = (signed.get("signedURL") or signed.get("signedUrl")) if isinstance(signed, dict) else None
+        return scan.model_copy(update={"image_url": url}) if url else scan
+
+    async def download_image(self, storage_path: str) -> bytes:
+        return self.client.storage.from_(self.bucket).download(storage_path)
+
+    async def remove_images(self, storage_paths: List[str]) -> None:
+        if storage_paths:
+            self.client.storage.from_(self.bucket).remove(storage_paths)
+
     async def create_scan(self, scan_data: ScanCreate) -> Scan:
         """
         Create a new scan record.

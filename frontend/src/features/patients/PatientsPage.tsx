@@ -14,7 +14,7 @@ export function PatientsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-semibold">Patients</h1>
+        <h1 className="display text-4xl">Patients</h1>
         <Input placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} className="ml-auto max-w-xs" aria-label="Search patients" />
         <Button onClick={() => setCreating((v) => !v)}>{creating ? "Close" : "New patient"}</Button>
       </div>
@@ -28,12 +28,12 @@ export function PatientsPage() {
         {!!patients.data?.patients.length && (
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-brand-100 text-left text-xs font-semibold text-ink/55">
               <tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Age</th><th className="px-4 py-2">Weight</th><th className="px-4 py-2">Safety-relevant history</th></tr>
             </thead>
             <tbody>
               {patients.data.patients.map((p) => (
-                <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <tr key={p.id} className="border-b border-brand-50 last:border-0 hover:bg-brand-50/60">
                   <td className="px-4 py-2.5 font-medium">
                     <Link to={`/patients/${p.id}`} className="text-brand-700 hover:underline">{p.first_name} {p.last_name}</Link>
                   </td>

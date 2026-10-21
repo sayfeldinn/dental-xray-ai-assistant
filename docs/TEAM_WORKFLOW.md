@@ -9,7 +9,8 @@ This guide establishes the rules of engagement for developers collaborating on t
 1. **Never commit `.env` files or secrets:** Always use `.env.example` as the clean template.
 2. **Never hardcode clinical logic on the frontend:** All recommendation rules, dosages, and contraindications live in `backend/app/services/` to ensure auditability and consistent validation.
 3. **Never bypass the dentist confirmation step:** In any UI or endpoint, ensure that AI predictions are flagged as `pending` until explicit user action confirms them.
-4. **Keep `dentex_week3/` isolated:** The ML microservice runs as an autonomous inference service on port 8001. All communication with it must pass through `DentexClient` in the backend.
+4. **Never trust a client-sent owner:** every API route is authenticated and checks ownership through `AccessService`; writes are stamped with the token's dentist.
+5. **Keep `dentex_week3/` isolated:** The ML microservice runs as an autonomous inference service on port 8001. All communication with it must pass through `DentexClient` in the backend.
 
 ---
 

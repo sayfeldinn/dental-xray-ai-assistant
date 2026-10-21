@@ -2,22 +2,16 @@
 
 from uuid import uuid4
 
-import httpx
 import pytest
 
-from app.api.deps import get_workflow
-from app.main import app
-from tests.conftest import make_patient
+from tests.conftest import http_client, make_patient
 
 
 @pytest.fixture
 def api(world):
     w = world(make_patient(allergies=["penicillin"]))
     w.add_finding(disease="Periapical Lesion")
-    app.dependency_overrides[get_workflow] = lambda: w.workflow
-    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
-    yield w, client
-    app.dependency_overrides.clear()
+    yield w, http_client(w)
 
 
 GENERATE = {"clinical_context": {"active_infection": True}}
