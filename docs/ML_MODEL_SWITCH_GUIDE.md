@@ -280,8 +280,8 @@ Example: Quadrant 1, Tooth 4 → FDI 14 (Upper right first premolar)
 - **dentex_week3:** Uses 3 models (1 coordinator + 1 global disease + 1 RF classifier)
 - **Benefit:** Faster inference, simpler deployment, comparable accuracy
 
-### vs. ml/api (single model)
-- **ml/api:** Single YOLOv8 model for all detections
+### vs. ml (single model, Gen-1 — now removed)
+- **ml/** (Gen-1): Single YOLOv8 model for all detections; its API wrapper has since been removed
 - **dentex_week3:** Multi-stage pipeline with spatial reasoning
 - **Benefit:** Better tooth localization accuracy (76% vs lower)
 
