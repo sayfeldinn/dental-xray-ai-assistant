@@ -77,7 +77,7 @@ Supabase Site URL / redirect URLs. Dentist feedback queued by the ML service is 
 
 ```bash
 cd backend && pytest -q                          # 171 tests, no network
-cd frontend && npm run typecheck && npm test     # 25 tests
+cd frontend && npm run typecheck && npm test     # 14 tests
 curl http://localhost:8000/health                # public
 curl -i http://localhost:8000/api/v1/patients    # 401 without a token (expected)
 ```

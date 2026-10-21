@@ -22,7 +22,7 @@ Status docs: `PHASE2_STATUS.md` … `PHASE5_STATUS.md`. Architecture: `ARCHITECT
 cd backend && ./start.sh          # needs Python 3.11/3.12 and ../.env; API docs at :8000/docs
 pytest -q                         # 171 tests, no network
 cd ../dentex_week3/api && ./start.sh   # ML service on :8001 (only needed for scan upload)
-cd ../../frontend && npm install && npm run dev   # UI on :5173; npm test = 25 tests
+cd ../../frontend && npm install && npm run dev   # UI on :5173; npm test = 14 tests
 ```
 
 **Testing against the dev database:** use a throwaway patient and delete it afterwards. If the ML service is running, rejecting or relabelling a finding appends a row to `dentex_week3/feedback/*.csv` (Phase 4 forwarding); revert that file with `git checkout` after a test session.

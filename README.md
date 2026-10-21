@@ -67,7 +67,7 @@ Full instructions: **[`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md)**. In short:
    Or everything at once: `docker compose up --build` (UI on :8080).
 4. Sign up on the login page, or `cd backend && python -m scripts.create_dentist --email you@clinic.eg --name "Dr You"`.
 
-Tests: `cd backend && pytest -q` (171) · `cd frontend && npm test` (25).
+Tests: `cd backend && pytest -q` (171) · `cd frontend && npm test` (14).
 
 ## Project Status
 
@@ -114,7 +114,7 @@ pytest
 ### Frontend Tests
 ```bash
 cd frontend
-npm run typecheck && npm test   # 21 tests (vitest)
+npm run typecheck && npm test   # 14 tests (vitest)
 ```
 
 ### Connection check
