@@ -16,8 +16,13 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Python build dirs. These MUST stay anchored to the repo root: a bare `lib/` also matched
+# frontend/src/lib/ and silently kept the frontend's typed API client out of git (never committed,
+# so a fresh clone could not build). Never use a bare directory name for a Python pattern here.
+/lib/
+/lib64/
+**/venv/lib/
+**/venv/lib64/
 parts/
 sdist/
 var/
@@ -63,6 +68,10 @@ lerna-debug.log*
 /dist
 /.next
 .cache
+
+# Frontend source (never ignore it): this directory holds the typed API client, and a bare
+# Python `lib/` pattern once swallowed it. Kept as an explicit guard against a repeat.
+!frontend/src/lib/
 
 # Testing
 .coverage
