@@ -4,15 +4,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { ageFrom, dateTime } from "../../lib/format";
 import type { Patient } from "../../lib/types";
-import { Badge, Button, Card, Empty, ErrorNote, Spinner } from "../../components/common/ui";
+import { Badge, Button, Card, Empty, ErrorNote, Pagination, Spinner } from "../../components/common/ui";
 import { PatientForm } from "./PatientForm";
 
 const SCAN_TONE = { uploaded: "slate", processing: "violet", analyzed: "sky", reviewed: "emerald", failed: "rose" } as const;
+const SCAN_PAGE_SIZE = 20;
 
 export function PatientPage() {
   const { patientId = "" } = useParams();
+  const [scanPage, setScanPage] = useState(1);
   const patient = useQuery({ queryKey: ["patient", patientId], queryFn: () => api.getPatient(patientId) });
-  const scans = useQuery({ queryKey: ["scans", patientId], queryFn: () => api.listScans(patientId) });
+  const scans = useQuery({
+    queryKey: ["scans", patientId, scanPage],
+    queryFn: () => api.listScans(patientId, { page: scanPage, page_size: SCAN_PAGE_SIZE }),
+  });
 
   if (patient.isLoading) return <Spinner />;
   if (patient.error) return <ErrorNote error={patient.error} />;
@@ -38,6 +43,9 @@ export function PatientPage() {
               </li>
             ))}
           </ul>
+          {scans.data && (
+            <Pagination page={scans.data.page} pageSize={scans.data.page_size} total={scans.data.total} onPage={setScanPage} label="scans" />
+          )}
         </Card>
         <UploadCard patientId={p.id} />
       </div>

@@ -27,7 +27,7 @@ notation (quadrant 1–4 × tooth 1–8). The earlier `ml/` model had 5 differen
 
 ## 3. Which model ships, and which one the app calls
 
-**Shipped:** the `dentex_week3` 3-stage pipeline (also archived as `dentex_production_portable_run3/`, identical weights):
+**Shipped:** the `dentex_week3` 3-stage pipeline (an older byte-identical copy, `dentex_production_portable_run3/`, was removed from the repo in the cleanup — same weights, superseded API):
 1. **Coordinator** — YOLOv8n, detects the 4 quadrants (`coordinator_best.pt`, SHA-256 `d53c8b4e…` — byte-identical to MLv2 `coordinator_quadrant/weights/best.pt`).
 2. **Disease detector** — YOLOv8 (22.5 MB checkpoint; YOLOv8s-sized), 4 classes, run on the full panoramic image.
 3. **Tooth association** — Random Forest, 300 trees, 15 spatial features, maps each lesion to a tooth.

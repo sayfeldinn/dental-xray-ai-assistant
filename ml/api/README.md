@@ -19,7 +19,7 @@ This is a FastAPI wrapper for the YOLOv8 dental abnormality detection model.
    Expected: `ml/best.pt`, 22,601,514 bytes, SHA-256
    `df4455861a67fd683a0ab44b0f461b889624b513738b7cbb6c0ea3adc033a2ed`.
    Paths are resolved relative to `ml/api/app.py` (not the working directory),
-   in this order: `ml/best.pt`, `best.pt`, `best.pt.zip`.
+   in this order: `ml/best.pt`, `best.pt`.
    The server still starts without them, but `/predict` returns HTTP 500.
 
 3. Run the server:

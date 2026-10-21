@@ -3,14 +3,18 @@ DentalAI - Patient API Endpoints
 CRUD for the signed-in dentist's patients. Other dentists' patients answer 404.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
 from typing import Optional
 from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import AuthenticatedDentist, get_access, get_current_dentist
 from app.domain.patient import Patient, PatientCreate, PatientUpdate, PatientListResponse
 from app.services.access import AccessService
 from app.services.supabase_client import patient_service, scan_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -25,8 +29,10 @@ async def create_patient(patient_data: PatientCreate, dentist: AuthenticatedDent
     patient_data.dentist_id = dentist.id   # never trust an owner sent by the client
     try:
         return await patient_service.create_patient(patient_data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create patient: {str(e)}")
+    except Exception:
+        # Do not leak the raw exception (it can carry connection details) to the client.
+        logger.exception("Failed to create patient for dentist %s", dentist.id)
+        raise HTTPException(status_code=500, detail="Failed to create patient. Please try again.")
 
 
 @router.get("/{patient_id}", response_model=Patient)

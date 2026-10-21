@@ -40,8 +40,7 @@ dental-xray-ai-assistant/
 │   └── train_dental_yolov8s.ipynb
 ├── scripts/                # Dev tooling
 │   ├── setup-week1-board.ps1
-│   ├── start-dev.sh
-│   └── test_supabase_connection.py
+│   └── verify_supabase.py
 ├── docs/                   # Documentation
 │   ├── SETUP_GUIDE.md      # Single setup entry point
 │   ├── qa/                 # QA artifacts (synthetic profiles, test cases)
@@ -80,7 +79,7 @@ Tests: `cd backend && pytest -q` (171) · `cd frontend && npm test` (14).
 | 5 | React frontend (review UI, decision drawer) | ✅ [`docs/PHASE5_STATUS.md`](docs/PHASE5_STATUS.md) |
 | 6 | Login (Supabase Auth), per-dentist access, security lockdown, Docker | ✅ [`docs/PHASE6_STATUS.md`](docs/PHASE6_STATUS.md) |
 
-The active ML service is `dentex_week3/`. `ml/`, `MLv2/` and `dentex_production_portable_run3/` are earlier/alternative models kept for reference. **New here? Read [`docs/AGENT_ONBOARDING.md`](docs/AGENT_ONBOARDING.md).**
+The active ML service is `dentex_week3/`. `ml/` and `MLv2/` are earlier/alternative models kept for reference (their heavy weights are not in git). **New here? Read [`docs/AGENT_ONBOARDING.md`](docs/AGENT_ONBOARDING.md).**
 
 ## Environment Variables
 
@@ -119,7 +118,7 @@ npm run typecheck && npm test   # 14 tests (vitest)
 
 ### Connection check
 ```bash
-python scripts/test_supabase_connection.py
+python scripts/verify_supabase.py
 ```
 
 ## Team Roles

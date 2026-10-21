@@ -70,7 +70,7 @@ dental-xray-ai-assistant/
 │   │   │   └── supabase_client/  # Typed data access layer (patients, scans, findings, treatments, prescriptions)
 │   │   └── api/                  # deps.py + v1/ REST routers (patients, scans, findings,
 │   │                             #   recommendations, treatments, prescriptions; /feedback = Phase 4, built)
-│   ├── tests/                    # 147 pytest tests (no network)
+│   ├── tests/                    # 171 pytest tests (no network)
 │   └── requirements.txt
 ├── frontend/                     # BUILT (Phase 5): React + Vite + Tailwind, see frontend/README.md
 │   ├── src/

@@ -53,10 +53,14 @@ async def update_finding(
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
 ):
-    """Update a finding record. Prefer `POST /findings/review`, which also writes the feedback ledger."""
+    """
+    Update a finding's dentist notes.
+
+    Review decisions (confirm / reject / modify) are intentionally **not** allowed here: they
+    must go through `POST /findings/review`, which enforces the clinical gate and writes the
+    feedback ledger (Step 6). This prevents unaudited review changes.
+    """
     await access.finding(finding_id, dentist)
-    if finding_data.reviewed_by is not None:
-        finding_data.reviewed_by = dentist.id
     finding = await finding_service.update_finding(finding_id, finding_data)
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")

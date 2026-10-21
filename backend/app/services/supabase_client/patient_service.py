@@ -77,8 +77,11 @@ class PatientService:
             query = query.eq("dentist_id", str(dentist_id))
         
         if search:
-            # Search in first_name or last_name
-            query = query.or_(f"first_name.ilike.%{search}%,last_name.ilike.%{search}%")
+            # Search in first_name or last_name. Escape PostgREST ilike wildcards and the
+            # or_() delimiter so a user-supplied string can't alter the filter structure.
+            term = (search.replace("\\", "\\\\").replace("%", r"\%")
+                          .replace("_", r"\_").replace(",", r"\,"))
+            query = query.or_(f"first_name.ilike.%{term}%,last_name.ilike.%{term}%")
         
         # Apply pagination
         offset = (page - 1) * page_size

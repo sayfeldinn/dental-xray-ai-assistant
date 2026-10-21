@@ -23,7 +23,6 @@ _ROOT_DIR = _ML_DIR.parent
 _CANDIDATES = (
     _ML_DIR / "best.pt",
     _ROOT_DIR / "best.pt",
-    _ROOT_DIR / "best.pt.zip",
 )
 MODEL_PATH = next((path for path in _CANDIDATES if path.is_file()), _CANDIDATES[0])
 

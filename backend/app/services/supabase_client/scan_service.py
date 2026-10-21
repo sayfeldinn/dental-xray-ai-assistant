@@ -5,10 +5,14 @@ Database and storage operations for X-ray scans.
 
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
+import logging
+
 from app.core.supabase_client import supabase_admin
 from app.core.config import settings
 from app.domain.scan import Scan, ScanCreate, ScanUpdate
+
+logger = logging.getLogger(__name__)
 
 
 class ScanService:
@@ -37,7 +41,7 @@ class ScanService:
             Tuple of (public_url, storage_path)
         """
         # Generate unique storage path
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         file_ext = filename.split('.')[-1] if filename and '.' in filename else 'jpg'
         storage_path = f"patients/{patient_id}/{timestamp}_{uuid4().hex[:8]}.{file_ext}"
         
@@ -48,10 +52,9 @@ class ScanService:
             file_options={"content-type": f"image/{file_ext}"}
         )
         
-        # Get public URL
-        public_url = self.client.storage.from_(self.bucket).get_public_url(storage_path)
-        
-        return public_url, storage_path
+        # The bucket is private, so no working public URL exists. The stored image_url is a
+        # placeholder; signed_url() rewrites it with a short-lived signed URL on every read.
+        return storage_path, storage_path
     
     def signed_url(self, scan: Scan) -> Scan:
         """
@@ -241,8 +244,8 @@ class ScanService:
         if scan.storage_path:
             try:
                 self.client.storage.from_(self.bucket).remove([scan.storage_path])
-            except Exception as e:
-                print(f"Warning: Could not delete storage file: {e}")
+            except Exception:
+                logger.warning("Could not delete storage file for scan %s", scan_id, exc_info=True)
         
         # Delete database record
         response = (

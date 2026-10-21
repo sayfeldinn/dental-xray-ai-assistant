@@ -89,9 +89,20 @@ htmlcov/
 *.h5
 *.pb
 *.onnx
+*.joblib
 datasets/
 trained_models/
 checkpoints/
+
+# ML retraining feedback queue (runtime output; the Docker volume is the source of truth)
+dentex_week3/feedback/
+
+# Ultralytics stray predict output (written to CWD by default)
+/runs/
+
+# MLv2/provenance/ is INTENTIONALLY tracked: it holds only the tiny results.csv + args.yaml
+# training logs kept as evidence for the reported metrics. The heavy weights that used to
+# live alongside them were removed (see .github/workflows/ci.yml guard job).
 
 # Logs
 *.log

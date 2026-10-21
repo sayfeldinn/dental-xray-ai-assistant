@@ -15,7 +15,7 @@ Every number or factual claim that appears in the summary (S) or the deck (D, sl
 | 26 contraindication rules; ADA 2019 / AHA 2021 / AAPD / Beers 2023 | S, D4, D14 | §5 |
 | Rules source-backed, pending clinician validation | S, D11, D14 | §5 |
 | Corrections logged for future retraining; no retraining run | S, D3, D7, D11 | §6 |
-| 171 backend + 25 frontend tests (196 total); 3 CI jobs; 6 synthetic profiles; 3 demo branches | S, D7, D13 | §7 |
+| 171 backend + 14 frontend tests (185 total); 3 CI jobs; 6 synthetic profiles; 3 demo branches | S, D7, D13 | §7 |
 | No clinic pilot recorded | S (placeholder), D11 | §8 |
 | Team names (2 verified), advisor, partner dentist, duration, repo | S, D1 | §9 (advisor/dentist/duration from task brief) |
 | Limitations: small set, tooth numbering, uncalibrated confidence, domain gap | S, D11 | §10 |

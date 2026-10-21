@@ -4,10 +4,14 @@
 
 This guide documents switching from the `dentex_production_portable_run3` model to the **`dentex_week3`** model for dental X-ray analysis.
 
+> **Note:** the old `dentex_production_portable_run3/` directory has since been removed from the
+> repo (its weights were byte-identical to `dentex_week3/production/`, but its API and paths were
+> outdated). This guide is kept for historical context.
+
 ## What Changed
 
 ### Model Location
-- **Old:** `dentex_production_portable_run3/` (if it existed)
+- **Old:** `dentex_production_portable_run3/` (since removed from the repo)
 - **New:** `dentex_week3/`
 
 ### Model Architecture

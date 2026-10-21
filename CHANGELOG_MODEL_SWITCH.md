@@ -1,6 +1,6 @@
 # Changelog: Model Switch to dentex_week3
 
-## Date: 2024-10-04
+## Date: 2026-10-04
 
 ## Summary
 Successfully switched the ML inference backend from any previous model to **dentex_week3**, which provides higher accuracy and additional features like AI-generated clinical reports.
@@ -161,11 +161,10 @@ All verification checks passed ✅:
 
 ### Backend Configuration
 
-Update `backend/.env`:
+Update the repo-root `.env` (the backend reads `ML_SERVICE_URL`, not the older `ML_API_URL` name):
 ```env
-ML_API_URL=http://localhost:8001  # Changed from 8000
+ML_SERVICE_URL=http://localhost:8001  # Changed from 8000
 ML_TIMEOUT_SECONDS=60
-ML_ALLOW_MOCK_FALLBACK=true
 ML_DEFAULT_CONFIDENCE=0.2
 ```
 
@@ -195,8 +194,9 @@ ML_DEFAULT_CONFIDENCE=0.2
 ## Benefits of This Change
 
 ### ✅ Improved Accuracy
-- Disease detection: 97.54% (high precision)
-- Tooth localization: 76.23% (vs lower in previous models)
+- Disease label accuracy on the held-out set: 97.54% (119/122 detections correct — this is
+  *label accuracy on matched detections*, not precision/recall/mAP; measured on only 23 images)
+- Tooth-number accuracy: 76.23% (the weakest output — the model still misnumbers some teeth)
 
 ### ✅ New Features
 - **AI Clinical Reports:** Automatically generated human-readable reports
@@ -227,7 +227,7 @@ ML_DEFAULT_CONFIDENCE=0.2
 - [x] Verified all models load correctly
 - [x] Tested configuration parsing
 - [ ] **User action required:** Start dentex_week3 API
-- [ ] **User action required:** Update backend/.env with ML_API_URL
+- [ ] **User action required:** Update repo-root `.env` with `ML_SERVICE_URL`
 - [ ] **User action required:** Test full upload → analyze workflow
 
 ---
@@ -262,7 +262,7 @@ If you need to revert to the previous model:
 
 2. **Update backend/.env:**
    ```env
-   ML_API_URL=http://localhost:8000  # or previous URL
+   ML_SERVICE_URL=http://localhost:8000  # or previous URL
    ```
 
 3. **Restart services**
@@ -286,7 +286,7 @@ curl http://localhost:8001/
 
 ### Full Integration Test
 1. Start API: `cd dentex_week3/api && ./start.sh`
-2. Start backend with `ML_API_URL=http://localhost:8001`
+2. Start backend with `ML_SERVICE_URL=http://localhost:8001`
 3. Upload X-ray in frontend
 4. Click "Analyze"
 5. Verify detections appear with tooth numbers and diseases
@@ -335,5 +335,5 @@ curl http://localhost:8001/
 ---
 
 **Status:** ✅ Ready for Use  
-**Date:** October 4, 2024  
+**Date:** October 4, 2026  
 **Version:** dentex_week3 (Run 3, Step 51)

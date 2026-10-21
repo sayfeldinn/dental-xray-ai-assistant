@@ -35,13 +35,16 @@ class FindingCreate(FindingBase):
 
 
 class FindingUpdate(BaseEntity):
-    """Schema for updating finding (dentist review)."""
-    
-    review_status: Optional[str] = Field(None, pattern="^(pending|confirmed|rejected|modified)$")
-    confirmed_disease: Optional[str] = Field(None, max_length=50)
+    """
+    Schema for a client-side finding update.
+
+    Deliberately limited to `dentist_notes`. A review decision (review_status /
+    confirmed_disease) must go through `POST /findings/review`, which enforces the clinical
+    gate and writes the audit ledger row — letting clients set those fields here would allow a
+    review to be changed without any audit trail.
+    """
+
     dentist_notes: Optional[str] = None
-    reviewed_at: Optional[datetime] = None
-    reviewed_by: Optional[UUID] = None
 
 
 class Finding(FindingBase, IdentifiedEntity, TimestampedEntity):

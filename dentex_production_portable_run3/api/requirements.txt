@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-ultralytics
-numpy
-pandas
-scikit-learn
-joblib
-Pillow

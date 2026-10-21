@@ -31,7 +31,7 @@ rest credible. Do not cut it.
 
 | # | Need | State | If missing |
 | --- | --- | --- | --- |
-| 1 | `backend` running (`scripts/start-dev.sh`) | | fall back to the pytest suite, §4 |
+| 1 | `backend` running (`cd backend && ./start.sh`) | | fall back to the pytest suite, §4 |
 | 2 | `frontend` running | | demo the two UI shells against mock data |
 | 3 | Auth token (`POST` login) — every recommendation route has `Depends(get_current_user_id)` | | blocks *all* API branches |
 | 4 | Six profiles seeded into `patients`, with `dentist_id` matching the logged-in user | | branches return **404 Patient not found** |

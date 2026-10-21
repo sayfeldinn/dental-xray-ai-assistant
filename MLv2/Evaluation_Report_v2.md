@@ -9,14 +9,25 @@ We have replaced the single-model approach with a robust, four-phase multi-stage
 - **Phase 4 (Spatial Association):** An algorithmic pipeline that stitches the outputs together, utilizing an Intersection over Union (IoU > 10%) threshold to map the global disease bounding box to the locally enumerated tooth bounding box.
 
 ## 2. Evaluation Metrics (Base-Model Candidate)
-The multi-stage approach yielded exceptional metrics across all distinct tasks:
 
-- **Coordinator (Quadrant Detection):** `mAP50 = 0.995`
-- **Enumerators (Tooth Counting Q1-Q4):** `mAP50 > 0.98`
-- **Global Disease Detector:** `mAP50 = 0.922`
+> **⚠️ Read this first — these are training-set fit numbers, not generalization results.**
+> The training notebooks validated each model on the *training* folder (`val:` pointed at the
+> train split; see `notebook93943e382e.ipynb` and `MLv2/provenance/*/args.yaml`). The mAP figures
+> below therefore measure how well each model fit data it was trained on, and **must not** be
+> quoted as test performance. They are retained only as training provenance. The shipped pipeline
+> (`dentex_week3/`) is benchmarked separately on a held-out set — see `submission/FACTS.md` §4.
+
+The multi-stage approach yielded high **training-fit** metrics across all distinct tasks:
+
+- **Coordinator (Quadrant Detection):** `mAP50 = 0.995` (train split)
+- **Enumerators (Tooth Counting Q1-Q4):** `mAP50 > 0.98` (train split)
+- **Global Disease Detector:** `mAP50 = 0.922` (train split)
 
 **Conclusion:** 
-The metrics are highly reasonable and significantly surpass the previous week's architecture. The spatial isolation strategy solved the DENTEX classification ambiguity. We will **freeze these checkpoints** as our base-model pipeline.
+The spatial isolation strategy solved the DENTEX classification ambiguity and the models fit
+their training data well. We will **freeze these checkpoints** as our base-model pipeline. A
+proper held-out evaluation (correct train/val split) is still required before any of these mAP
+figures can be treated as generalization performance.
 
 ## 3. Known Weak Points (Honest Documentation for Pitch)
 While highly accurate on complex cases (e.g., detecting multiple impacted wisdom teeth and concurrent caries), the sequential nature of the enumerator models introduces a specific edge case:

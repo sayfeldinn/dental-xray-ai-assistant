@@ -164,8 +164,8 @@ class FindingService:
         Args:
             finding_id: Finding UUID
             review_status: 'confirmed', 'rejected', or 'modified'
-            dentist_id: Reviewing dentist UUID (None until auth exists; reviewed_by
-                        references auth.users, so a placeholder UUID would violate the FK)
+            dentist_id: Reviewing dentist UUID (stamped from the verified JWT; reviewed_by
+                        references auth.users, so it is only set when authenticated)
             confirmed_disease: Corrected disease if modified
             dentist_notes: Dentist's notes
         

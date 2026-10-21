@@ -230,7 +230,7 @@ All six loop steps, the UI and authentication are built. Remaining: clinician re
 
 ### "Table not found" errors
 - Run `supabase/schema.sql` in Supabase Dashboard SQL Editor
-- Verify with: `python3 scripts/verify_supabase.py`
+- Verify with: `python3 ../scripts/verify_supabase.py` (from `backend/`)
 
 ### Import errors
 - Ensure virtual environment is activated

@@ -117,7 +117,12 @@ function query(params: Record<string, string | undefined>): string {
 
 export const api = {
   /* patients */
-  listPatients: (search?: string) => request<PatientListResponse>(`/patients${query({ search })}`),
+  listPatients: (opts: { search?: string; page?: number; page_size?: number } = {}) =>
+    request<PatientListResponse>(`/patients${query({
+      search: opts.search,
+      page: opts.page !== undefined ? String(opts.page) : undefined,
+      page_size: opts.page_size !== undefined ? String(opts.page_size) : undefined,
+    })}`),
   getPatient: (patientId: string) => request<Patient>(`/patients/${patientId}`),
   createPatient: (data: PatientCreate) => request<Patient>("/patients", json(data)),
   updatePatient: (patientId: string, data: PatientUpdate) =>
@@ -125,7 +130,12 @@ export const api = {
   deletePatient: (patientId: string) => request<void>(`/patients/${patientId}`, { method: "DELETE" }),
 
   /* scans: the upload goes through FormData so the image is streamed as multipart */
-  listScans: (patientId: string) => request<ScanListResponse>(`/scans${query({ patient_id: patientId })}`),
+  listScans: (patientId: string, opts: { page?: number; page_size?: number } = {}) =>
+    request<ScanListResponse>(`/scans${query({
+      patient_id: patientId,
+      page: opts.page !== undefined ? String(opts.page) : undefined,
+      page_size: opts.page_size !== undefined ? String(opts.page_size) : undefined,
+    })}`),
   getScan: (scanId: string) => request<Scan>(`/scans/${scanId}`),
   uploadScan: (patientId: string, file: File, autoAnalyze: boolean) => {
     const form = new FormData();
