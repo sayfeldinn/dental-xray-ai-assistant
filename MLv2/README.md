@@ -50,16 +50,6 @@ This pipeline consists of **6 separate YOLOv8 models** working together in a mat
 
 ## 🚀 Running the API
 
-The inference logic is wrapped in a production-ready FastAPI application.
-
-1. Ensure you have downloaded the model weights (link above) and placed them in a `models/` directory.
-2. Install dependencies:
-   ```bash
-   cd api
-   pip install -r requirements.txt
-   ```
-3. Start the server:
-   ```bash
-   uvicorn app:app --host 0.0.0.0 --port 8000 --reload
-   ```
-4. Test the pipeline via the interactive swagger UI at `http://localhost:8000/docs` by uploading a panoramic X-ray image.
+> **Note:** the MLv2 FastAPI wrapper (`MLv2/api/`) has been removed — this generation is
+> superseded and was never the shipped service. Only `dentex_week3/` is wired into the backend and
+> `docker-compose.yml`. The design and training history are kept here for reference.
