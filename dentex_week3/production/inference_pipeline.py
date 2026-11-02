@@ -1,513 +1,240 @@
+"""DENTEX v2 inference pipeline — tooth detector + disease detector.
 
-import os
+Replaces the v1 design (quadrant coordinator -> disease detector -> random
+forest on lesion-box geometry). Here every tooth is localised and classified
+with its FDI number, and each lesion is assigned to the tooth it overlaps.
+
+Output contract is unchanged, so the FastAPI service and the backend keep
+working without modification:
+
+    {
+      "image_width", "image_height",
+      "quadrants": [{"quadrant", "confidence", "box"}],   # derived, for overlays
+      "detections": [{quadrant, tooth_id, tooth, tooth_confidence,
+                      disease, disease_id, disease_confidence,
+                      association_confidence, box}],
+      "num_detections", "model"
+    }
+"""
+
 import json
-import joblib
-import numpy as np
-import pandas as pd
+import os
 
+import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 
-
-# ================================================================
-# CONFIGURATION
-# ================================================================
-
-PACKAGE_DIR = os.path.dirname(
-    os.path.abspath(__file__)
-)
-
-with open(
-    os.path.join(
-        PACKAGE_DIR,
-        "pipeline_config.json"
-    ),
-    "r"
-) as f:
-    CONFIG = json.load(f)
-
-
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-COORDINATOR_PATH = os.path.join(PACKAGE_DIR, CONFIG["coordinator_model"])
-DISEASE_PATH = os.path.join(PACKAGE_DIR, CONFIG["disease_model"])
+with open(os.path.join(PACKAGE_DIR, "pipeline_config.json")) as fh:
+    CONFIG = json.load(fh)
 
-TOOTH_RF_PATH = os.path.join(
-    PACKAGE_DIR,
-    "tooth_association_rf_300.joblib"
-)
+_MODELS = {}
 
 
-DISEASE_MAP = {
-    int(k): v
-    for k, v in CONFIG["disease_map"].items()
-}
+def _model(key):
+    """Load a detector on first use.
 
-TOOTH_MAP = {
-    int(k): v
-    for k, v in CONFIG["tooth_map"].items()
-}
+    Lazy so the service can start (and the tooth stage can be evaluated) while
+    one of the two weight files is still being produced.
+    """
+    if key not in _MODELS:
+        _MODELS[key] = YOLO(os.path.join(PACKAGE_DIR, CONFIG[f"{key}_model"]))
+    return _MODELS[key]
 
-RAW_TO_ACTUAL_Q = {
-    int(k): v
-    for k, v in
-    CONFIG["coordinator_raw_to_actual_quadrant"].items()
-}
+DISEASE_MAP = {int(k): v for k, v in CONFIG["disease_map"].items()}
 
-
-# ================================================================
-# LOAD MODELS
-# ================================================================
-
-COORDINATOR_MODEL = YOLO(
-    COORDINATOR_PATH
-)
-
-DISEASE_MODEL = YOLO(
-    DISEASE_PATH
-)
-
-TOOTH_RF = joblib.load(
-    TOOTH_RF_PATH
-)
+TOOTH_IMGSZ = CONFIG.get("tooth_imgsz", 1024)
+DISEASE_IMGSZ = CONFIG.get("disease_imgsz", 1024)
+TOOTH_CONF = CONFIG.get("tooth_conf", 0.25)
+DISEASE_CONF = CONFIG.get("disease_conf", 0.25)
 
 
-# ================================================================
-# EXACT STEP 51 FEATURES
-# ================================================================
-
-def production_features(df):
-
-    out = pd.DataFrame(index=df.index)
-
-    q = df["quadrant"].astype(float)
-    x = df["cx"].astype(float)
-    y = df["cy"].astype(float)
-    w = df["w"].astype(float)
-    h = df["h"].astype(float)
-    disease = df["disease"].astype(float)
-
-    out["quadrant"] = q
-    out["cx"] = x
-    out["cy"] = y
-    out["w"] = w
-    out["h"] = h
-    out["disease"] = disease
-
-    out["area"] = w * h
-    out["aspect"] = w / (h + 1e-6)
-
-    anatomical_x = np.where(
-        (q == 1) | (q == 4),
-        1.0 - x,
-        x
-    )
-
-    out["anatomical_x"] = anatomical_x
-    out["anatomical_y"] = y
-
-    out["q_x"] = q * x
-    out["q_y"] = q * y
-
-    out["disease_x"] = disease * x
-    out["disease_y"] = disease * y
-
-    out["disease_anatomical_x"] = (
-        disease * anatomical_x
-    )
-
-    return out
-
-
-# ================================================================
-# IMAGE LOADING
-# ================================================================
+# ----------------------------------------------------------------------
+# Image handling
+# ----------------------------------------------------------------------
 
 def load_image_array(image):
-
     if isinstance(image, str):
-
-        return np.array(
-            Image.open(image).convert("RGB")
-        )
-
+        return np.array(Image.open(image).convert("RGB"))
     if isinstance(image, Image.Image):
-
-        return np.array(
-            image.convert("RGB")
-        )
-
+        return np.array(image.convert("RGB"))
     if isinstance(image, np.ndarray):
-
         if image.ndim == 2:
-            image = np.stack(
-                [image] * 3,
-                axis=-1
-            )
-
+            image = np.stack([image] * 3, axis=-1)
         if image.shape[-1] == 4:
             image = image[..., :3]
-
         return image
-
-    raise TypeError(
-        "image must be a filepath, PIL Image, "
-        "or numpy array"
-    )
+    raise TypeError("image must be a filepath, PIL Image, or numpy array")
 
 
-# ================================================================
-# COORDINATOR
-# ================================================================
+# ----------------------------------------------------------------------
+# Geometry
+# ----------------------------------------------------------------------
 
-def detect_quadrants(image):
+def _iou(a, b):
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    ix1, iy1 = max(ax1, bx1), max(ay1, by1)
+    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+    iw, ih = max(0.0, ix2 - ix1), max(0.0, iy2 - iy1)
+    inter = iw * ih
+    if inter <= 0:
+        return 0.0
+    area_a = (ax2 - ax1) * (ay2 - ay1)
+    area_b = (bx2 - bx1) * (by2 - by1)
+    return inter / (area_a + area_b - inter)
 
-    H, W = image.shape[:2]
 
-    results = COORDINATOR_MODEL.predict(
-        source=image,
-        imgsz=640,
-        conf=0.25,
-        verbose=False
-    )
+def _center(box):
+    return ((box[0] + box[2]) / 2.0, (box[1] + box[3]) / 2.0)
 
-    result = results[0]
 
+def _contains(box, point):
+    return box[0] <= point[0] <= box[2] and box[1] <= point[1] <= box[3]
+
+
+# ----------------------------------------------------------------------
+# Stage 1 — teeth
+# ----------------------------------------------------------------------
+
+def detect_teeth(image):
+    """Return tooth boxes with FDI numbers.
+
+    Model class index -> FDI: index = (quadrant - 1) * 8 + (tooth - 1).
+    """
+    result = _model("tooth").predict(source=image, imgsz=TOOTH_IMGSZ,
+                                 conf=TOOTH_CONF, verbose=False)[0]
     if result.boxes is None:
         return []
 
-    best_by_q = {}
-
+    teeth = []
     for box in result.boxes:
-
-        raw_class = int(
-            box.cls[0].item()
-        )
-
-        confidence = float(
-            box.conf[0].item()
-        )
-
-        x1, y1, x2, y2 = (
-            box.xyxy[0]
-            .cpu()
-            .numpy()
-        )
-
-        actual_q = RAW_TO_ACTUAL_Q.get(
-            raw_class
-        )
-
-        if actual_q is None:
-            continue
-
-        record = {
-            "quadrant": actual_q,
-            "confidence": confidence,
-            "box": [
-                float(x1),
-                float(y1),
-                float(x2),
-                float(y2),
-            ],
-        }
-
-        if (
-            actual_q not in best_by_q
-            or confidence >
-               best_by_q[actual_q]["confidence"]
-        ):
-            best_by_q[actual_q] = record
-
-    return [
-        best_by_q[q]
-        for q in sorted(best_by_q)
-    ]
+        idx = int(box.cls[0].item())
+        x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
+        quadrant, tooth = idx // 8 + 1, idx % 8 + 1
+        teeth.append({
+            "quadrant": quadrant,
+            "tooth_id": tooth,
+            "tooth": f"Tooth_{tooth}",
+            "tooth_fdi": f"{quadrant}{tooth}",
+            "tooth_confidence": float(box.conf[0].item()),
+            "box": [x1, y1, x2, y2],
+        })
+    return teeth
 
 
-# ================================================================
-# DISEASE DETECTOR
-# ================================================================
+# ----------------------------------------------------------------------
+# Stage 2 — lesions
+# ----------------------------------------------------------------------
 
-def detect_diseases(
-    image,
-    quadrants
-):
-
-    # IMPORTANT:
-    # The frozen benchmark used the disease detector
-    # on the FULL panorama at imgsz=416, conf=0.20.
-
-    results = DISEASE_MODEL.predict(
-        source=image,
-        imgsz=416,
-        conf=0.20,
-        verbose=False
-    )
-
-    result = results[0]
-
+def detect_diseases(image):
+    result = _model("disease").predict(source=image, imgsz=DISEASE_IMGSZ,
+                                   conf=DISEASE_CONF, verbose=False)[0]
     if result.boxes is None:
         return []
 
-    detections = []
-
+    lesions = []
     for box in result.boxes:
-
-        disease_id = int(
-            box.cls[0].item()
-        )
-
-        disease_confidence = float(
-            box.conf[0].item()
-        )
-
-        bx1, by1, bx2, by2 = (
-            box.xyxy[0]
-            .cpu()
-            .numpy()
-        )
-
-        bx1 = float(bx1)
-        by1 = float(by1)
-        bx2 = float(bx2)
-        by2 = float(by2)
-
-        # Disease-box center in panorama coordinates.
-        cx = (bx1 + bx2) / 2.0
-        cy = (by1 + by2) / 2.0
-
-        # First try to find a quadrant containing
-        # the disease-box center.
-        containing = []
-
-        for q in quadrants:
-
-            qx1, qy1, qx2, qy2 = q["box"]
-
-            if (
-                qx1 <= cx <= qx2
-                and
-                qy1 <= cy <= qy2
-            ):
-                containing.append(q)
-
-        if containing:
-
-            # If overlapping quadrant boxes contain the
-            # center, choose the smallest containing box.
-            quadrant_record = min(
-                containing,
-                key=lambda q: (
-                    (q["box"][2] - q["box"][0])
-                    *
-                    (q["box"][3] - q["box"][1])
-                )
-            )
-
-        else:
-
-            # Fallback: nearest quadrant center.
-            quadrant_record = min(
-                quadrants,
-                key=lambda q: (
-                    (
-                        (
-                            q["box"][0]
-                            +
-                            q["box"][2]
-                        ) / 2.0
-                        -
-                        cx
-                    ) ** 2
-                    +
-                    (
-                        (
-                            q["box"][1]
-                            +
-                            q["box"][3]
-                        ) / 2.0
-                        -
-                        cy
-                    ) ** 2
-                )
-            )
-
-        detections.append({
-            "quadrant":
-                quadrant_record["quadrant"],
-
-            "disease_id":
-                disease_id,
-
-            "disease":
-                DISEASE_MAP.get(
-                    disease_id,
-                    f"Unknown_{disease_id}"
-                ),
-
-            "disease_confidence":
-                disease_confidence,
-
-            "box": [
-                bx1,
-                by1,
-                bx2,
-                by2,
-            ],
+        disease_id = int(box.cls[0].item())
+        x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
+        lesions.append({
+            "disease_id": disease_id,
+            "disease": DISEASE_MAP.get(disease_id, f"Unknown_{disease_id}"),
+            "disease_confidence": float(box.conf[0].item()),
+            "box": [x1, y1, x2, y2],
         })
+    return lesions
 
-    return detections
 
+# ----------------------------------------------------------------------
+# Stage 3 — association
+# ----------------------------------------------------------------------
 
-# ================================================================
-# TOOTH ASSOCIATION
-# ================================================================
+def associate(lesions, teeth):
+    """Assign every lesion to a tooth.
 
-def associate_teeth(
-    detections,
-    image_shape
-):
-
-    if not detections:
+    Priority: highest IoU with a tooth box; else the tooth whose box contains
+    the lesion centre; else the nearest tooth centre. A lesion with no teeth
+    to attach to is dropped rather than mislabelled.
+    """
+    if not lesions or not teeth:
         return []
-
-    H, W = image_shape[:2]
-
-    rows = []
-
-    for d in detections:
-
-        x1, y1, x2, y2 = d["box"]
-
-        rows.append({
-            "quadrant":
-                d["quadrant"],
-
-            "cx":
-                ((x1 + x2) / 2.0) / W,
-
-            "cy":
-                ((y1 + y2) / 2.0) / H,
-
-            "w":
-                (x2 - x1) / W,
-
-            "h":
-                (y2 - y1) / H,
-
-            "disease":
-                d["disease_id"],
-        })
-
-    df = pd.DataFrame(rows)
-
-    X = production_features(df)
-
-    predictions = TOOTH_RF.predict(X)
-
-    probabilities = TOOTH_RF.predict_proba(X)
 
     output = []
+    for lesion in lesions:
+        lbox = lesion["box"]
+        center = _center(lbox)
 
-    for i, d in enumerate(detections):
+        best = max(teeth, key=lambda t: _iou(lbox, t["box"]))
+        if _iou(lbox, best["box"]) <= 0.0:
+            containing = [t for t in teeth if _contains(t["box"], center)]
+            if containing:
+                best = min(containing, key=lambda t: (t["box"][2] - t["box"][0]) *
+                                                      (t["box"][3] - t["box"][1]))
+            else:
+                best = min(teeth, key=lambda t: (_center(t["box"])[0] - center[0]) ** 2 +
+                                                 (_center(t["box"])[1] - center[1]) ** 2)
 
-        tooth_id = int(
-            predictions[i]
-        )
-
-        tooth_confidence = float(
-            np.max(probabilities[i])
-        )
-
-        item = dict(d)
-
-        item["tooth_id"] = tooth_id
-
-        item["tooth"] = (
-            TOOTH_MAP[tooth_id]
-        )
-
-        item["tooth_confidence"] = (
-            tooth_confidence
-        )
-
-        item["association_confidence"] = (
-            d["disease_confidence"]
-            * tooth_confidence
-        )
-
-        output.append(item)
-
+        output.append({
+            "quadrant": best["quadrant"],
+            "tooth_id": best["tooth_id"],
+            "tooth": best["tooth"],
+            "tooth_fdi": best["tooth_fdi"],
+            "tooth_confidence": best["tooth_confidence"],
+            "disease": lesion["disease"],
+            "disease_id": lesion["disease_id"],
+            "disease_confidence": lesion["disease_confidence"],
+            "association_confidence": lesion["disease_confidence"] * best["tooth_confidence"],
+            "box": lbox,
+        })
     return output
 
 
-# ================================================================
-# COMPLETE PIPELINE
-# ================================================================
+def derive_quadrants(teeth):
+    """Union of tooth boxes per FDI quadrant, for UI overlays."""
+    by_q = {}
+    for tooth in teeth:
+        q = tooth["quadrant"]
+        if q not in by_q:
+            by_q[q] = {"quadrant": q, "confidence": 0.0,
+                       "box": list(tooth["box"])}
+            by_q[q]["confidence"] = tooth["tooth_confidence"]
+        else:
+            b = by_q[q]["box"]
+            t = tooth["box"]
+            by_q[q]["box"] = [min(b[0], t[0]), min(b[1], t[1]),
+                              max(b[2], t[2]), max(b[3], t[3])]
+            by_q[q]["confidence"] = min(by_q[q]["confidence"], tooth["tooth_confidence"])
+    return [by_q[q] for q in sorted(by_q)]
 
-def run_dentex_pipeline(
-    image,
-    save_json=None
-):
 
+# ----------------------------------------------------------------------
+# Public entry point
+# ----------------------------------------------------------------------
+
+def run_dentex_pipeline(image, save_json=None):
     image = load_image_array(image)
+    height, width = image.shape[:2]
 
-    H, W = image.shape[:2]
-
-    quadrants = detect_quadrants(
-        image
-    )
-
-    # Run disease detector once on the full panorama.
-    disease_detections = detect_diseases(
-        image,
-        quadrants
-    )
-
-    final_detections = associate_teeth(
-        disease_detections,
-        image.shape
-    )
+    teeth = detect_teeth(image)
+    lesions = detect_diseases(image)
+    detections = associate(lesions, teeth)
 
     output = {
-        "image_width": int(W),
-        "image_height": int(H),
-
-        "quadrants": quadrants,
-
-        "detections":
-            final_detections,
-
-        "num_detections":
-            len(final_detections),
-
+        "image_width": int(width),
+        "image_height": int(height),
+        "quadrants": derive_quadrants(teeth),
+        "detections": detections,
+        "num_detections": len(detections),
         "model": {
-            "coordinator":
-                "best.pt",
-
-            "disease":
-                "best.pt",
-
-            "tooth":
-                "Step_51_RF_300",
-
-            "enumerator":
-                False,
+            "tooth": CONFIG.get("tooth_model"),
+            "disease": CONFIG.get("disease_model"),
+            "architecture": "tooth_detector+disease_detector",
         },
     }
 
     if save_json is not None:
-
-        with open(
-            save_json,
-            "w"
-        ) as f:
-
-            json.dump(
-                output,
-                f,
-                indent=2
-            )
-
+        with open(save_json, "w") as fh:
+            json.dump(output, fh, indent=2)
     return output

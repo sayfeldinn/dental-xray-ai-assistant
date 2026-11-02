@@ -132,3 +132,6 @@ data_exports/
 .Python
 
 .playwright-mcp/
+
+# ML v1 baseline freeze (weights + old notebooks); safe to delete once v2 ships
+/archive/

@@ -1,27 +1,11 @@
 {
-  "model": "RandomForestClassifier",
-  "variant": "Step_51_RF_300",
-  "n_estimators": 300,
-  "min_samples_leaf": 2,
-  "class_weight": "balanced",
-  "random_state": 42,
-  "feature_names": [
-    "quadrant",
-    "cx",
-    "cy",
-    "w",
-    "h",
-    "disease",
-    "area",
-    "aspect",
-    "anatomical_x",
-    "anatomical_y",
-    "q_x",
-    "q_y",
-    "disease_x",
-    "disease_y",
-    "disease_anatomical_x"
-  ],
+  "architecture": "tooth_detector_plus_disease_detector",
+  "tooth_model": "tooth_best.pt",
+  "disease_model": "disease_best.pt",
+  "tooth_imgsz": 1024,
+  "disease_imgsz": 1024,
+  "tooth_conf": 0.25,
+  "disease_conf": 0.20,
   "disease_map": {
     "0": "Impacted",
     "1": "Caries",
@@ -38,23 +22,33 @@
     "7": "Tooth_7",
     "8": "Tooth_8"
   },
-  "coordinator_raw_to_actual_quadrant": {
-    "0": 2,
-    "1": 1,
-    "2": 3,
-    "3": 4
+  "association": "iou_then_center_containment_then_nearest_center",
+  "training": {
+    "tooth": {
+      "dataset": "quadrant_enumeration",
+      "train_images": 540,
+      "val_images": 94,
+      "classes": 32,
+      "notebook": "notebooks/03_train_tooth_detector.ipynb"
+    },
+    "disease": {
+      "dataset": "quadrant-enumeration-disease",
+      "train_images": 598,
+      "val_images": 107,
+      "classes": 4,
+      "notebook": "notebooks/04_train_disease_detector.ipynb"
+    }
   },
-  "coordinator_model": "coordinator_best.pt",
-  "disease_model": "disease_detector_best.pt",
-  "enumerator_used": false,
-  "validation_status": "final untouched evaluation completed",
-  "held_out_files": 23,
-  "held_out_detections": 122,
-  "final_tooth_accuracy": 0.7622950819672131,
-  "final_disease_accuracy": 0.9754098360655737,
-  "final_full_accuracy": 0.7540983606557377,
-  "coordinator_model_path": "coordinator_best.pt",
-  "disease_model_path": "disease_detector_best.pt",
-  "tooth_model_path": "tooth_association_rf_300.joblib",
-  "portable": true
+  "evaluation": {
+    "harness": "dentex_week3/evaluate.py",
+    "locked_set": "official DENTEX validation, 50 images / 182 lesions",
+    "v1_baseline": {
+      "mAP50": 0.498,
+      "precision": 0.409,
+      "recall": 0.566,
+      "disease_accuracy": 0.836,
+      "tooth_accuracy": 0.759,
+      "joint_accuracy": 0.664
+    }
+  }
 }
