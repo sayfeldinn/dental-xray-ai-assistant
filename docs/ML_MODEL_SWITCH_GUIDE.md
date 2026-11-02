@@ -1,392 +1,238 @@
-# ML Model Switch Guide: dentex_week3
+# ML Model Guide: dentex_week3 (v2)
+
+> **Current architecture as of 2026-11-03.** The v1 coordinator + random-forest
+> pipeline is archived in `archive/ml-v1/` and recoverable at tag
+> `ml-v1-baseline`. See `notebooks/README.md` for how the models are trained and
+> `dentex_week3/eval/evaluation_report_v2.md` for the full benchmark.
 
 ## Overview
 
-This guide documents switching from the `dentex_production_portable_run3` model to the **`dentex_week3`** model for dental X-ray analysis.
-
-> **Note:** the old `dentex_production_portable_run3/` directory has since been removed from the
-> repo (its weights were byte-identical to `dentex_week3/production/`, but its API and paths were
-> outdated). This guide is kept for historical context.
-
-## What Changed
-
-### Model Location
-- **Old:** `dentex_production_portable_run3/` (since removed from the repo)
-- **New:** `dentex_week3/`
-
-### Model Architecture
-
-The **dentex_week3** pipeline uses a **3-stage approach**:
-
-1. **Coordinator Model** (`coordinator_best.pt`)
-   - Detects and localizes 4 anatomical quadrants
-   - YOLOv8 model trained on quadrant detection
-
-2. **Disease Detector** (`disease_detector_best.pt`)
-   - Runs on the full panoramic image
-   - Detects 4 disease types:
-     - Impacted teeth
-     - Caries
-     - Periapical Lesion
-     - Deep Caries
-
-3. **Tooth Association RF** (`tooth_association_rf_300.joblib`)
-   - Random Forest classifier (300 estimators)
-   - Associates detected diseases with specific tooth numbers (1-8)
-   - Uses spatial features and disease-tooth relationships
-
-### Model Performance (Validation Metrics)
-
-From the frozen evaluation:
-- **Tooth Accuracy:** 76.23%
-- **Disease Accuracy:** 97.54%
-- **Full Match Accuracy:** 75.41%
-- Evaluated on 23 held-out images with 122 detections
-
-## Files Modified
-
-### 1. Pipeline Configuration ✅
-**File:** `dentex_week3/production/pipeline_config.json`
-
-**Changed:**
-```json
-// OLD (Windows absolute paths)
-"coordinator_model": "D:/pes/dentex_week3_FINAL/dentex_week3/production/coordinator_best.pt",
-"disease_model": "D:/pes/dentex_week3_FINAL/dentex_week3/production/disease_detector_best.pt"
-
-// NEW (Relative paths)
-"coordinator_model": "coordinator_best.pt",
-"disease_model": "disease_detector_best.pt"
-```
-
-### 2. Inference Pipeline ✅
-**File:** `dentex_week3/production/inference_pipeline.py`
-
-**Changed:**
-```python
-# OLD
-COORDINATOR_PATH = CONFIG["coordinator_model"]
-DISEASE_PATH = CONFIG["disease_model"]
-
-# NEW (Resolves relative to production directory)
-COORDINATOR_PATH = os.path.join(PACKAGE_DIR, CONFIG["coordinator_model"])
-DISEASE_PATH = os.path.join(PACKAGE_DIR, CONFIG["disease_model"])
-```
-
-## Directory Structure
+The shipped pipeline is two YOLO detectors joined by geometric association:
 
 ```
-dentex_week3/
-├── api/
-│   ├── app.py                    # FastAPI server
-│   ├── requirements.txt
-│   └── README.md
-├── production/
-│   ├── coordinator_best.pt       # Quadrant detection model
-│   ├── disease_detector_best.pt  # Disease detection model
-│   ├── tooth_association_rf_300.joblib  # Tooth association RF
-│   ├── inference_pipeline.py     # Main pipeline logic
-│   ├── pipeline_config.json      # Configuration ✅ UPDATED
-│   └── final_evaluation.json     # Performance metrics
-└── feedback/
-    ├── dentist_finding_feedback.csv
-    └── dentist_report_feedback.csv
+panorama
+  ├─ tooth detector   (32 classes, one per FDI tooth)   -> tooth boxes + numbers
+  └─ disease detector (4 classes)                        -> lesion boxes + labels
+              └─ association: IoU -> centre containment -> nearest centre
 ```
+
+Both models are `yolov8s`, trained at 1024 px. The tooth detector labels every
+tooth directly, which is what removed the old coordinator + random forest: v1
+detected four quadrant boxes and then *guessed* the tooth number from lesion
+geometry.
+
+## What changed from v1
+
+| | v1 | v2 |
+|---|---|---|
+| Tooth identification | quadrant coordinator + random forest | 32-class detector |
+| Disease detector input | cropped quadrants | full panorama |
+| Inference resolution | 416 px | 1024 px |
+| Class imbalance | unhandled (13.9:1) | image oversampling (7.0:1) |
+| Models in `production/` | 3 (`.pt` + `.joblib`) | 2 (`.pt`) |
+| Training notebooks | ad hoc, validated on training data | reproducible 00-05 with a locked split |
+
+## Model files
+
+| File | Size | Purpose |
+|---|---|---|
+| `production/tooth_best.pt` | ~22 MB | 32 FDI classes, `imgsz=1024`, `conf=0.25` |
+| `production/disease_best.pt` | ~22 MB | 4 disease classes, `imgsz=1024`, `conf=0.20` |
+| `production/pipeline_config.json` | small | class maps, thresholds, training provenance |
+
+Weights are **not committed** (gitignored). Fetch them with:
+
+```bash
+KAGGLE_BIN=~/.local/bin/kaggle ./notebooks/fetch_weights.sh
+```
+
+`inference_pipeline.py` loads each model lazily on first use, so the API starts
+even if one weight file is missing; the error then surfaces on `/predict`.
 
 ## Configuration
 
-### Backend Environment Variables
-
-Update `backend/.env`:
+### Backend environment variables (`backend/.env`)
 
 ```env
-# ML detector (points to dentex_week3 API)
 ML_API_URL=http://localhost:8001
 ML_TIMEOUT_SECONDS=60
 ML_ALLOW_MOCK_FALLBACK=true
 ML_DEFAULT_CONFIDENCE=0.2
 ```
 
-**Note:** The dentex_week3 API runs on port 8000 by default (in the README), but we're using port 8001 to avoid conflicts with the backend. Update the app.py startup port if needed.
+### Port
 
-### dentex_week3 API Port
+The ML service runs on **8001** so it does not collide with the backend:
 
-The API README shows port 8000, but to avoid conflict with the backend:
-
-**Option 1: Run on port 8001 (recommended)**
 ```bash
 cd dentex_week3/api
 uvicorn app:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-**Option 2: Update app.py**
-```python
-# In dentex_week3/api/app.py, change:
-if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8001, reload=True)
+## API endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/` | health check (`models_loaded`) |
+| `POST` | `/predict` | multipart image -> detections + quadrant boxes + report |
+| `POST` | `/feedback/finding` | dentist correction for a single finding |
+| `POST` | `/feedback/report` | accept / edit a generated report |
+
+`/predict` returns the v1-compatible contract, so the backend needs no changes:
+
+```json
+{
+  "image_width": 2872,
+  "image_height": 1504,
+  "quadrants": [{"quadrant": 1, "confidence": 0.93, "box": [x1, y1, x2, y2]}],
+  "detections": [{
+    "quadrant": 4, "tooth_id": 7, "tooth": "Tooth_7", "tooth_fdi": "47",
+    "tooth_confidence": 0.88,
+    "disease": "Caries", "disease_id": 1, "disease_confidence": 0.94,
+    "association_confidence": 0.83,
+    "box": [x1, y1, x2, y2]
+  }],
+  "num_detections": 8,
+  "model": {"tooth": "tooth_best.pt", "disease": "disease_best.pt",
+            "architecture": "tooth_detector+disease_detector"},
+  "ai_generated_report": "..."
+}
 ```
 
-## API Endpoints
+`quadrants` is now **derived** from the tooth boxes (union per FDI quadrant)
+rather than produced by a coordinator model.
 
-The dentex_week3 API provides:
-
-### `GET /`
-Health check - returns model loading status
-
-### `POST /predict`
-Main inference endpoint:
-- **Input:** X-ray image (multipart/form-data)
-- **Output:**
-  ```json
-  {
-    "image_width": 2976,
-    "image_height": 1536,
-    "quadrants": [...],
-    "detections": [
-      {
-        "quadrant": 1,
-        "tooth": "Tooth_4",
-        "disease": "Caries",
-        "disease_confidence": 0.85,
-        "tooth_confidence": 0.92,
-        "association_confidence": 0.782,
-        "box": [x1, y1, x2, y2]
-      }
-    ],
-    "num_detections": 3,
-    "ai_generated_report": "Clinical Radiographic Findings:..."
-  }
-  ```
-
-### `POST /feedback/finding`
-Submit dentist corrections on individual findings
-
-### `POST /feedback/report`
-Submit dentist feedback on AI-generated reports
-
-## Setup and Testing
-
-### 1. Install Dependencies
+## Setup and testing
 
 ```bash
+# 1. weights
+ls -lh dentex_week3/production/*.pt      # tooth_best.pt, disease_best.pt
+
+# 2. dependencies
 cd dentex_week3/api
 pip install -r requirements.txt
+
+# 3. verify everything
+cd ..
+python verify_setup.py
+
+# 4. start
+cd api && uvicorn app:app --host 0.0.0.0 --port 8001 --reload
+
+# 5. smoke test
+curl -X POST http://localhost:8001/predict -F "file=@/path/to/panorama.png"
 ```
 
-### 2. Verify Model Files Exist
+## Disease mapping
 
-```bash
-ls -lh dentex_week3/production/*.pt
-ls -lh dentex_week3/production/*.joblib
+| id | name |
+|---|---|
+| 0 | Impacted |
+| 1 | Caries |
+| 2 | Periapical Lesion |
+| 3 | Deep Caries |
+
+This is identical to the DENTEX `category_id_3` order and to
+`pipeline_config.json`, so no remapping is needed anywhere in the stack.
+
+## Tooth numbering
+
+The tooth detector's class index maps to FDI as:
+
+```python
+quadrant = index // 8 + 1     # 1-4
+tooth    = index % 8 + 1      # 1-8
+fdi      = f"{quadrant}{tooth}"
 ```
 
-Should show:
-- `coordinator_best.pt` (~6MB)
-- `disease_detector_best.pt` (~6MB)
-- `tooth_association_rf_300.joblib` (~1MB)
+Class 0 = FDI 11 (upper-right central incisor) ... class 31 = FDI 48
+(lower-right third molar).
 
-### 3. Start the API
+**Do not flip images** when training or augmenting the tooth detector: FDI
+labels are position-dependent, so a mirrored panorama would swap quadrants
+while the label stays the same. The training notebook disables `fliplr`,
+`flipud` and `mosaic` for exactly this reason.
 
-```bash
-cd dentex_week3/api
-uvicorn app:app --host 0.0.0.0 --port 8001 --reload
-```
+## Performance
 
-### 4. Test the API
+Locked official DENTEX validation set (50 panoramas / 182 lesions), scored with
+`dentex_week3/evaluate.py`:
 
-**Health Check:**
-```bash
-curl http://localhost:8001/
-```
+| Metric | v1 | v2 |
+|---|---|---|
+| mAP@0.5 | 49.8% | **51.7%** |
+| mAP@0.5:0.95 | 33.6% | **37.5%** |
+| Precision | 40.9% | **43.0%** |
+| Recall | 56.6% | **64.3%** |
+| Disease accuracy | 83.6% | **87.7%** |
+| Tooth accuracy | 75.9% | **89.2%** |
+| Quadrant accuracy | 99.1% | **100.0%** |
+| Joint accuracy | 66.4% | **78.5%** |
 
-Expected:
-```json
-{"status": "ok", "models_loaded": true}
-```
+Per-class AP@0.5: Impacted 76.7%, Caries 33.3%, Periapical Lesion 37.5%,
+Deep Caries 59.3%.
 
-**Inference Test:**
-```bash
-curl -X POST "http://localhost:8001/predict" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@/path/to/xray.jpg"
-```
+Periapical Lesion is the weakest class and the only per-class regression from
+v1 (42.9% -> 37.5%), but it has just 9 ground-truth lesions on this set, so the
+95% CI (18.5%-61.4%) does not separate the two. Caries is the next target.
 
-### 5. Update Backend Configuration
+### Inference time
 
-Make sure `backend/.env` has:
-```env
-ML_API_URL=http://localhost:8001
-```
-
-Then restart the backend:
-```bash
-cd backend
-uvicorn app.main:app --reload --port 8000
-```
-
-### 6. Test Full Integration
-
-1. Start dentex_week3 API: `cd dentex_week3/api && uvicorn app:app --port 8001 --reload`
-2. Start backend: `cd backend && uvicorn app.main:app --port 8000 --reload`
-3. Start frontend: `cd frontend && npm run dev`
-4. Upload an X-ray scan
-5. Click "Analyze"
-6. Verify results appear
-
-## Verification Script
-
-Create a test script to verify the models load correctly:
-
-```bash
-cd dentex_week3/api
-python3 -c "
-import sys
-sys.path.append('../production')
-from inference_pipeline import run_dentex_pipeline
-print('✅ Models loaded successfully')
-"
-```
-
-## Disease Mapping
-
-The model detects 4 disease types:
-
-| Disease ID | Disease Name | Description |
-|------------|-------------|-------------|
-| 0 | Impacted | Impacted teeth |
-| 1 | Caries | Carious lesion (cavity) |
-| 2 | Periapical Lesion | Infection at tooth root |
-| 3 | Deep Caries | Deep cavity (near pulp) |
-
-## Tooth Numbering
-
-Each quadrant has 8 teeth (Tooth_1 to Tooth_8):
-
-| Quadrant | Location | Teeth |
-|----------|----------|-------|
-| 1 | Upper Right | 11-18 (FDI notation) |
-| 2 | Upper Left | 21-28 (FDI notation) |
-| 3 | Lower Left | 31-38 (FDI notation) |
-| 4 | Lower Right | 41-48 (FDI notation) |
-
-The output format is: `Quadrant X, Tooth Y` → FDI notation: `XY`
-
-Example: Quadrant 1, Tooth 4 → FDI 14 (Upper right first premolar)
-
-## Differences from Other Models
-
-### vs. MLv2 (6-model pipeline)
-- **MLv2:** Uses 6 separate models (1 coordinator + 4 quadrant enumerators + 1 global disease)
-- **dentex_week3:** Uses 3 models (1 coordinator + 1 global disease + 1 RF classifier)
-- **Benefit:** Faster inference, simpler deployment, comparable accuracy
-
-### vs. ml (single model, Gen-1 — now removed)
-- **ml/** (Gen-1): Single YOLOv8 model for all detections; its API wrapper has since been removed
-- **dentex_week3:** Multi-stage pipeline with spatial reasoning
-- **Benefit:** Better tooth localization accuracy (76% vs lower)
-
-## Performance Considerations
-
-### Inference Time
-- Coordinator: ~50-100ms
-- Disease Detector: ~100-200ms
-- Tooth Association: ~5-10ms
-- **Total:** ~200-300ms per image (depending on hardware)
-
-### Memory Usage
-- Models: ~15MB total on disk
-- Runtime: ~500MB-1GB GPU memory (if available)
-- CPU fallback: Supported (slower, ~1-2s per image)
-
-### Confidence Thresholds
-- **Coordinator:** 0.25 (fixed in code)
-- **Disease Detector:** 0.20 (fixed in code)
-- **Backend filter:** 0.20 (configurable via `ML_DEFAULT_CONFIDENCE`)
-
-Lower the backend threshold to see more detections (may include false positives).
+Measured on CPU (16-core) with `imgsz=1024`: ~0.25 s per image per model,
+~0.5 s for the full pipeline. On a T4 the detectors run at ~15 ms each.
 
 ## Troubleshooting
 
-### "Models not loaded" Error
+### "Models not loaded"
 
-**Check:**
+`models_loaded` is set at import time. If it is `False`, the module itself
+failed to import — usually a missing `ultralytics`. Check:
+
 ```bash
-cd dentex_week3/production
-ls -lh *.pt *.joblib
+python -c "import ultralytics; print(ultralytics.__version__)"
 ```
 
-If files are missing, download/copy the model weights.
+Missing weights do **not** set `models_loaded=False` (loading is lazy); they
+raise on the first `/predict` instead.
 
-### "No module named 'ultralytics'" Error
+### "No module named 'ultralytics'"
 
-**Fix:**
 ```bash
-cd dentex_week3/api
-pip install -r requirements.txt
+pip install -r dentex_week3/api/requirements.txt
 ```
 
-### Port Already in Use
+### Port already in use
 
-**Check what's using port 8001:**
 ```bash
 lsof -i :8001
 ```
 
-**Kill the process or use a different port:**
-```bash
-uvicorn app:app --port 8002 --reload
-# Then update ML_API_URL=http://localhost:8002
-```
+### Slow inference
 
-### Slow Inference
-
-**Solutions:**
-1. Install GPU-enabled PyTorch (if you have a GPU)
-2. Reduce image size before upload
-3. Run on dedicated GPU server
-4. Use the mock fallback for UI testing (`ML_ALLOW_MOCK_FALLBACK=true`)
-
-### Path Errors (Windows/Mac/Linux)
-
-The code now uses `os.path.join()` which is cross-platform compatible. If you still have issues:
+Check the device actually used:
 
 ```python
-# In inference_pipeline.py, verify:
-PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
-COORDINATOR_PATH = os.path.join(PACKAGE_DIR, CONFIG["coordinator_model"])
+import torch; print(torch.cuda.is_available())
 ```
 
-## Migration Checklist
+CPU inference is ~0.5 s per panorama, which is fine for the review UI but not
+for batch processing.
 
-- [x] Updated `pipeline_config.json` with relative paths
-- [x] Updated `inference_pipeline.py` to resolve paths correctly
-- [ ] Install dependencies: `pip install -r dentex_week3/api/requirements.txt`
-- [ ] Verify model files exist in `dentex_week3/production/`
-- [ ] Start dentex_week3 API on port 8001
-- [ ] Update `backend/.env` with `ML_API_URL=http://localhost:8001`
-- [ ] Restart backend server
-- [ ] Test health check: `curl http://localhost:8001/`
-- [ ] Test full workflow: Upload → Analyze → Review results
+### Path errors
 
-## Summary
+All model paths in `pipeline_config.json` must stay **relative**
+(`tooth_best.pt`, not `D:/.../tooth_best.pt`); `inference_pipeline.py` joins
+them with its own directory.
 
-✅ **Files Updated:**
-- `dentex_week3/production/pipeline_config.json` - Relative paths
-- `dentex_week3/production/inference_pipeline.py` - Path resolution
+## Retraining
 
-🔲 **Required Actions:**
-1. Start dentex_week3 API on port 8001
-2. Update backend `.env` to point to dentex_week3
-3. Test the full upload → analyze workflow
+See `notebooks/README.md`. Short version:
 
-📊 **Benefits:**
-- ✅ Better tooth localization (76% accuracy)
-- ✅ High disease classification (97% accuracy)
-- ✅ AI-generated clinical reports
-- ✅ Feedback collection for continuous improvement
-- ✅ Cross-platform compatible paths
+1. `02_prepare_dataset.ipynb` rebuilds the split locally (seed 42).
+2. `03` / `04` train on Kaggle GPU and assert the split counts.
+3. `./notebooks/fetch_weights.sh` installs the weights.
+4. `05_assemble_and_evaluate.ipynb` scores v2 on the locked 50 and prints the
+   v1-vs-v2 table.
 
----
-
-**Last Updated:** 2024-10-04
-**Model Version:** dentex_week3 (Run 3, Step 51 RF_300)
+Promotion rule: a new model ships only if it beats v1 on mAP@0.5, Caries AP@0.5,
+tooth accuracy and joint accuracy on the locked set.

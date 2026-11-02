@@ -116,7 +116,6 @@ def check_python_dependencies():
         "ultralytics": "Ultralytics YOLO",
         "PIL": "Pillow (PIL)",
         "numpy": "NumPy",
-        "pandas": "Pandas",
     }
     
     all_ok = True
