@@ -5,7 +5,7 @@
   "tooth_imgsz": 1024,
   "disease_imgsz": 1024,
   "tooth_conf": 0.25,
-  "disease_conf": 0.25,
+  "disease_conf": 0.20,
   "disease_map": {
     "0": "Impacted",
     "1": "Caries",

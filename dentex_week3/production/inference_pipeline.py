@@ -29,8 +29,18 @@ PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(PACKAGE_DIR, "pipeline_config.json")) as fh:
     CONFIG = json.load(fh)
 
-TOOTH_MODEL = YOLO(os.path.join(PACKAGE_DIR, CONFIG["tooth_model"]))
-DISEASE_MODEL = YOLO(os.path.join(PACKAGE_DIR, CONFIG["disease_model"]))
+_MODELS = {}
+
+
+def _model(key):
+    """Load a detector on first use.
+
+    Lazy so the service can start (and the tooth stage can be evaluated) while
+    one of the two weight files is still being produced.
+    """
+    if key not in _MODELS:
+        _MODELS[key] = YOLO(os.path.join(PACKAGE_DIR, CONFIG[f"{key}_model"]))
+    return _MODELS[key]
 
 DISEASE_MAP = {int(k): v for k, v in CONFIG["disease_map"].items()}
 
@@ -93,7 +103,7 @@ def detect_teeth(image):
 
     Model class index -> FDI: index = (quadrant - 1) * 8 + (tooth - 1).
     """
-    result = TOOTH_MODEL.predict(source=image, imgsz=TOOTH_IMGSZ,
+    result = _model("tooth").predict(source=image, imgsz=TOOTH_IMGSZ,
                                  conf=TOOTH_CONF, verbose=False)[0]
     if result.boxes is None:
         return []
@@ -119,7 +129,7 @@ def detect_teeth(image):
 # ----------------------------------------------------------------------
 
 def detect_diseases(image):
-    result = DISEASE_MODEL.predict(source=image, imgsz=DISEASE_IMGSZ,
+    result = _model("disease").predict(source=image, imgsz=DISEASE_IMGSZ,
                                    conf=DISEASE_CONF, verbose=False)[0]
     if result.boxes is None:
         return []
