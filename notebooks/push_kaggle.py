@@ -40,6 +40,12 @@ NOTEBOOKS = {
         # needs internet to pull OralXrays-9 from HuggingFace
         "internet": True,
     },
+    "findings": {
+        "file": "08_train_findings_detector.ipynb",
+        "id": "sayfeldin/dentalai-findings-detector",
+        "title": "DentalAI Findings Detector",
+        "datasets": ["sayfeldin/dentalopg-1550-yolo", "sayfeldin/dentalai-ml-wheels"],
+    },
 }
 
 DATASETS = [
@@ -69,7 +75,7 @@ def main():
             "is_private": True,
             "enable_gpu": True,
             "enable_internet": spec.get("internet", False),
-            "dataset_sources": DATASETS,
+            "dataset_sources": spec.get("datasets", DATASETS),
             "competition_sources": [],
             "kernel_sources": [],
             "model_sources": [],
