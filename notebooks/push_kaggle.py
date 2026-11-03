@@ -33,20 +33,31 @@ NOTEBOOKS = {
         "id": "sayfeldin/dentalai-disease-detector",
         "title": "DentalAI Disease Detector",
     },
+    "pathology": {
+        "file": "06_train_pathology_v3.ipynb",
+        "id": "sayfeldin/dentalai-pathology-v3",
+        "title": "DentalAI Pathology v3",
+        # OralXrays is attached as a private dataset, so no internet is needed
+        "internet": False,
+    },
 }
 
 DATASETS = [
     "truthisneverlinear/dentex-challenge-2023",  # raw DENTEX data
     "sayfeldin/dentalai-ml-wheels",              # ultralytics wheels + yolov8s.pt
+    "sayfeldin/dentalai-oralxrays-v3",           # 9,250-image OralXrays mirror (4-class)
 ]
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--only", choices=sorted(NOTEBOOKS), help="push a single kernel")
     args = ap.parse_args()
 
     for key, spec in NOTEBOOKS.items():
+        if args.only and key != args.only:
+            continue
         stage = STAGE / key
         stage.mkdir(parents=True, exist_ok=True)
         shutil.copy2(REPO / "notebooks" / spec["file"], stage / spec["file"])
@@ -58,7 +69,7 @@ def main():
             "kernel_type": "notebook",
             "is_private": True,
             "enable_gpu": True,
-            "enable_internet": False,
+            "enable_internet": spec.get("internet", False),
             "dataset_sources": DATASETS,
             "competition_sources": [],
             "kernel_sources": [],
