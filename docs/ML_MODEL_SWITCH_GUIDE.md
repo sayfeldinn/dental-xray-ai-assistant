@@ -176,6 +176,29 @@ Periapical Lesion is the weakest class and the only per-class regression from
 v1 (42.9% -> 37.5%), but it has just 9 ground-truth lesions on this set, so the
 95% CI (18.5%-61.4%) does not separate the two. Caries is the next target.
 
+### How much of this is noise?
+
+`dentex_week3/paired_significance.py` re-analyses the same two prediction files
+with paired statistics (McNemar exact test per lesion, plus a bootstrap that
+resamples the 50 panoramas). Results in
+`dentex_week3/eval/paired_significance.md`. Summary:
+
+| metric | delta | 95% CI | verdict |
+|---|---|---|---|
+| tooth (end-to-end) | +15.4 pp | [+4.8, +26.8] | **significant** (McNemar p=0.0009) |
+| joint (end-to-end) | +13.7 pp | [+4.0, +23.9] | **significant** (p=0.002) |
+| recall | +7.7 pp | [-0.5, +16.1] | borderline |
+| mAP@0.5 | +2.0 pp | [-11.4, +11.1] | **not significant** |
+| Caries AP@0.5 | +5.1 pp | [-2.0, +12.1] | suggestive, not significant |
+| Periapical AP@0.5 | -5.4 pp | [-60.0, +20.5] | indistinguishable from noise |
+
+The defensible claim is therefore: **v2 identifies teeth substantially better
+and is not worse at lesion detection.** It is not evidence of a large detection
+improvement. Note also that the harness reports tooth/joint accuracy
+conditioned on detected lesions (89.2% / 78.5%); the end-to-end rates over all
+182 ground-truth lesions are 63.7% / 56.0%, which is the more clinically
+meaningful number.
+
 ### Inference time
 
 Measured on CPU (16-core) with `imgsz=1024`: ~0.25 s per image per model,
