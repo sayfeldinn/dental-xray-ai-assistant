@@ -26,6 +26,10 @@ from ultralytics import YOLO
 
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Evaluation can point at candidate weights without touching the shipped ones:
+#   DENTEX_MODEL_DIR=/tmp/v3_weights python ...
+MODEL_DIR = os.environ.get("DENTEX_MODEL_DIR", PACKAGE_DIR)
+
 with open(os.path.join(PACKAGE_DIR, "pipeline_config.json")) as fh:
     CONFIG = json.load(fh)
 
@@ -39,7 +43,7 @@ def _model(key):
     one of the two weight files is still being produced.
     """
     if key not in _MODELS:
-        _MODELS[key] = YOLO(os.path.join(PACKAGE_DIR, CONFIG[f"{key}_model"]))
+        _MODELS[key] = YOLO(os.path.join(MODEL_DIR, CONFIG[f"{key}_model"]))
     return _MODELS[key]
 
 DISEASE_MAP = {int(k): v for k, v in CONFIG["disease_map"].items()}

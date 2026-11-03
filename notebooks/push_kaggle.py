@@ -37,15 +37,14 @@ NOTEBOOKS = {
         "file": "06_train_pathology_v3.ipynb",
         "id": "sayfeldin/dentalai-pathology-v3",
         "title": "DentalAI Pathology v3",
-        # OralXrays is attached as a private dataset, so no internet is needed
-        "internet": False,
+        # needs internet to pull OralXrays-9 from HuggingFace
+        "internet": True,
     },
 }
 
 DATASETS = [
     "truthisneverlinear/dentex-challenge-2023",  # raw DENTEX data
     "sayfeldin/dentalai-ml-wheels",              # ultralytics wheels + yolov8s.pt
-    "sayfeldin/dentalai-oralxrays-v3",           # 9,250-image OralXrays mirror (4-class)
 ]
 
 
