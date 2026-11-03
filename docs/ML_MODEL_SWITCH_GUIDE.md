@@ -171,9 +171,13 @@ Locked official DENTEX validation set (50 panoramas / 182 lesions), scored with
 | Precision | 40.9% | 43.0% | **44.6%** |
 | Recall | 56.6% | 64.3% | **74.2%** |
 | Disease accuracy | 83.6% | 87.7% | **89.0%** |
-| Tooth accuracy | 75.9% | 89.2% | **91.0%** |
+| Tooth accuracy | 75.9% | 91.5% | **91.7%** |
 | Quadrant accuracy | 99.1% | 100.0% | **100.0%** |
-| Joint accuracy | 66.4% | 78.5% | **82.8%** |
+| Joint accuracy | 66.4% | 80.0% | **82.8%** |
+
+Both v2 and v3 are scored with class-agnostic tooth-box dedup at IoU 0.6
+(`tooth_nms_iou`). Without it, YOLO's per-class NMS keeps two class hypotheses
+for the same tooth and v2 scores 89.2% tooth / 78.5% joint.
 
 Per-class AP@0.5 (v3): Impacted 75.0%, Caries 35.3%, Periapical Lesion 55.6%,
 Deep Caries 51.1%. The 36× increase in periapical boxes moved that class
@@ -191,9 +195,9 @@ resamples the 50 panoramas). Results in
 
 | metric | delta | 95% CI | verdict |
 |---|---|---|---|
-| tooth (end-to-end) | +15.4 pp | [+4.8, +26.8] | **significant** (McNemar p=0.0009) |
-| joint (end-to-end) | +13.7 pp | [+4.0, +23.9] | **significant** (p=0.002) |
-| recall | +7.7 pp | [-0.5, +16.1] | borderline |
+| tooth (end-to-end) | +17.0 pp | [+7.0, +28.3] | **significant** (McNemar p=0.0002) |
+| joint (end-to-end) | +14.8 pp | [+5.4, +24.7] | **significant** (p=0.0009) |
+| recall | +7.7 pp | [+0.0, +15.4] | borderline |
 | mAP@0.5 | +2.0 pp | [-11.4, +11.1] | **not significant** |
 | Caries AP@0.5 | +5.1 pp | [-2.0, +12.1] | suggestive, not significant |
 | Periapical AP@0.5 | -5.4 pp | [-60.0, +20.5] | indistinguishable from noise |
@@ -205,8 +209,8 @@ resamples the 50 panoramas). Results in
 | metric | delta | 95% CI | verdict |
 |---|---|---|---|
 | recall | +9.9 pp | [+4.5, +15.8] | **significant** (McNemar p=0.003) |
-| tooth (end-to-end) | +8.8 pp | [+3.8, +14.0] | **significant** (p=0.004) |
-| joint (end-to-end) | +9.9 pp | [+3.8, +16.2] | **significant** (p=0.003) |
+| tooth (end-to-end) | +7.7 pp | [+2.7, +13.0] | **significant** (p=0.009) |
+| joint (end-to-end) | +8.8 pp | [+2.8, +14.9] | **significant** (p=0.007) |
 | mAP@0.5 | +2.5 pp | [-6.9, +12.4] | not significant |
 | Caries AP@0.5 | +2.0 pp | [-3.3, +7.3] | not significant |
 | Periapical AP@0.5 | +18.1 pp | [-15.7, +51.9] | large but underpowered (n=9) |
@@ -215,10 +219,11 @@ resamples the 50 panoramas). Results in
 The defensible claim for v2 was: **v2 identifies teeth substantially better and
 is not worse at lesion detection.** v3 adds a significant recall gain on top
 (+9.9 pp, McNemar p=0.003) and finds more of the lesions that matter, at the
-cost of a non-significant Deep Caries regression. Note that the harness reports
-tooth/joint accuracy conditioned on detected lesions (91.0% / 82.8%); the
-end-to-end rates over all 182 ground-truth lesions are 72.5% / 65.9%, which is
-the more clinically meaningful number.
+cost of a non-significant Deep Caries regression. Conditioned on detected
+lesions, tooth accuracy is essentially tied (91.7% vs 91.5%); v3's end-to-end
+tooth gain (+7.7 pp) comes from detecting more lesions, not from better tooth
+assignment. The end-to-end rates over all 182 ground-truth lesions are
+73.1% / 65.9%, which is the more clinically meaningful number.
 
 ### Inference time
 

@@ -25,9 +25,9 @@ This is the metric family of the original `final_evaluation.json` (disease / too
 | metric | rate (95% CI) | correct / total |
 |---|---|---|
 | disease label | **87.7%** [80.9%, 92.3%] | 114 / 130 |
-| tooth number | **89.2%** [82.7%, 93.5%] | 116 / 130 |
+| tooth number | **91.5%** [85.5%, 95.2%] | 119 / 130 |
 | quadrant | **100.0%** [97.1%, 100.0%] | 130 / 130 |
-| disease **and** tooth | **78.5%** [70.6%, 84.7%] | 102 / 130 |
+| disease **and** tooth | **80.0%** [72.3%, 86.0%] | 104 / 130 |
 
 ### Disease confusion matrix (rows = ground truth, cols = prediction)
 
@@ -42,10 +42,10 @@ This is the metric family of the original `final_evaluation.json` (disease / too
 
 | quadrant | tooth acc (95% CI) | joint (95% CI) | n |
 |---|---|---|---|
-| Q1 | 76.7% [59.1%, 88.2%] | 66.7% [48.8%, 80.8%] | 30 |
+| Q1 | 80.0% [62.7%, 90.5%] | 70.0% [52.1%, 83.3%] | 30 |
 | Q2 | 91.7% [74.2%, 97.7%] | 87.5% [69.0%, 95.7%] | 24 |
-| Q3 | 97.7% [87.9%, 99.6%] | 81.4% [67.4%, 90.3%] | 43 |
-| Q4 | 87.9% [72.7%, 95.2%] | 78.8% [62.2%, 89.3%] | 33 |
+| Q3 | 100.0% [91.8%, 100.0%] | 83.7% [70.0%, 91.9%] | 43 |
+| Q4 | 90.9% [76.4%, 96.9%] | 78.8% [62.2%, 89.3%] | 33 |
 
 ## 4. Confidence-threshold sweep (disease detector)
 

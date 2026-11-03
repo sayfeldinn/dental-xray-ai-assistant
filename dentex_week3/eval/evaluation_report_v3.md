@@ -25,7 +25,7 @@ This is the metric family of the original `final_evaluation.json` (disease / too
 | metric | rate (95% CI) | correct / total |
 |---|---|---|
 | disease label | **89.0%** [82.8%, 93.1%] | 129 / 145 |
-| tooth number | **91.0%** [85.3%, 94.7%] | 132 / 145 |
+| tooth number | **91.7%** [86.1%, 95.2%] | 133 / 145 |
 | quadrant | **100.0%** [97.4%, 100.0%] | 145 / 145 |
 | disease **and** tooth | **82.8%** [75.8%, 88.0%] | 120 / 145 |
 
@@ -45,7 +45,7 @@ This is the metric family of the original `final_evaluation.json` (disease / too
 | Q1 | 82.4% [66.5%, 91.7%] | 73.5% [56.9%, 85.4%] | 34 |
 | Q2 | 89.7% [73.6%, 96.4%] | 82.8% [65.5%, 92.4%] | 29 |
 | Q3 | 100.0% [92.3%, 100.0%] | 93.5% [82.5%, 97.8%] | 46 |
-| Q4 | 88.9% [74.7%, 95.6%] | 77.8% [61.9%, 88.3%] | 36 |
+| Q4 | 91.7% [78.2%, 97.1%] | 77.8% [61.9%, 88.3%] | 36 |
 
 ## 4. Confidence-threshold sweep (disease detector)
 

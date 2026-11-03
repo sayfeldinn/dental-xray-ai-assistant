@@ -71,7 +71,7 @@ are position-dependent, so mirroring would silently swap quadrants.
 | mAP@0.5 | 49.8% | 51.7% | **54.2%** |
 | Precision / Recall | 40.9% / 56.6% | 43.0% / 64.3% | **44.6% / 74.2%** |
 | Disease accuracy | 83.6% | 87.7% | **89.0%** |
-| Tooth accuracy | 75.9% | 89.2% | **91.0%** |
-| Joint accuracy | 66.4% | 78.5% | **82.8%** |
+| Tooth accuracy | 75.9% | 91.5% | **91.7%** |
+| Joint accuracy | 66.4% | 80.0% | **82.8%** |
 | Caries AP@0.5 | 28.2% | 33.3% | **35.3%** |
 | Periapical AP@0.5 | 42.9% | 37.5% | **55.6%** |

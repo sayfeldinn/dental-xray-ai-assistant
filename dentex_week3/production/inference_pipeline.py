@@ -52,6 +52,7 @@ TOOTH_IMGSZ = CONFIG.get("tooth_imgsz", 1024)
 DISEASE_IMGSZ = CONFIG.get("disease_imgsz", 1024)
 TOOTH_CONF = CONFIG.get("tooth_conf", 0.25)
 DISEASE_CONF = CONFIG.get("disease_conf", 0.25)
+TOOTH_NMS_IOU = CONFIG.get("tooth_nms_iou", 0.6)
 
 
 # ----------------------------------------------------------------------
@@ -102,6 +103,21 @@ def _contains(box, point):
 # Stage 1 — teeth
 # ----------------------------------------------------------------------
 
+def _dedup_teeth(teeth, iou_thresh=TOOTH_NMS_IOU):
+    """Drop overlapping tooth boxes of different classes.
+
+    YOLO's NMS is per-class, so the 32-class head can keep two class
+    hypotheses for the same physical tooth. Without this, a lesion attaches
+    to whichever duplicate happens to have the higher IoU — a common
+    source of adjacent-tooth errors (e.g. 17 vs 18).
+    """
+    kept = []
+    for t in sorted(teeth, key=lambda t: -t["tooth_confidence"]):
+        if all(_iou(t["box"], k["box"]) < iou_thresh for k in kept):
+            kept.append(t)
+    return kept
+
+
 def detect_teeth(image):
     """Return tooth boxes with FDI numbers.
 
@@ -125,7 +141,7 @@ def detect_teeth(image):
             "tooth_confidence": float(box.conf[0].item()),
             "box": [x1, y1, x2, y2],
         })
-    return teeth
+    return _dedup_teeth(teeth)
 
 
 # ----------------------------------------------------------------------
