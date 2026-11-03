@@ -1,0 +1,25 @@
+{
+  "model": "/kaggle/input/datasets/sayfeldin/dentalai-ml-wheels/yolov8s.pt",
+  "imgsz": 1024,
+  "epochs": 40,
+  "batch": 8,
+  "train_images": 10120,
+  "train_unique": 9848,
+  "val_images": 107,
+  "mAP50": 0.6247989913101756,
+  "mAP50_95": 0.41901176933342177,
+  "precision": 0.6753758305828028,
+  "recall": 0.6344415084422508,
+  "ap50_per_class": {
+    "Impacted": 0.9050212349449932,
+    "Caries": 0.5203138815089167,
+    "Periapical Lesion": 0.4156421984775045,
+    "Deep Caries": 0.658218650309288
+  },
+  "train_class_boxes": {
+    "Caries": 12478,
+    "Impacted": 22777,
+    "Periapical Lesion": 4730,
+    "Deep Caries": 1000
+  }
+}

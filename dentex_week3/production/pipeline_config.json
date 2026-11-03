@@ -5,7 +5,7 @@
   "tooth_imgsz": 1024,
   "disease_imgsz": 1024,
   "tooth_conf": 0.25,
-  "disease_conf": 0.20,
+  "disease_conf": 0.2,
   "disease_map": {
     "0": "Impacted",
     "1": "Caries",
@@ -32,11 +32,12 @@
       "notebook": "notebooks/03_train_tooth_detector.ipynb"
     },
     "disease": {
-      "dataset": "quadrant-enumeration-disease",
-      "train_images": 598,
+      "dataset": "DENTEX quadrant-enumeration-disease + OralXrays (HuggingFace)",
+      "train_images": 10120,
+      "train_unique": 9848,
       "val_images": 107,
       "classes": 4,
-      "notebook": "notebooks/04_train_disease_detector.ipynb"
+      "notebook": "notebooks/06_train_pathology_v3.ipynb"
     }
   },
   "evaluation": {
@@ -44,11 +45,38 @@
     "locked_set": "official DENTEX validation, 50 images / 182 lesions",
     "v1_baseline": {
       "mAP50": 0.498,
+      "mAP50_95": 0.336,
       "precision": 0.409,
       "recall": 0.566,
       "disease_accuracy": 0.836,
       "tooth_accuracy": 0.759,
-      "joint_accuracy": 0.664
-    }
+      "quadrant_accuracy": 0.991,
+      "joint_accuracy": 0.664,
+      "caries_ap50": 0.282
+    },
+    "v2": {
+      "mAP50": 0.517,
+      "mAP50_95": 0.375,
+      "precision": 0.43,
+      "recall": 0.643,
+      "disease_accuracy": 0.877,
+      "tooth_accuracy": 0.892,
+      "quadrant_accuracy": 1.0,
+      "joint_accuracy": 0.785,
+      "caries_ap50": 0.333
+    },
+    "v3_current": {
+      "mAP50": 0.542,
+      "mAP50_95": 0.382,
+      "precision": 0.446,
+      "recall": 0.742,
+      "disease_accuracy": 0.89,
+      "tooth_accuracy": 0.91,
+      "quadrant_accuracy": 1.0,
+      "joint_accuracy": 0.828,
+      "caries_ap50": 0.353
+    },
+    "promotion_rule": "must beat the incumbent on mAP@0.5, Caries AP@0.5, tooth accuracy and joint accuracy",
+    "promoted": "v3 on 2026-11-03 (v2 archived in archive/ml-v2/)"
   }
 }

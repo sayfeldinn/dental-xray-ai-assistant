@@ -1,9 +1,11 @@
-# ML Model Guide: dentex_week3 (v2)
+# ML Model Guide: dentex_week3 (v3)
 
-> **Current architecture as of 2026-11-03.** The v1 coordinator + random-forest
-> pipeline is archived in `archive/ml-v1/` and recoverable at tag
-> `ml-v1-baseline`. See `notebooks/README.md` for how the models are trained and
-> `dentex_week3/eval/evaluation_report_v2.md` for the full benchmark.
+> **Current models as of 2026-11-03.** The disease detector is v3, trained on
+> 9,848 unique panoramas (DENTEX + OralXrays). v2 is archived in
+> `archive/ml-v2/`, and the v1 coordinator + random-forest pipeline in
+> `archive/ml-v1/` (tag `ml-v1-baseline`). See `notebooks/README.md` for how the
+> models are trained and `dentex_week3/eval/evaluation_report_v3.md` for the
+> full benchmark.
 
 ## Overview
 
@@ -20,6 +22,10 @@ Both models are `yolov8s`, trained at 1024 px. The tooth detector labels every
 tooth directly, which is what removed the old coordinator + random forest: v1
 detected four quadrant boxes and then *guessed* the tooth number from lesion
 geometry.
+
+The tooth detector is unchanged from v2 (540 training panoramas). The disease
+detector is v3: the same `yolov8s` / 1024 px recipe as v2, retrained on 9,848
+unique images with 4 classes (caries, deep caries, periapical, impacted).
 
 ## What changed from v1
 
@@ -158,23 +164,23 @@ while the label stays the same. The training notebook disables `fliplr`,
 Locked official DENTEX validation set (50 panoramas / 182 lesions), scored with
 `dentex_week3/evaluate.py`:
 
-| Metric | v1 | v2 |
-|---|---|---|
-| mAP@0.5 | 49.8% | **51.7%** |
-| mAP@0.5:0.95 | 33.6% | **37.5%** |
-| Precision | 40.9% | **43.0%** |
-| Recall | 56.6% | **64.3%** |
-| Disease accuracy | 83.6% | **87.7%** |
-| Tooth accuracy | 75.9% | **89.2%** |
-| Quadrant accuracy | 99.1% | **100.0%** |
-| Joint accuracy | 66.4% | **78.5%** |
+| Metric | v1 | v2 | v3 |
+|---|---|---|---|
+| mAP@0.5 | 49.8% | 51.7% | **54.2%** |
+| mAP@0.5:0.95 | 33.6% | 37.5% | **38.2%** |
+| Precision | 40.9% | 43.0% | **44.6%** |
+| Recall | 56.6% | 64.3% | **74.2%** |
+| Disease accuracy | 83.6% | 87.7% | **89.0%** |
+| Tooth accuracy | 75.9% | 89.2% | **91.0%** |
+| Quadrant accuracy | 99.1% | 100.0% | **100.0%** |
+| Joint accuracy | 66.4% | 78.5% | **82.8%** |
 
-Per-class AP@0.5: Impacted 76.7%, Caries 33.3%, Periapical Lesion 37.5%,
-Deep Caries 59.3%.
-
-Periapical Lesion is the weakest class and the only per-class regression from
-v1 (42.9% -> 37.5%), but it has just 9 ground-truth lesions on this set, so the
-95% CI (18.5%-61.4%) does not separate the two. Caries is the next target.
+Per-class AP@0.5 (v3): Impacted 75.0%, Caries 35.3%, Periapical Lesion 55.6%,
+Deep Caries 51.1%. The 36× increase in periapical boxes moved that class
+37.5% -> 55.6% (+18.1 pp), which is the main win of v3. Deep Caries fell
+59.3% -> 51.1% because OralXrays labels deep lesions simply as caries, so the
+model now prefers the broader label; the lesion box is still found. Caries
+remains the weakest clinically important class.
 
 ### How much of this is noise?
 
@@ -192,12 +198,27 @@ resamples the 50 panoramas). Results in
 | Caries AP@0.5 | +5.1 pp | [-2.0, +12.1] | suggestive, not significant |
 | Periapical AP@0.5 | -5.4 pp | [-60.0, +20.5] | indistinguishable from noise |
 
-The defensible claim is therefore: **v2 identifies teeth substantially better
-and is not worse at lesion detection.** It is not evidence of a large detection
-improvement. Note also that the harness reports tooth/joint accuracy
-conditioned on detected lesions (89.2% / 78.5%); the end-to-end rates over all
-182 ground-truth lesions are 63.7% / 56.0%, which is the more clinically
-meaningful number.
+#### v2 vs v3
+
+`dentex_week3/eval/paired_significance_v2_v3.md`:
+
+| metric | delta | 95% CI | verdict |
+|---|---|---|---|
+| recall | +9.9 pp | [+4.5, +15.8] | **significant** (McNemar p=0.003) |
+| tooth (end-to-end) | +8.8 pp | [+3.8, +14.0] | **significant** (p=0.004) |
+| joint (end-to-end) | +9.9 pp | [+3.8, +16.2] | **significant** (p=0.003) |
+| mAP@0.5 | +2.5 pp | [-6.9, +12.4] | not significant |
+| Caries AP@0.5 | +2.0 pp | [-3.3, +7.3] | not significant |
+| Periapical AP@0.5 | +18.1 pp | [-15.7, +51.9] | large but underpowered (n=9) |
+| Deep Caries AP@0.5 | -8.1 pp | [-23.8, +7.5] | not significant |
+
+The defensible claim for v2 was: **v2 identifies teeth substantially better and
+is not worse at lesion detection.** v3 adds a significant recall gain on top
+(+9.9 pp, McNemar p=0.003) and finds more of the lesions that matter, at the
+cost of a non-significant Deep Caries regression. Note that the harness reports
+tooth/joint accuracy conditioned on detected lesions (91.0% / 82.8%); the
+end-to-end rates over all 182 ground-truth lesions are 72.5% / 65.9%, which is
+the more clinically meaningful number.
 
 ### Inference time
 
@@ -251,11 +272,13 @@ them with its own directory.
 
 See `notebooks/README.md`. Short version:
 
-1. `02_prepare_dataset.ipynb` rebuilds the split locally (seed 42).
-2. `03` / `04` train on Kaggle GPU and assert the split counts.
-3. `./notebooks/fetch_weights.sh` installs the weights.
-4. `05_assemble_and_evaluate.ipynb` scores v2 on the locked 50 and prints the
-   v1-vs-v2 table.
+1. `02_prepare_dataset.ipynb` rebuilds the DENTEX split locally (seed 42).
+2. `03` / `04` train the tooth and DENTEX-only disease detectors on Kaggle.
+3. `06_train_pathology_v3.ipynb` adds OralXrays and trains the v3 disease
+   detector; `./notebooks/fetch_v3.sh` pulls the run without touching
+   `production/`.
+4. `07_evaluate_v3.ipynb` scores a candidate on the locked 50, writes
+   `evaluation_report_v3.md`, and runs the paired significance test.
 
-Promotion rule: a new model ships only if it beats v1 on mAP@0.5, Caries AP@0.5,
-tooth accuracy and joint accuracy on the locked set.
+Promotion rule: a new model ships only if it beats the incumbent on mAP@0.5,
+Caries AP@0.5, tooth accuracy and joint accuracy on the locked set.

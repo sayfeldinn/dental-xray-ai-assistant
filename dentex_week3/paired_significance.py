@@ -52,24 +52,27 @@ def per_image_stats(gt, cache):
         pred_boxes = [p["box"] for p in preds]
 
         cls_flags = {}
+        # detection TP must be class-aware to match the harness's micro recall
+        det_ok = [False] * len(gts)
         for cid, cname in enumerate(DISEASE_NAMES):
             g_idx = [i for i, g in enumerate(gts) if g["disease_id"] == cid]
             p_idx = [i for i, p in enumerate(preds) if p["disease_id"] == cid]
             matches = greedy_match([gt_boxes[i] for i in g_idx],
                                    [pred_boxes[i] for i in p_idx], IOU_MATCH)
             matched = {pi for _, pi in matches}
+            for gi_local, _ in matches:
+                det_ok[g_idx[gi_local]] = True
             flags = [(preds[p_idx[pi]]["disease_confidence"], True) for _, pi in matches]
             flags += [(preds[p_idx[pi]]["disease_confidence"], False)
                       for pi in range(len(p_idx)) if pi not in matched]
             cls_flags[cname] = flags
 
+        # tooth/joint use any-label matches, like the harness's label accuracy
         matches = greedy_match(gt_boxes, pred_boxes, IOU_MATCH)
-        det_ok = [False] * len(gts)
         tooth_ok = [False] * len(gts)
         joint_ok = [False] * len(gts)
         for gi, pi in matches:
             g, p = gts[gi], preds[pi]
-            det_ok[gi] = True
             tooth_ok[gi] = g["tooth"] == p["tooth_id"]
             joint_ok[gi] = tooth_ok[gi] and g["disease_id"] == p["disease_id"]
 
@@ -167,6 +170,8 @@ def main():
     ap_.add_argument("--v1", default=str(HERE / "eval/raw_predictions.jsonl"))
     ap_.add_argument("--v2", default=str(HERE / "eval/raw_predictions_v2.jsonl"))
     ap_.add_argument("--markdown", action="store_true")
+    ap_.add_argument("--label1", default="v1")
+    ap_.add_argument("--label2", default="v2")
     ap_.add_argument("--boot", type=int, default=2000)
     args = ap_.parse_args()
 
@@ -196,20 +201,20 @@ def main():
         tests.append((label, b01, b10, p))
 
     if args.markdown:
-        print("## Paired significance: v1 vs v2\n")
-        print("| metric | v1 | v2 | delta | 95% CI (paired bootstrap) | P(v2 > v1) |")
+        print(f"## Paired significance: {args.label1} vs {args.label2}\n")
+        print(f"| metric | {args.label1} | {args.label2} | delta | 95% CI (paired bootstrap) | P({args.label2} > {args.label1}) |")
         print("|---|---|---|---|---|---|")
         for k, label in labels.items():
             lo, hi, share = boot[k]
             print(f"| {label} | {a1[k]:.1%} | {a2[k]:.1%} | {a2[k] - a1[k]:+.1%} "
                   f"| [{lo:+.1%}, {hi:+.1%}] | {share:.3f} |")
         print("\n### McNemar exact test (per-lesion, paired)\n")
-        print("| metric | v2-only correct | v1-only correct | p (two-sided) |")
+        print(f"| metric | {args.label2}-only correct | {args.label1}-only correct | p (two-sided) |")
         print("|---|---|---|---|")
         for label, b01, b10, p in tests:
             print(f"| {label} | {b01} | {b10} | {p:.2e} |")
         print("\n### Per-class AP@0.5\n")
-        print("| class | v1 | v2 | delta | 95% CI | P(v2 > v1) |")
+        print(f"| class | {args.label1} | {args.label2} | delta | 95% CI | P({args.label2} > {args.label1}) |")
         print("|---|---|---|---|---|---|")
         for c, (b1, b2, lo, hi, share) in per_class.items():
             print(f"| {c} | {b1:.1%} | {b2:.1%} | {b2 - b1:+.1%} "
