@@ -370,6 +370,50 @@ def associate(lesions, teeth):
     return output
 
 
+MISSING_TEETH_CONF = CONFIG.get("missing_teeth_conf", 0.30)
+
+
+def derive_missing_teeth(teeth, conf=MISSING_TEETH_CONF):
+    """Interior edentulous gaps from the detected FDI teeth.
+
+    A tooth is "missing" if its FDI slot is empty while detected teeth exist on
+    both sides of it inside the same quadrant -- an interior gap, i.e. a real
+    edentulous space. Third molars and arch edges are excluded because they are
+    ambiguous with agenesis and with cropping.
+
+    Zero training; F1 0.742 (P 0.699 / R 0.792) on the tooth detector's
+    held-out 94-image DENTEX split (see dentex_week3/missing_teeth_eval.py).
+    Advisory: it inherits the tooth detector's presence errors.
+    """
+    by_q = {}
+    for t in teeth:
+        if t["tooth_confidence"] < conf:
+            continue
+        q, tid = t["quadrant"], t["tooth_id"]
+        by_q.setdefault(q, {})
+        by_q[q][tid] = max(by_q[q].get(tid, 0.0), t["tooth_confidence"])
+
+    missing = []
+    for q in sorted(by_q):
+        present = by_q[q]
+        for t in range(2, 8):  # interior teeth 2..7 (third molar excluded)
+            if t in present:
+                continue
+            lower = [x for x in present if x < t]
+            higher = [x for x in present if x > t]
+            if lower and higher:
+                nl, nh = max(lower), min(higher)
+                missing.append({
+                    "quadrant": q,
+                    "tooth_id": t,
+                    "tooth": f"Tooth_{t}",
+                    "tooth_fdi": f"{q}{t}",
+                    "confidence": round(min(present[nl], present[nh]), 4),
+                    "bounded_by": [f"{q}{nl}", f"{q}{nh}"],
+                })
+    return missing
+
+
 def derive_quadrants(teeth):
     """Union of tooth boxes per FDI quadrant, for UI overlays."""
     by_q = {}
@@ -411,6 +455,8 @@ def run_dentex_pipeline(image, save_json=None):
         "quadrants": derive_quadrants(teeth),
         "detections": detections,
         "num_detections": len(detections),
+        "missing_teeth": derive_missing_teeth(teeth),
+        "missing_teeth_advisory": True,
         "model": {
             "tooth": CONFIG.get("tooth_model"),
             "disease": CONFIG.get("disease_model"),

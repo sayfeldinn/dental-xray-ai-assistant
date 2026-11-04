@@ -96,5 +96,6 @@
     "8": "Root Canal",
     "9": "Unerupted Wisdom",
     "10": "Apical Abscess"
-  }
+  },
+  "missing_teeth_conf": 0.3
 }
