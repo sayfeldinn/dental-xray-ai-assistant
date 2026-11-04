@@ -46,6 +46,20 @@ NOTEBOOKS = {
         "title": "DentalAI Findings Detector",
         "datasets": ["sayfeldin/dentalopg-1550-yolo", "sayfeldin/dentalai-ml-wheels"],
     },
+    "pathology_v4": {
+        "file": "10_train_pathology_v4.ipynb",
+        "id": "sayfeldin/dentalai-pathology-v4",
+        "title": "DentalAI Pathology v4",
+        # OralXrays comes from HuggingFace at train time
+        "internet": True,
+        "datasets": [
+            "truthisneverlinear/dentex-challenge-2023",
+            "sayfeldin/dentalai-ml-wheels",
+            "sayfeldin/romania-panoramic-14class",
+        ],
+        # mount the tooth detector output for the Romanian box conversion
+        "kernel_sources": ["sayfeldin/dentalai-tooth-detector"],
+    },
 }
 
 DATASETS = [
@@ -77,7 +91,7 @@ def main():
             "enable_internet": spec.get("internet", False),
             "dataset_sources": spec.get("datasets", DATASETS),
             "competition_sources": [],
-            "kernel_sources": [],
+            "kernel_sources": spec.get("kernel_sources", []),
             "model_sources": [],
         }, indent=2))
 
