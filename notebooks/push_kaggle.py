@@ -73,6 +73,15 @@ NOTEBOOKS = {
         ],
         "kernel_sources": ["sayfeldin/dentalai-tooth-detector"],
     },
+    "missing_teeth": {
+        "file": "14_train_missing_teeth.ipynb",
+        "id": "sayfeldin/dentalai-missing-teeth",
+        "title": "DentalAI Missing Teeth",
+        # ResNet18 ImageNet weights
+        "internet": True,
+        "datasets": ["truthisneverlinear/dentex-challenge-2023", "sayfeldin/dentalai-ml-wheels"],
+        "kernel_sources": ["sayfeldin/dentalai-tooth-detector"],
+    },
 }
 
 DATASETS = [
