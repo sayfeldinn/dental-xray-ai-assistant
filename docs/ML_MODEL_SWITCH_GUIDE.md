@@ -14,8 +14,9 @@ The shipped pipeline is two YOLO detectors joined by geometric association:
 ```
 panorama
   ├─ tooth detector   (32 classes, one per FDI tooth)   -> tooth boxes + numbers
-  └─ disease detector (4 classes)                        -> lesion boxes + labels
-              └─ association: IoU -> centre containment -> nearest centre
+  ├─ disease detector (4 classes)                        -> lesion boxes + labels
+  │           └─ association: IoU -> containment -> nearest centre
+  └─ findings detector (11 classes, advisory)            -> /findings only
 ```
 
 Both models are `yolov8s`, trained at 1024 px. The tooth detector labels every
@@ -44,12 +45,14 @@ unique images with 4 classes (caries, deep caries, periapical, impacted).
 |---|---|---|
 | `production/tooth_best.pt` | ~22 MB | 32 FDI classes, `imgsz=1024`, `conf=0.25` |
 | `production/disease_best.pt` | ~22 MB | 4 disease classes, `imgsz=1024`, `conf=0.20` |
+| `production/findings_best.pt` | ~22 MB | 11 advisory findings classes, `imgsz=640`, `conf=0.40` |
 | `production/pipeline_config.json` | small | class maps, thresholds, training provenance |
 
 Weights are **not committed** (gitignored). Fetch them with:
 
 ```bash
 KAGGLE_BIN=~/.local/bin/kaggle ./notebooks/fetch_weights.sh
+KAGGLE_BIN=~/.local/bin/kaggle ./notebooks/fetch_findings.sh   # advisory model
 ```
 
 `inference_pipeline.py` loads each model lazily on first use, so the API starts
@@ -81,6 +84,7 @@ uvicorn app:app --host 0.0.0.0 --port 8001 --reload
 |---|---|---|
 | `GET` | `/` | health check (`models_loaded`) |
 | `POST` | `/predict` | multipart image -> detections + quadrant boxes + report |
+| `POST` | `/findings` | advisory findings: missing teeth, BDR, fillings, crowns, ... |
 | `POST` | `/feedback/finding` | dentist correction for a single finding |
 | `POST` | `/feedback/report` | accept / edit a generated report |
 
@@ -100,7 +104,13 @@ uvicorn app:app --host 0.0.0.0 --port 8001 --reload
   }],
   "num_detections": 8,
   "model": {"tooth": "tooth_best.pt", "disease": "disease_best.pt",
-            "architecture": "tooth_detector+disease_detector"},
+            "architecture": "tooth_detector+disease_detector",
+            "findings": "findings_best.pt"},
+  "findings": [{
+    "finding_id": 6, "finding": "Missing Teeth", "confidence": 0.72,
+    "box": [x1, y1, x2, y2]
+  }],
+  "findings_advisory": true,
   "ai_generated_report": "..."
 }
 ```
@@ -108,11 +118,15 @@ uvicorn app:app --host 0.0.0.0 --port 8001 --reload
 `quadrants` is now **derived** from the tooth boxes (union per FDI quadrant)
 rather than produced by a coordinator model.
 
+`findings` is the advisory DentalOPG layer (see below); it never feeds the
+clinical report. Set `"findings_in_predict": false` in `pipeline_config.json`
+to omit it from `/predict`.
+
 ## Setup and testing
 
 ```bash
 # 1. weights
-ls -lh dentex_week3/production/*.pt      # tooth_best.pt, disease_best.pt
+ls -lh dentex_week3/production/*.pt      # tooth, disease, findings
 
 # 2. dependencies
 cd dentex_week3/api
@@ -140,6 +154,37 @@ curl -X POST http://localhost:8001/predict -F "file=@/path/to/panorama.png"
 
 This is identical to the DENTEX `category_id_3` order and to
 `pipeline_config.json`, so no remapping is needed anywhere in the stack.
+
+## Findings layer (advisory)
+
+`production/findings_best.pt` is a separate 11-class detector for what the
+DENTEX taxonomy does not cover: missing teeth, BDR, fillings, crowns, root
+canals, bridges, impacted/unerupted teeth, periapical abscess and
+periodontitis. It is appended to `/predict` as an advisory `findings` list
+(and is also available on its own `POST /findings` endpoint), but it never
+feeds the clinical report.
+
+| Split | Images | mAP@0.5 | mAP@0.5:0.95 |
+|---|---|---|---|
+| DentalOPG val | 303 | 61.9% | 25.1% |
+| DentalOPG test (held out) | 154 | 59.4% | 24.9% |
+
+Per-class test AP@0.5: Bridge 99.5%, Cap 94.7%, Unerupted Wisdom 78.3%,
+Horizontal Impaction 67.6%, Missing Teeth 65.4%, Periodontitis 55.5%,
+BDR 53.8%, Filling 50.9%, Apical Abscess 31.3%, Root Canal 28.1%,
+Distoangular Impaction 28.0%.
+
+The model is trained in `notebooks/08_train_findings_detector.ipynb` on
+DentalOPG 1550 (1,068 train / 303 val / 154 test, 640 px). Caries is excluded
+because the DENTEX detector already owns it, and "Normal Teeth" is excluded
+because its 5,076 boxes would teach the model to box every tooth.
+
+**Domain caveat.** DentalOPG is a different hospital population at 640×640.
+On the locked DENTEX 50 the model produces tooth-sized, anatomically plausible
+boxes, but there is no DENTEX ground truth for these findings, so accuracy
+there is unknown. That is why the response carries `"advisory": true` and why
+it is not merged into the diagnosis path. Do not present it as a diagnosis
+until it is validated on an external labelled set.
 
 ## Tooth numbering
 

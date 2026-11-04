@@ -79,5 +79,22 @@
     },
     "promotion_rule": "must beat the incumbent on mAP@0.5, Caries AP@0.5, tooth accuracy and joint accuracy",
     "promoted": "v3 on 2026-11-03 (v2 archived in archive/ml-v2/)"
+  },
+  "findings_model": "findings_best.pt",
+  "findings_in_predict": true,
+  "findings_imgsz": 640,
+  "findings_conf": 0.4,
+  "findings_map": {
+    "0": "BDR",
+    "1": "Bridge",
+    "2": "Cap",
+    "3": "Distoangular Impaction",
+    "4": "Filling",
+    "5": "Horizontal Impaction",
+    "6": "Missing Teeth",
+    "7": "Periodontitis",
+    "8": "Root Canal",
+    "9": "Unerupted Wisdom",
+    "10": "Apical Abscess"
   }
 }

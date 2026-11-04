@@ -54,6 +54,10 @@ TOOTH_CONF = CONFIG.get("tooth_conf", 0.25)
 DISEASE_CONF = CONFIG.get("disease_conf", 0.25)
 TOOTH_NMS_IOU = CONFIG.get("tooth_nms_iou", 0.6)
 
+FINDINGS_IMGSZ = CONFIG.get("findings_imgsz", 640)
+FINDINGS_CONF = CONFIG.get("findings_conf", 0.40)
+FINDINGS_MAP = {int(k): v for k, v in CONFIG.get("findings_map", {}).items()}
+
 
 # ----------------------------------------------------------------------
 # Image handling
@@ -168,6 +172,38 @@ def detect_diseases(image):
 
 
 # ----------------------------------------------------------------------
+# Optional stage — restorations / missing teeth (advisory)
+# ----------------------------------------------------------------------
+
+def detect_findings(image):
+    """Return restoration and dentition findings from the DentalOPG model.
+
+    The model is trained and validated on DentalOPG only, and there is no
+    DENTEX ground truth for missing teeth, BDR, fillings or crowns. Its output
+    is advisory, is flagged with ``findings_advisory`` in ``/predict``, and
+    never feeds the clinical report.
+    """
+    if not CONFIG.get("findings_model"):
+        return []
+    result = _model("findings").predict(source=image, imgsz=FINDINGS_IMGSZ,
+                                        conf=FINDINGS_CONF, verbose=False)[0]
+    if result.boxes is None:
+        return []
+
+    findings = []
+    for box in result.boxes:
+        idx = int(box.cls[0].item())
+        x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
+        findings.append({
+            "finding_id": idx,
+            "finding": FINDINGS_MAP.get(idx, f"Unknown_{idx}"),
+            "confidence": float(box.conf[0].item()),
+            "box": [x1, y1, x2, y2],
+        })
+    return findings
+
+
+# ----------------------------------------------------------------------
 # Stage 3 — association
 # ----------------------------------------------------------------------
 
@@ -254,7 +290,37 @@ def run_dentex_pipeline(image, save_json=None):
         },
     }
 
+    # Advisory layer: never let a missing findings weight break /predict.
+    if CONFIG.get("findings_in_predict", False):
+        try:
+            output["findings"] = detect_findings(image)
+        except Exception as exc:
+            output["findings"] = []
+            output["findings_error"] = str(exc)
+        output["findings_advisory"] = True
+        output["model"]["findings"] = CONFIG.get("findings_model")
+
     if save_json is not None:
         with open(save_json, "w") as fh:
             json.dump(output, fh, indent=2)
     return output
+
+
+def run_findings(image):
+    """Run the advisory findings model only (no tooth/disease detectors).
+
+    The same boxes are appended to ``/predict`` when ``findings_in_predict`` is
+    enabled; this entry point exists for clients that want findings alone and
+    for isolating the model during validation.
+    """
+    image = load_image_array(image)
+    height, width = image.shape[:2]
+    findings = detect_findings(image)
+    return {
+        "image_width": int(width),
+        "image_height": int(height),
+        "findings": findings,
+        "num_findings": len(findings),
+        "model": {"findings": CONFIG.get("findings_model")},
+        "advisory": True,
+    }

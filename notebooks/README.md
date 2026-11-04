@@ -9,8 +9,9 @@ detector is v3.
 ```
 panorama
   ├─ tooth detector (32 FDI classes)  -> tooth boxes + numbers
-  └─ disease detector (4 classes)     -> lesion boxes + labels
-              └─ association by IoU / centre containment / nearest centre
+  ├─ disease detector (4 classes)     -> lesion boxes + labels
+  │           └─ association by IoU / centre containment / nearest centre
+  └─ findings detector (11 classes)   -> /findings only (advisory)
 ```
 
 This replaces v1's quadrant coordinator + random-forest tooth assignment.
@@ -28,6 +29,7 @@ This replaces v1's quadrant coordinator + random-forest tooth assignment.
 | 06 | `06_train_pathology_v3.ipynb` | Kaggle GPU | paced OralXrays download, merge, v3 training |
 | 07 | `07_evaluate_v3.ipynb` | local | v3 on the locked 50, v1/v2/v3 table, significance |
 | 08 | `08_train_findings_detector.ipynb` | Kaggle GPU | 11-class findings detector (missing, BDR, filling, crown, RCT, ...) |
+| 09 | `09_evaluate_findings.ipynb` | local | findings held-out test (154) + locked-50 domain-shift sanity |
 
 `dentex_data.py` is dependency-free, so notebooks 02 and 03/04 produce
 **identical splits** from the same seed. The notebooks assert the expected
@@ -61,6 +63,11 @@ KAGGLE_BIN=~/.local/bin/kaggle ./fetch_v3.sh
 
 # 3. evaluate locally
 python 07_evaluate_v3.ipynb   # or run its cells
+
+# findings detector (separate model, same pattern)
+python push_kaggle.py --only findings
+KAGGLE_BIN=~/.local/bin/kaggle ./fetch_findings.sh
+python 09_evaluate_findings.ipynb
 ```
 
 Training notebooks disable flips and mosaic for the tooth detector: FDI labels
@@ -77,3 +84,17 @@ are position-dependent, so mirroring would silently swap quadrants.
 | Joint accuracy | 66.4% | 80.0% | **82.8%** |
 | Caries AP@0.5 | 28.2% | 33.3% | **35.3%** |
 | Periapical AP@0.5 | 42.9% | 37.5% | **55.6%** |
+
+## Findings detector (advisory, not part of the locked-50 judge)
+
+DentalOPG 1550, 640 px, 40 epochs. Exposed as `POST /findings` with
+`"advisory": true`; it does not change `/predict` or the table above.
+
+| Split | Images | mAP@0.5 | mAP@0.5:0.95 | Missing Teeth AP | BDR AP |
+|---|---|---|---|---|---|
+| DentalOPG val | 303 | 61.9% | 25.1% | 72.0% | 64.3% |
+| DentalOPG test | 154 | 59.4% | 24.9% | 65.4% | 53.8% |
+
+DentalOPG is a different hospital population, and there is no DENTEX ground
+truth for these classes. Locked-50 boxes are tooth-sized and plausible, but
+accuracy there is unverified — hence advisory-only.
