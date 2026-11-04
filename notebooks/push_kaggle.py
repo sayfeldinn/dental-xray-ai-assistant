@@ -60,6 +60,19 @@ NOTEBOOKS = {
         # mount the tooth detector output for the Romanian box conversion
         "kernel_sources": ["sayfeldin/dentalai-tooth-detector"],
     },
+    "caries_verifier": {
+        "file": "13_train_caries_verifier.ipynb",
+        "id": "sayfeldin/dentalai-caries-verifier",
+        "title": "DentalAI Caries Verifier",
+        # ResNet18 ImageNet weights + Romanian Zenodo fallback need internet
+        "internet": True,
+        "datasets": [
+            "truthisneverlinear/dentex-challenge-2023",
+            "sayfeldin/dentalai-ml-wheels",
+            "sayfeldin/romania-panoramic-14class",
+        ],
+        "kernel_sources": ["sayfeldin/dentalai-tooth-detector"],
+    },
 }
 
 DATASETS = [

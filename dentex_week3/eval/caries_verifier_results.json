@@ -1,0 +1,64 @@
+{
+  "experiment": "caries verifier (tooth-crop re-ranker)",
+  "date": "2026-11-04",
+  "verifier": {
+    "architecture": "resnet18 binary, 224 px tooth crop",
+    "kernel": "sayfeldin/dentalai-caries-verifier",
+    "best_val_auc": 0.8432,
+    "val": {"sens": 0.934, "spec": 0.537, "n": 3053},
+    "train": {"pos": 5375, "hard_neg": 5364, "easy_neg": 1623},
+    "hard_negatives": "Romanian OBT/END/PRR restoration teeth",
+    "threshold_selected_on": "held-out 107-image DENTEX split, not the locked 50",
+    "threshold_criterion": "max held-out Caries AP while keeping >=70% of detected caries TPs",
+    "selected_threshold": 0.9
+  },
+  "heldout_107_caries_ap": {
+    "baseline": 0.3707,
+    "gate_0.5": 0.3784,
+    "gate_0.7": 0.3910,
+    "gate_0.8": 0.3918,
+    "gate_0.9": 0.4083
+  },
+  "locked50": {
+    "baseline_v3": {
+      "mAP50": 0.542, "mAP50_95": 0.382, "precision": 0.446, "recall": 0.742,
+      "caries_ap50": 0.353, "caries_precision": 0.353, "caries_recall": 0.703,
+      "deep_caries_ap50": 0.511, "disease": 0.890, "tooth": 0.917, "joint": 0.828
+    },
+    "gate_0.7": {
+      "mAP50": 0.568, "mAP50_95": 0.401, "recall": 0.725,
+      "caries_ap50": 0.391, "caries_precision": 0.391, "caries_recall": 0.673,
+      "deep_caries_ap50": 0.575, "disease": 0.906, "tooth": 0.914, "joint": 0.842
+    },
+    "gate_0.9": {
+      "mAP50": 0.596, "mAP50_95": 0.428, "precision": 0.547, "recall": 0.703,
+      "caries_ap50": 0.462, "caries_precision": 0.462, "caries_recall": 0.653,
+      "deep_caries_ap50": 0.618, "disease": 0.911, "tooth": 0.911, "joint": 0.844
+    }
+  },
+  "paired_significance_vs_v3": {
+    "gate_0.7": {
+      "mAP50": [0.025, 0.011, 0.047],
+      "caries_ap50": [0.038, 0.010, 0.069],
+      "deep_caries_ap50": [0.064, 0.016, 0.138],
+      "recall": [-0.016, -0.037, 0.000],
+      "tooth_end_to_end": [-0.033, -0.060, -0.011],
+      "joint_end_to_end": [-0.016, -0.037, 0.000]
+    },
+    "gate_0.9": {
+      "mAP50": [0.054, 0.031, 0.084],
+      "caries_ap50": [0.108, 0.067, 0.153],
+      "deep_caries_ap50": [0.107, 0.033, 0.197],
+      "recall": [-0.038, -0.069, -0.013],
+      "tooth_end_to_end": [-0.055, -0.087, -0.027],
+      "joint_end_to_end": [-0.033, -0.063, -0.010]
+    }
+  },
+  "verdict": "NOT PROMOTED",
+  "reason": "beats v3 on mAP@0.5, Caries AP and joint (conditioned) but not on tooth accuracy (91.1% vs 91.7%) and significantly reduces end-to-end tooth/joint and recall; it is a precision/recall operating-point knob, not a free improvement",
+  "code": {
+    "train": "notebooks/13_train_caries_verifier.ipynb",
+    "threshold": "dentex_week3/pick_caries_threshold.py",
+    "integration": "production/inference_pipeline.py apply_caries_verifier (config caries_verifier, disabled by default)"
+  }
+}

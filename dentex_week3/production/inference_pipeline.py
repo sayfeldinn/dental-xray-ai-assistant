@@ -172,6 +172,129 @@ def detect_diseases(image):
 
 
 # ----------------------------------------------------------------------
+# Optional stage — caries verifier (tooth-crop re-ranker)
+# ----------------------------------------------------------------------
+
+_VERIFIER = {}
+CARIES_TARGETS = ("Caries", "Deep Caries")
+VERIFIER_SIZE = 224
+VERIFIER_PAD = 0.10
+
+
+def _verifier_config():
+    """Config block, overridable for experiments with
+    DENTEX_CARIES_VERIFIER=/abs/path/verifier.pt[:alpha|gate:threshold]."""
+    env = os.environ.get("DENTEX_CARIES_VERIFIER")
+    if env:
+        parts = env.split(":")
+        cfg = {"enabled": True, "model": parts[0]}
+        if len(parts) > 1 and parts[1] == "gate":
+            cfg["mode"] = "gate"
+            cfg["threshold"] = float(parts[2]) if len(parts) > 2 else 0.5
+        elif len(parts) > 1:
+            cfg["alpha"] = float(parts[1] or 1.0)
+        return cfg
+    return CONFIG.get("caries_verifier", {})
+
+
+def _load_verifier(cfg):
+    if "model" in _VERIFIER:
+        return _VERIFIER["model"]
+    import torch
+
+    from torchvision import models
+
+    path = cfg["model"]
+    if not os.path.isabs(path):
+        path = os.path.join(MODEL_DIR, path)
+    ckpt = torch.load(path, map_location="cpu")
+    model = models.resnet18(weights=None)
+    model.fc = torch.nn.Linear(model.fc.in_features, 2)
+    model.load_state_dict(ckpt["state_dict"])
+    model.eval()
+    _VERIFIER["model"] = (model, ckpt)
+    return _VERIFIER["model"]
+
+
+def _crop_tooth(image, tb, size=VERIFIER_SIZE, pad=VERIFIER_PAD):
+    from PIL import Image as _Image
+
+    x1, y1, x2, y2 = tb
+    w, h = x2 - x1, y2 - y1
+    x1, x2 = x1 - pad * w, x2 + pad * w
+    y1, y2 = y1 - pad * h, y2 + pad * h
+    x1, y1 = max(0, x1), max(0, y1)
+    x2, y2 = min(image.shape[1], x2), min(image.shape[0], y2)
+    if x2 - x1 < 8 or y2 - y1 < 8:
+        return None
+    im = _Image.fromarray(image[int(y1):int(y2), int(x1):int(x2)])
+    return im.resize((size, size), _Image.BILINEAR)
+
+
+def apply_caries_verifier(lesions, teeth, image):
+    """Down-weight caries detections whose tooth crop looks caries-free.
+
+    confidence *= p_verifier ** alpha. This only re-ranks: the detector and
+    the association logic are untouched. No-op when disabled or no teeth.
+    """
+    cfg = _verifier_config()
+    if not cfg.get("enabled") or not cfg.get("model") or not teeth or not lesions:
+        return lesions
+    targets = [l for l in lesions if l["disease"] in CARIES_TARGETS]
+    if not targets:
+        return lesions
+
+    crops = []
+    for lesion in targets:
+        lbox = lesion["box"]
+        center = _center(lbox)
+        best = max(teeth, key=lambda t: _iou(lbox, t["box"]))
+        if _iou(lbox, best["box"]) <= 0.0:
+            containing = [t for t in teeth if _contains(t["box"], center)]
+            if containing:
+                best = min(containing, key=lambda t: (t["box"][2] - t["box"][0]) *
+                           (t["box"][3] - t["box"][1]))
+            else:
+                best = min(teeth, key=lambda t: (_center(t["box"])[0] - center[0]) ** 2 +
+                           (_center(t["box"])[1] - center[1]) ** 2)
+        crops.append(_crop_tooth(image, best["box"]))
+
+    valid = [(l, c) for l, c in zip(targets, crops) if c is not None]
+    if not valid:
+        return lesions
+
+    import torch
+    from torchvision import transforms
+
+    model, ckpt = _load_verifier(cfg)
+    mean = ckpt.get("mean", (0.485, 0.456, 0.406))
+    std = ckpt.get("std", (0.229, 0.224, 0.225))
+    tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
+    batch = torch.stack([tf(c) for _, c in valid])
+    with torch.no_grad():
+        probs = torch.softmax(model(batch), 1)[:, 1].tolist()
+
+    mode = cfg.get("mode", "scale")
+    alpha = float(cfg.get("alpha", 1.0))
+    threshold = float(cfg.get("threshold", 0.0))
+
+    if mode == "gate":
+        # drop caries detections the verifier thinks are caries-free
+        drop = {id(l) for (l, _), p in zip(valid, probs)
+                if p < threshold and l["disease"] in CARIES_TARGETS}
+        kept = [l for l in lesions if id(l) not in drop]
+        for (l, _), p in zip(valid, probs):
+            l["caries_verifier_p"] = float(p)
+        return kept
+
+    for (lesion, _), p in zip(valid, probs):
+        lesion["disease_confidence"] = float(lesion["disease_confidence"] * p ** alpha)
+        lesion["caries_verifier_p"] = float(p)
+    return lesions
+
+
+
+# ----------------------------------------------------------------------
 # Optional stage — restorations / missing teeth (advisory)
 # ----------------------------------------------------------------------
 
@@ -275,6 +398,11 @@ def run_dentex_pipeline(image, save_json=None):
 
     teeth = detect_teeth(image)
     lesions = detect_diseases(image)
+    # Optional caries re-ranker; never let a missing verifier break /predict.
+    try:
+        lesions = apply_caries_verifier(lesions, teeth, image)
+    except Exception:
+        pass
     detections = associate(lesions, teeth)
 
     output = {

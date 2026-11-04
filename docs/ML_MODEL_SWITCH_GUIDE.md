@@ -323,6 +323,51 @@ Periapical 34.6%, Caries 17.7%), and the findings model 11.8% with
 class-mapped GT. Neither model transfers to a new hospital without local
 re-annotation, which is why the findings layer remains advisory.
 
+### Caries verifier (optional, not promoted, 2026-11-04)
+
+Caries is localised well by v3 (96% of the locked-50 caries are hit at IoU 0.5)
+but ranked poorly (35% precision). A binary ResNet18 was trained on
+**tooth crops** to score each caries detection: positives are teeth containing
+caries/deep caries; negatives are healthy teeth plus Romanian restoration teeth
+(`OBT`/`END`/`PRR`) as hard negatives. Held-out DENTEX val AUC 0.843
+(`notebooks/13_train_caries_verifier.ipynb`).
+
+It is used as a **gate**: Caries / Deep Caries detections whose crop score is
+below a threshold are dropped. The threshold (0.9) was chosen on the held-out
+107-image DENTEX split, never on the locked 50.
+
+| Metric | v3 | gate 0.7 | gate 0.9 |
+|---|---|---|---|
+| mAP@0.5 | 54.2% | 56.8% | **59.6%** |
+| mAP@0.5:0.95 | 38.2% | 40.1% | **42.8%** |
+| Precision | 44.6% | – | **54.7%** |
+| Recall | 74.2% | 72.5% | 70.3% |
+| Caries AP@0.5 | 35.3% | 39.1% | **46.2%** |
+| Caries precision | 35.3% | 39.1% | **46.2%** |
+| Caries recall | 70.3% | 67.3% | 65.3% |
+| Deep Caries AP@0.5 | 51.1% | 57.5% | **61.8%** |
+| Disease accuracy | 89.0% | 90.6% | **91.1%** |
+| Tooth accuracy | **91.7%** | 91.4% | 91.1% |
+| Joint accuracy | 82.8% | 84.2% | **84.4%** |
+
+Paired over the 50 images, mAP (+5.4 pp [+3.1, +8.4]) and Caries AP
+(+10.8 pp [+6.7, +15.3]) improve **significantly**, but recall (−3.8 pp) and
+end-to-end tooth (−5.5 pp) and joint (−3.3 pp) drop **significantly**. The gate
+trades recall for precision; it raises AP, which rewards a clean top of the
+ranking, but removes real detections.
+
+Per the promotion rule it does not ship: it does not beat v3 on tooth accuracy
+(91.1% vs 91.7%, conditioned on matched lesions) and the more clinically
+meaningful end-to-end joint falls. The code is wired but **off by default**
+(`caries_verifier.enabled = false` in `pipeline_config.json`). To try it::
+
+    ./notebooks/fetch_caries_verifier.sh
+    DENTEX_CARIES_VERIFIER=/tmp/opencode/kaggle_out_verifier/caries_verifier.pt:gate:0.7 \
+      python dentex_week3/evaluate.py --local --images-dir ... --gt ...
+
+`mode: "scale"` (confidence `*= p^alpha`) is also supported but does not change
+AP, because it preserves the confidence ordering.
+
 ### Inference time
 
 Measured on CPU (16-core) with `imgsz=1024`: ~0.25 s per image per model,

@@ -33,6 +33,7 @@ This replaces v1's quadrant coordinator + random-forest tooth assignment.
 | 10 | `10_train_pathology_v4.ipynb` | Kaggle GPU | v4 (rejected): DENTEX + OralXrays + converted Romanian |
 | 11 | `11_evaluate_v4.ipynb` | local | v4 on the locked 50, v1-v4 table, significance |
 | 12 | `12_cross_hospital.ipynb` | local | Romanian external split: disease + findings transfer |
+| 13 | `13_train_caries_verifier.ipynb` | Kaggle GPU | caries tooth-crop verifier (optional, not promoted) |
 
 `dentex_data.py` is dependency-free, so notebooks 02 and 03/04 produce
 **identical splits** from the same seed. The notebooks assert the expected
@@ -82,6 +83,11 @@ python 11_evaluate_v4.ipynb
 
 # cross-hospital check on the Romanian external split
 python 12_cross_hospital.ipynb
+
+# caries tooth-crop verifier (optional precision knob; not promoted)
+python push_kaggle.py --only caries_verifier
+KAGGLE_BIN=~/.local/bin/kaggle ./fetch_caries_verifier.sh
+python 13_train_caries_verifier.ipynb
 ```
 
 Training notebooks disable flips and mosaic for the tooth detector: FDI labels
