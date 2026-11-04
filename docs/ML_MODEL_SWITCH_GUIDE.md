@@ -105,6 +105,10 @@ uvicorn app:app --host 0.0.0.0 --port 8001 --reload
     "box": [x1, y1, x2, y2]
   }],
   "num_detections": 8,
+  "missing_teeth": [{"quadrant": 1, "tooth_id": 6, "tooth": "Tooth_6",
+                     "tooth_fdi": "16", "confidence": 0.71,
+                     "bounded_by": ["15", "17"]}],
+  "missing_teeth_advisory": true,
   "model": {"tooth": "tooth_best.pt", "disease": "disease_best.pt",
             "architecture": "tooth_detector+disease_detector",
             "findings": "findings_best.pt"},
@@ -367,6 +371,33 @@ meaningful end-to-end joint falls. The code is wired but **off by default**
 
 `mode: "scale"` (confidence `*= p^alpha`) is also supported but does not change
 AP, because it preserves the confidence ordering.
+
+### Missing teeth (derived, advisory, 2026-11-05)
+
+DENTEX enumerates every visible tooth as (quadrant, tooth 1-8), so a missing
+tooth can be **derived**: an FDI slot is empty while detected teeth exist on
+both sides of it in the same quadrant — an interior gap, i.e. a real edentulous
+space. Third molars and arch edges are excluded (ambiguous with agenesis and
+with cropping).
+
+Zero training: it reads the same 32-class tooth detector output as the rest of
+the pipeline. On the detector's held-out 94-image split it scores
+**P 69.9% / R 79.2% / F1 74.2%** over interior gaps (120 GT across 94 images;
+`dentex_week3/missing_teeth_eval.py`). Rule alternatives (direct adjacency,
+gap-size caps, including third molars, neighbour-confidence floors) were all
+worse or equal (`missing_teeth_rules.py`). Presence threshold `missing_teeth_conf
+= 0.30` in `pipeline_config.json`.
+
+`/predict` returns it as `missing_teeth` (FDI, confidence, bounding teeth) with
+`missing_teeth_advisory: true`. It inherits the tooth detector's presence
+errors, so it is advisory and deliberately excludes third molars and edge
+teeth.
+
+The official locked 50 cannot supply missing-teeth ground truth: its
+`validation_triple.json` annotates only the 182 diseased teeth, not the full
+enumeration. This is the first measured, reproducible number for a
+missing-teeth feature (the DentalOPG findings model's Missing Teeth class is
+still unvalidated on DENTEX).
 
 ### Inference time
 

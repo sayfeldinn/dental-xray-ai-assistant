@@ -10,6 +10,7 @@ This is the API wrapper for the Week 3 production pipeline, which includes the A
    - Generates and returns an **AI Clinical Report** in plain text based on the detected clinical facts.
    - Returns the raw bounding box data alongside the report.
    - Also appends an advisory `findings` list (`findings_advisory: true`) from the DentalOPG model.
+   - Also appends `missing_teeth` (`missing_teeth_advisory: true`), derived from the FDI teeth (interior gaps only; F1 0.74 on the DENTEX held-out 94).
 
 2. **`POST /findings`**
    - Upload a panoramic X-ray image.
