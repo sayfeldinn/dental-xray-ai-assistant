@@ -30,8 +30,9 @@ This replaces v1's quadrant coordinator + random-forest tooth assignment.
 | 07 | `07_evaluate_v3.ipynb` | local | v3 on the locked 50, v1/v2/v3 table, significance |
 | 08 | `08_train_findings_detector.ipynb` | Kaggle GPU | 11-class findings detector (missing, BDR, filling, crown, RCT, ...) |
 | 09 | `09_evaluate_findings.ipynb` | local | findings held-out test (154) + locked-50 domain-shift sanity |
-| 10 | `10_train_pathology_v4.ipynb` | Kaggle GPU | v4 candidate: DENTEX + OralXrays + converted Romanian |
+| 10 | `10_train_pathology_v4.ipynb` | Kaggle GPU | v4 (rejected): DENTEX + OralXrays + converted Romanian |
 | 11 | `11_evaluate_v4.ipynb` | local | v4 on the locked 50, v1-v4 table, significance |
+| 12 | `12_cross_hospital.ipynb` | local | Romanian external split: disease + findings transfer |
 
 `dentex_data.py` is dependency-free, so notebooks 02 and 03/04 produce
 **identical splits** from the same seed. The notebooks assert the expected
@@ -72,11 +73,15 @@ python push_kaggle.py --only findings
 KAGGLE_BIN=~/.local/bin/kaggle ./fetch_findings.sh
 python 09_evaluate_findings.ipynb
 
-# v4 candidate (adds the Romanian hospital; lesion boxes converted to
-# DENTEX-style tooth boxes with the production tooth detector)
+# v4 (rejected 2026-11-04; it lost Caries/tooth/joint on the locked 50)
+# adds the Romanian hospital; lesion boxes are converted to DENTEX-style
+# tooth boxes with the production tooth detector
 python push_kaggle.py --only pathology_v4
 KAGGLE_BIN=~/.local/bin/kaggle ./fetch_v4.sh
 python 11_evaluate_v4.ipynb
+
+# cross-hospital check on the Romanian external split
+python 12_cross_hospital.ipynb
 ```
 
 Training notebooks disable flips and mosaic for the tooth detector: FDI labels

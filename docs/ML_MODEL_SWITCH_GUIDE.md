@@ -3,20 +3,22 @@
 > **Current models as of 2026-11-03.** The disease detector is v3, trained on
 > 9,848 unique panoramas (DENTEX + OralXrays). v2 is archived in
 > `archive/ml-v2/`, and the v1 coordinator + random-forest pipeline in
-> `archive/ml-v1/` (tag `ml-v1-baseline`). See `notebooks/README.md` for how the
-> models are trained and `dentex_week3/eval/evaluation_report_v3.md` for the
-> full benchmark.
+> `archive/ml-v1/` (tag `ml-v1-baseline`). A Romanian-augmented v4 was trained
+> and rejected on 2026-11-04 (it lost Caries, tooth and joint accuracy on the
+> locked 50); see "Candidate v4" below. `notebooks/README.md` covers training
+> and `dentex_week3/eval/evaluation_report_v3.md` has the full benchmark.
 
 ## Overview
 
-The shipped pipeline is two YOLO detectors joined by geometric association:
+The shipped pipeline is two clinical YOLO detectors joined by geometric
+association, plus an advisory findings model:
 
 ```
 panorama
   ├─ tooth detector   (32 classes, one per FDI tooth)   -> tooth boxes + numbers
   ├─ disease detector (4 classes)                        -> lesion boxes + labels
   │           └─ association: IoU -> containment -> nearest centre
-  └─ findings detector (11 classes, advisory)            -> /findings only
+  └─ findings detector (11 classes, advisory)            -> /predict + /findings
 ```
 
 Both models are `yolov8s`, trained at 1024 px. The tooth detector labels every
