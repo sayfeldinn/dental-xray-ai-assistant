@@ -182,9 +182,16 @@ because its 5,076 boxes would teach the model to box every tooth.
 **Domain caveat.** DentalOPG is a different hospital population at 640×640.
 On the locked DENTEX 50 the model produces tooth-sized, anatomically plausible
 boxes, but there is no DENTEX ground truth for these findings, so accuracy
-there is unknown. That is why the response carries `"advisory": true` and why
-it is not merged into the diagnosis path. Do not present it as a diagnosis
-until it is validated on an external labelled set.
+there is unknown. A cross-hospital check on the Romanian external split
+(Zenodo 15487430, 176 images), mapping each Romanian class to its nearest
+DentalOPG equivalent, scored mAP@0.5 11.8% (Cap 31.7%, Filling 23.1%; root
+canal, periodontitis and impaction 0). The Romanian restoration and
+endodontic boxes are lesion-level while DentalOPG's are tooth-level, so this
+is a lower bound rather than a like-for-like score; it nonetheless shows the
+model does not transfer to a new hospital without re-annotation. That is why
+the response carries `"advisory": true`, why it is not merged into the
+diagnosis path, and why it must not be presented as a diagnosis until it is
+validated on an external labelled set with matching box definitions.
 
 ## Tooth numbering
 
