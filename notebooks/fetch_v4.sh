@@ -12,6 +12,10 @@ mkdir -p "$STAGE/pathology_v4"
 echo "==> downloading pathology v4 run"
 "$KAGGLE_BIN" kernels output sayfeldin/dentalai-pathology-v4 -p "$STAGE/pathology_v4"
 
+# The run output may also contain the Zenodo fallback romania.zip (~1.4 GB).
+# It is not needed for evaluation.
+rm -f "$STAGE/pathology_v4/romania.zip" "$STAGE/pathology_v4"/*.kaggle-partial
+
 echo "==> artifacts"
 ls -lh "$STAGE/pathology_v4"
 

@@ -184,8 +184,8 @@ On the locked DENTEX 50 the model produces tooth-sized, anatomically plausible
 boxes, but there is no DENTEX ground truth for these findings, so accuracy
 there is unknown. A cross-hospital check on the Romanian external split
 (Zenodo 15487430, 176 images), mapping each Romanian class to its nearest
-DentalOPG equivalent, scored mAP@0.5 11.8% (Cap 31.7%, Filling 23.1%; root
-canal, periodontitis and impaction 0). The Romanian restoration and
+DentalOPG equivalent, scored mAP@0.5 11.8% (horizontal impaction 31.7%, root
+canal 23.1%, filling 9.9%, cap 6.0%, periodontitis and apical abscess 0). The Romanian restoration and
 endodontic boxes are lesion-level while DentalOPG's are tooth-level, so this
 is a lower bound rather than a like-for-like score; it nonetheless shows the
 model does not transfer to a new hospital without re-annotation. That is why
@@ -276,6 +276,50 @@ lesions, tooth accuracy is essentially tied (91.7% vs 91.5%); v3's end-to-end
 tooth gain (+7.7 pp) comes from detecting more lesions, not from better tooth
 assignment. The end-to-end rates over all 182 ground-truth lesions are
 73.1% / 65.9%, which is the more clinically meaningful number.
+
+### Candidate v4 (rejected, 2026-11-04)
+
+v4 added the Romanian 14-class dataset (Zenodo 15487430) to v3's training mix.
+Romanian caries/apical labels are tight lesion boxes, so each was converted to
+its smallest containing tooth box with the production tooth detector (99%
+containment; converted median area 1.18% vs 1.21% in DENTEX). 1,304 images /
+3,738 converted boxes were added, and the DENTEX val split was unchanged.
+
+Validation (107 DENTEX images) improved: mAP@0.5 62.5% -> 65.7%,
+mAP@0.5:0.95 41.9% -> 43.4%, Periapical 41.6% -> 51.8%, Caries 52.0% -> 51.7%.
+The locked 50 did not:
+
+| Metric | v3 | v4 | Δ |
+|---|---|---|---|
+| mAP@0.5 | 54.2% | 55.1% | +0.9 |
+| mAP@0.5:0.95 | 38.2% | 41.6% | +3.4 |
+| Precision | 44.6% | 45.0% | +0.4 |
+| Recall | 74.2% | 71.4% | -2.8 |
+| Disease accuracy | 89.0% | 86.4% | -2.6 |
+| Tooth accuracy | 91.7% | 91.4% | -0.3 |
+| Joint accuracy | 82.8% | 78.6% | -4.2 |
+| Caries AP@0.5 | 35.3% | 34.2% | -1.1 |
+| Periapical AP@0.5 | 55.6% | 50.0% | -5.6 |
+| Deep Caries AP@0.5 | 51.1% | 63.6% | +12.5 |
+
+Paired bootstrap: joint -5.5 pp [-11.3, +0.6], P(v4 > v3) = 0.029; Caries
+-1.1 pp [-5.9, +3.2], not significant; per-lesion McNemar joint p = 0.076.
+v4 improved localisation (mAP@0.5:0.95) and Deep Caries, but became more
+conservative (recall -2.8 pp), which costs clinically meaningful joint
+accuracy. It fails the promotion rule on Caries, tooth and joint, so v3 stays.
+
+The weights are kept out of `production/`; the run is reproducible with
+`notebooks/10_train_pathology_v4.ipynb` and `11_evaluate_v4.ipynb`. This is a
+real domain trade-off, not a bug: the same conversion that makes Romanian
+boxes DENTEX-shaped also teaches the model a slightly different box scale and
+a more conservative confidence profile.
+
+`notebooks/12_cross_hospital.ipynb` adds the external check. On the Romanian
+external split (a hospital neither model trained on), the shipped v3 disease
+detector scores mAP@0.5 43.3% with tooth-converted GT (Impacted 77.7%,
+Periapical 34.6%, Caries 17.7%), and the findings model 11.8% with
+class-mapped GT. Neither model transfers to a new hospital without local
+re-annotation, which is why the findings layer remains advisory.
 
 ### Inference time
 
