@@ -27,6 +27,7 @@ This replaces v1's quadrant coordinator + random-forest tooth assignment.
 | 05 | `05_assemble_and_evaluate.ipynb` | local | v2 pipeline on the locked 50, v1-vs-v2 table |
 | 06 | `06_train_pathology_v3.ipynb` | Kaggle GPU | paced OralXrays download, merge, v3 training |
 | 07 | `07_evaluate_v3.ipynb` | local | v3 on the locked 50, v1/v2/v3 table, significance |
+| 08 | `08_train_findings_detector.ipynb` | Kaggle GPU | 11-class findings detector (missing, BDR, filling, crown, RCT, ...) |
 
 `dentex_data.py` is dependency-free, so notebooks 02 and 03/04 produce
 **identical splits** from the same seed. The notebooks assert the expected
@@ -42,6 +43,7 @@ Source data lives outside the repo (read-only), default
 | Tooth detector | `quadrant_enumeration` | 634 | 18,095 |
 | Disease detector (v2) | `quadrant-enumeration-disease` | 705 | 3,529 |
 | Disease detector (v3) | DENTEX + OralXrays | 9,848 unique (10,120 with oversampling) | 40,985 |
+| Findings detector | DentalOPG 1550 (Roboflow) | 1,068 train / 303 val | 3,861 train / 1,110 val (11 classes) |
 | Locked final judge | official `validation_data` | 50 | 182 |
 
 The 50-image validation set is never trained on and never used for model
