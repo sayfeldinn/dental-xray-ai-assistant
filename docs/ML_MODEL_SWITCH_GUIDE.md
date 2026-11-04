@@ -372,32 +372,37 @@ meaningful end-to-end joint falls. The code is wired but **off by default**
 `mode: "scale"` (confidence `*= p^alpha`) is also supported but does not change
 AP, because it preserves the confidence ordering.
 
-### Missing teeth (derived, advisory, 2026-11-05)
+### Missing teeth (derived + classifier, advisory, 2026-11-05)
 
 DENTEX enumerates every visible tooth as (quadrant, tooth 1-8), so a missing
-tooth can be **derived**: an FDI slot is empty while detected teeth exist on
-both sides of it in the same quadrant — an interior gap, i.e. a real edentulous
+tooth can be derived: an FDI slot is empty while detected teeth exist on both
+sides of it in the same quadrant — an interior gap, i.e. a real edentulous
 space. Third molars and arch edges are excluded (ambiguous with agenesis and
-with cropping).
+cropping).
 
-Zero training: it reads the same 32-class tooth detector output as the rest of
-the pipeline. On the detector's held-out 94-image split it scores
-**P 69.9% / R 79.2% / F1 74.2%** over interior gaps (120 GT across 94 images;
-`dentex_week3/missing_teeth_eval.py`). Rule alternatives (direct adjacency,
-gap-size caps, including third molars, neighbour-confidence floors) were all
-worse or equal (`missing_teeth_rules.py`). Presence threshold `missing_teeth_conf
-= 0.30` in `pipeline_config.json`.
+The plain rule scores **F1 0.733** (P 0.733 / R 0.733) on the tooth detector's
+held-out 94-image split. A **ResNet18 gap-vs-tooth classifier** then validates
+each candidate gap crop, lifting it to **F1 0.796** (P 0.896 / R 0.717) on the
+same split; a split-half check that selects the threshold on one half and
+scores the other gives **F1 ~0.80**, so the gain is not threshold-tuning. The
+classifier's own validation AUC is 0.93.
 
-`/predict` returns it as `missing_teeth` (FDI, confidence, bounding teeth) with
-`missing_teeth_advisory: true`. It inherits the tooth detector's presence
-errors, so it is advisory and deliberately excludes third molars and edge
-teeth.
+- Train: `notebooks/14_train_missing_teeth.ipynb` (detector-localized interior
+  slot crops FDI 2-7, labeled by enumeration GT; 540/94 split).
+- Eval: `dentex_week3/missing_teeth_model_eval.py` (rule vs classifier).
+- Config: `missing_teeth_model`, `missing_teeth_conf = 0.30`,
+  `missing_teeth_gap_threshold = 0.40`. Without the model the pipeline falls
+  back to the plain rule.
+- Weights are gitignored; fetch with `notebooks/fetch_missing_teeth.sh`.
+
+`/predict` returns it as `missing_teeth` (FDI, bounding teeth, and
+`gap_probability` from the classifier) with `missing_teeth_advisory: true`. It
+inherits the tooth detector's presence errors and excludes third molars and
+edge teeth, so it is advisory.
 
 The official locked 50 cannot supply missing-teeth ground truth: its
 `validation_triple.json` annotates only the 182 diseased teeth, not the full
-enumeration. This is the first measured, reproducible number for a
-missing-teeth feature (the DentalOPG findings model's Missing Teeth class is
-still unvalidated on DENTEX).
+enumeration.
 
 ### Inference time
 

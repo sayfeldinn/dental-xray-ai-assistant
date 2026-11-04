@@ -97,5 +97,7 @@
     "9": "Unerupted Wisdom",
     "10": "Apical Abscess"
   },
-  "missing_teeth_conf": 0.3
+  "missing_teeth_conf": 0.3,
+  "missing_teeth_model": "missing_teeth.pt",
+  "missing_teeth_gap_threshold": 0.4
 }

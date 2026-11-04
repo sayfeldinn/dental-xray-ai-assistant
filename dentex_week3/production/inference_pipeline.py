@@ -371,19 +371,64 @@ def associate(lesions, teeth):
 
 
 MISSING_TEETH_CONF = CONFIG.get("missing_teeth_conf", 0.30)
+MISSING_TEETH_MODEL = CONFIG.get("missing_teeth_model")
+MISSING_TEETH_GAP = CONFIG.get("missing_teeth_gap_threshold", 0.40)
+_MISSING_MODEL = {}
 
 
-def derive_missing_teeth(teeth, conf=MISSING_TEETH_CONF):
+def _missing_teeth_model():
+    """Lazy ResNet18 gap-vs-tooth classifier; None if not configured/missing."""
+    if "model" in _MISSING_MODEL:
+        return _MISSING_MODEL["model"]
+    if not MISSING_TEETH_MODEL:
+        _MISSING_MODEL["model"] = None
+        return None
+    try:
+        import torch
+
+        from torchvision import models as _tv
+
+        path = MISSING_TEETH_MODEL
+        if not os.path.isabs(path):
+            path = os.path.join(MODEL_DIR, path)
+        ckpt = torch.load(path, map_location="cpu")
+        model = _tv.resnet18(weights=None)
+        model.fc = torch.nn.Linear(model.fc.in_features, 2)
+        model.load_state_dict(ckpt["state_dict"])
+        model.eval()
+        _MISSING_MODEL["model"] = (model, ckpt)
+    except Exception:
+        _MISSING_MODEL["model"] = None
+    return _MISSING_MODEL["model"]
+
+
+def _interp_box(boxes, t):
+    """Linear slot position between the nearest detected neighbours in a quadrant."""
+    lo = [x for x in boxes if x < t]
+    hi = [x for x in boxes if x > t]
+    if not lo or not hi:
+        return None
+    L, H = max(lo), min(hi)
+    bl, bh = boxes[L], boxes[H]
+    a = (t - L) / (H - L)
+    x = (bl[0] + bl[2]) / 2 * (1 - a) + (bh[0] + bh[2]) / 2 * a
+    y = (bl[1] + bl[3]) / 2 * (1 - a) + (bh[1] + bh[3]) / 2 * a
+    w = ((bl[2] - bl[0]) + (bh[2] - bh[0])) / 2
+    h = ((bl[3] - bl[1]) + (bh[3] - bh[1])) / 2
+    return [x - w / 2, y - h / 2, x + w / 2, y + h / 2]
+
+
+def derive_missing_teeth(teeth, image=None, conf=MISSING_TEETH_CONF):
     """Interior edentulous gaps from the detected FDI teeth.
 
     A tooth is "missing" if its FDI slot is empty while detected teeth exist on
-    both sides of it inside the same quadrant -- an interior gap, i.e. a real
-    edentulous space. Third molars and arch edges are excluded because they are
-    ambiguous with agenesis and with cropping.
+    both sides of it inside the same quadrant -- an interior gap. Third molars
+    and arch edges are excluded (ambiguous with agenesis and cropping).
 
-    Zero training; F1 0.742 (P 0.699 / R 0.792) on the tooth detector's
-    held-out 94-image DENTEX split (see dentex_week3/missing_teeth_eval.py).
-    Advisory: it inherits the tooth detector's presence errors.
+    If a gap-vs-tooth classifier is configured, each candidate gap crop is
+    scored and kept only when it looks like a gap (P 0.90 / R 0.72 / F1 0.80 on
+    the tooth detector's held-out 94-image DENTEX split). Without the model it
+    falls back to the plain rule (P 0.73 / R 0.73 / F1 0.73).
     """
     by_q = {}
     for t in teeth:
@@ -391,27 +436,61 @@ def derive_missing_teeth(teeth, conf=MISSING_TEETH_CONF):
             continue
         q, tid = t["quadrant"], t["tooth_id"]
         by_q.setdefault(q, {})
-        by_q[q][tid] = max(by_q[q].get(tid, 0.0), t["tooth_confidence"])
+        if tid not in by_q[q] or t["tooth_confidence"] > by_q[q][tid]["tooth_confidence"]:
+            by_q[q][tid] = t
 
-    missing = []
+    candidates = []
     for q in sorted(by_q):
-        present = by_q[q]
+        boxes = {tid: t["box"] for tid, t in by_q[q].items()}
         for t in range(2, 8):  # interior teeth 2..7 (third molar excluded)
-            if t in present:
+            if t in boxes:
                 continue
-            lower = [x for x in present if x < t]
-            higher = [x for x in present if x > t]
-            if lower and higher:
-                nl, nh = max(lower), min(higher)
-                missing.append({
-                    "quadrant": q,
-                    "tooth_id": t,
-                    "tooth": f"Tooth_{t}",
-                    "tooth_fdi": f"{q}{t}",
-                    "confidence": round(min(present[nl], present[nh]), 4),
-                    "bounded_by": [f"{q}{nl}", f"{q}{nh}"],
-                })
-    return missing
+            box = _interp_box(boxes, t)
+            if box is None:
+                continue
+            lower = [x for x in boxes if x < t]
+            higher = [x for x in boxes if x > t]
+            nl, nh = max(lower), min(higher)
+            candidates.append({
+                "quadrant": q, "tooth_id": t, "tooth": f"Tooth_{t}",
+                "tooth_fdi": f"{q}{t}",
+                "confidence": round(min(by_q[q][nl]["tooth_confidence"],
+                                         by_q[q][nh]["tooth_confidence"]), 4),
+                "bounded_by": [f"{q}{nl}", f"{q}{nh}"],
+                "_box": box,
+            })
+
+    mv = _missing_teeth_model()
+    if mv is not None and image is not None and candidates:
+        import torch
+        from torchvision import transforms
+
+        model, ckpt = mv
+        crops = []
+        for c in candidates:
+            crop = _crop_tooth(image, c.pop("_box"))
+            crops.append(crop)
+        valid = [(c, crop) for c, crop in zip(candidates, crops) if crop is not None]
+        if valid:
+            tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(
+                ckpt.get("mean", (0.485, 0.456, 0.406)), ckpt.get("std", (0.229, 0.224, 0.225)))])
+            batch = torch.stack([tf(crop) for _, crop in valid])
+            with torch.no_grad():
+                probs = torch.softmax(model(batch), 1)[:, 1].tolist()
+            kept = []
+            for (c, _), p in zip(valid, probs):
+                if p >= MISSING_TEETH_GAP:
+                    c["gap_probability"] = round(float(p), 4)
+                    kept.append(c)
+            candidates = kept
+        else:
+            for c in candidates:
+                c.pop("_box", None)
+    else:
+        for c in candidates:
+            c.pop("_box", None)
+
+    return candidates
 
 
 def derive_quadrants(teeth):
@@ -455,7 +534,7 @@ def run_dentex_pipeline(image, save_json=None):
         "quadrants": derive_quadrants(teeth),
         "detections": detections,
         "num_detections": len(detections),
-        "missing_teeth": derive_missing_teeth(teeth),
+        "missing_teeth": derive_missing_teeth(teeth, image),
         "missing_teeth_advisory": True,
         "model": {
             "tooth": CONFIG.get("tooth_model"),

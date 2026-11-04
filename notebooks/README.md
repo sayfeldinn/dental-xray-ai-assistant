@@ -34,6 +34,7 @@ This replaces v1's quadrant coordinator + random-forest tooth assignment.
 | 11 | `11_evaluate_v4.ipynb` | local | v4 on the locked 50, v1-v4 table, significance |
 | 12 | `12_cross_hospital.ipynb` | local | Romanian external split: disease + findings transfer |
 | 13 | `13_train_caries_verifier.ipynb` | Kaggle GPU | caries tooth-crop verifier (optional, not promoted) |
+| 14 | `14_train_missing_teeth.ipynb` | Kaggle GPU | missing-teeth gap-vs-tooth classifier |
 
 `dentex_data.py` is dependency-free, so notebooks 02 and 03/04 produce
 **identical splits** from the same seed. The notebooks assert the expected
@@ -88,6 +89,11 @@ python 12_cross_hospital.ipynb
 python push_kaggle.py --only caries_verifier
 KAGGLE_BIN=~/.local/bin/kaggle ./fetch_caries_verifier.sh
 python 13_train_caries_verifier.ipynb
+
+# missing-teeth classifier (derived gaps + gap-vs-tooth validation)
+python push_kaggle.py --only missing_teeth
+KAGGLE_BIN=~/.local/bin/kaggle ./fetch_missing_teeth.sh
+python 14_train_missing_teeth.ipynb
 ```
 
 Training notebooks disable flips and mosaic for the tooth detector: FDI labels
