@@ -1,5 +1,6 @@
 {
   "architecture": "tooth_detector_plus_disease_detector",
+  "pipeline_version": "v3",
   "tooth_model": "tooth_best.pt",
   "disease_model": "disease_best.pt",
   "tooth_imgsz": 1024,

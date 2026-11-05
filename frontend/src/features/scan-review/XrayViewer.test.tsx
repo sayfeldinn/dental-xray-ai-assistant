@@ -38,3 +38,12 @@ test("missing teeth are dashed advisory boxes that do not capture clicks", () =>
   fireEvent.click(rect);
   expect(onSelect).not.toHaveBeenCalled();
 });
+
+test("zoom controls scale the viewport and reset returns to fit", () => {
+  render(<XrayViewer src="x.png" width={700} height={350} findings={[finding("a", "pending")]} selectedId={null} onSelect={() => {}} />);
+  const viewport = screen.getByTestId("viewport");
+  fireEvent.click(screen.getByLabelText("Zoom in"));
+  expect(viewport.style.transform).toContain("scale(1.25)");
+  fireEvent.click(screen.getByLabelText("Reset zoom"));
+  expect(viewport.style.transform).toContain("scale(1)");
+});

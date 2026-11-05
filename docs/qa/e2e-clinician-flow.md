@@ -59,6 +59,33 @@ backend 172 tests pass.
 `scripts/render_gt_vs_pred.py` writes side-by-side GT/model images to
 `submission/assets/gt_vs_pred_val_{28,31,2}.png`.
 
+## Follow-up round: re-analyze threshold, provenance, zoom, migrations
+
+- **Re-analyze with a threshold** — the scan page's re-run control now carries a
+  0.20 / 0.30 / 0.50 select; `api.reanalyzeScan(id, threshold)` sends
+  `?confidence_threshold=`. Verified against the backend: upload `train_12.png`
+  at 0.20 -> 9 findings, then re-analyze at 0.50 -> 8, stored
+  `confidence_threshold` 0.5.
+- **Selecting a box scrolls to its finding card** — the card list is keyed by
+  `finding-<id>`; the X-ray `onSelect` sets the selection and calls
+  `scrollIntoView` (guarded for jsdom).
+- **Model provenance** — `raw_ml_output.model` now records `missing_teeth`,
+  `missing_teeth_gap_threshold` and `pipeline_version` (from
+  `pipeline_config.json`) alongside the tooth/disease/findings weights.
+- **Zoom / pan** — the viewer zooms around the cursor, pans on drag (a drag no
+  longer selects a box), double-click / Reset returns to fit, with `+`/`−`/Reset
+  buttons and a hint line.
+- **`supabase start` from scratch** — `supabase/schema.sql` is now the first
+  migration (`20261019_base_schema.sql`, idempotent), so a clean
+  `supabase start` applies the base schema, the auth lockdown and `seed.sql`
+  with no manual `psql`. Verified in an isolated project (ports 5xxxx): all 6
+  tables present, 4 seeded patients, 0 public policies, `xray-scans` private.
+- **Docs** — README and `docs/SETUP_GUIDE.md` now document the migration flow
+  and the `backend-e2e` vs compose `backend` `:8000` conflict.
+
+Frontend 16 tests pass; ML `/predict` rebuild returns the provenance block and
+6 missing-tooth boxes.
+
 ## Bug found and fixed
 
 The ML service returns the clinical text as **`ai_generated_report`**, but
@@ -70,10 +97,8 @@ Backend suite: **172 passed**.
 ## Reproduce
 
 ```bash
-# 1) local Supabase (schema.sql + lockdown migration, then save the env)
+# 1) local Supabase: base schema, auth lockdown and seed are migrations now
 npx supabase start -o env > /tmp/opencode/supabase_local.env
-docker exec -i supabase_db_dental-xray-ai-assistant psql -U postgres -d postgres < supabase/schema.sql
-docker exec -i supabase_db_dental-xray-ai-assistant psql -U postgres -d postgres < supabase/migrations/20261020_auth_lockdown.sql
 
 # 2) backend that can reach 127.0.0.1:54321 + the ML container
 docker compose stop backend
@@ -86,10 +111,11 @@ docker run -d --name backend-e2e --network host --env-file .env \
 python scripts/e2e_clinician_flow.py
 ```
 
-**Caveats:** `supabase start` replays `supabase/migrations/` and `seed.sql`
-before any manual schema apply; this repo's base schema lives in `schema.sql`,
-not in a migration, so the first `start` fails on the lockdown migration. The
-run above started with migrations/seed temporarily moved aside, applied
-`schema.sql`, then the lockdown. A future fix is to add the base schema as the
-first migration. `.env` now points at local Supabase; the cloud config is in
-`.env.cloud.bak` (gitignored) and needs a recreated project to work again.
+**Local stack order:** `supabase start` now applies
+`20261019_base_schema.sql`, `20261020_auth_lockdown.sql` and `seed.sql`, so no
+manual `psql` step is needed. Then run the host-network `backend-e2e` and start
+`ml` + `frontend` with `docker compose up -d --no-deps ml frontend` (the compose
+`backend` must stay stopped: it also binds `:8000`). An existing local database
+that was created with the old manual steps keeps working; the new migration only
+matters for a fresh volume. `.env` points at local Supabase; the cloud config is
+in `.env.cloud.bak` (gitignored) and needs a recreated project to work again.

@@ -90,12 +90,18 @@ uvicorn app:app --host 0.0.0.0 --port 8001 --reload
 | `POST` | `/feedback/finding` | dentist correction for a single finding |
 | `POST` | `/feedback/report` | accept / edit a generated report |
 
+`/predict` takes an optional `?confidence_threshold=0.20` query parameter
+(`0.0`–`1.0`). Detections are filtered after tooth association; the value is
+echoed back as `confidence_threshold`. The backend and the UI pass it through
+(upload form and the re-analyze control).
+
 `/predict` returns the v1-compatible contract, so the backend needs no changes:
 
 ```json
 {
   "image_width": 2872,
   "image_height": 1504,
+  "confidence_threshold": 0.2,
   "quadrants": [{"quadrant": 1, "confidence": 0.93, "box": [x1, y1, x2, y2]}],
   "detections": [{
     "quadrant": 4, "tooth_id": 7, "tooth": "Tooth_7", "tooth_fdi": "47",
@@ -107,10 +113,14 @@ uvicorn app:app --host 0.0.0.0 --port 8001 --reload
   "num_detections": 8,
   "missing_teeth": [{"quadrant": 1, "tooth_id": 6, "tooth": "Tooth_6",
                      "tooth_fdi": "16", "confidence": 0.71,
-                     "bounded_by": ["15", "17"]}],
+                     "bounded_by": ["15", "17"], "gap_probability": 0.93,
+                     "box": [x1, y1, x2, y2]}],
   "missing_teeth_advisory": true,
   "model": {"tooth": "tooth_best.pt", "disease": "disease_best.pt",
+            "missing_teeth": "missing_teeth.pt",
+            "missing_teeth_gap_threshold": 0.4,
             "architecture": "tooth_detector+disease_detector",
+            "pipeline_version": "v3",
             "findings": "findings_best.pt"},
   "findings": [{
     "finding_id": 6, "finding": "Missing Teeth", "confidence": 0.72,
@@ -123,6 +133,14 @@ uvicorn app:app --host 0.0.0.0 --port 8001 --reload
 
 `quadrants` is now **derived** from the tooth boxes (union per FDI quadrant)
 rather than produced by a coordinator model.
+
+`missing_teeth` entries carry the interpolated gap `box` so the UI can draw them;
+`confidence` is the weaker of the two bracketing teeth, `gap_probability` is the
+classifier score when the model is present.
+
+`model` is provenance for the run: it names every weight file, the missing-teeth
+gate and the pipeline version (`pipeline_version` in `pipeline_config.json`), so
+a stored `raw_ml_output` is reproducible.
 
 `findings` is the advisory DentalOPG layer (see below); it never feeds the
 clinical report. Set `"findings_in_predict": false` in `pipeline_config.json`

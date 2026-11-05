@@ -55,7 +55,9 @@ dental-xray-ai-assistant/
 
 Full instructions: **[`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md)**. In short:
 
-1. Run `supabase/schema.sql` in the Supabase SQL editor (existing projects: also `supabase/migrations/20261020_auth_lockdown.sql`).
+1. Database: for a local stack run `npx supabase start` — the base schema (`supabase/migrations/20261019_base_schema.sql`),
+   the auth lockdown (`20261020_auth_lockdown.sql`) and `supabase/seed.sql` are applied automatically.
+   For a hosted project run `supabase db push`, or apply `supabase/schema.sql` then the lockdown migration in the SQL editor.
 2. `cp .env.example .env` and fill in the Supabase values.
 3. Start the three services (Python 3.11/3.12, Node 20+):
    ```bash
@@ -64,9 +66,11 @@ Full instructions: **[`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md)**. In short:
    cd frontend && npm install && npm run dev  # UI         :5173
    ```
    Or everything at once: `docker compose up --build` (UI on :8080).
+   **Local e2e note:** if `backend-e2e` already runs on the host network (see `docs/qa/e2e-clinician-flow.md`),
+   start only `docker compose up -d ml frontend` — the compose `backend` also binds `:8000`.
 4. Sign up on the login page, or `cd backend && python -m scripts.create_dentist --email you@clinic.eg --name "Dr You"`.
 
-Tests: `cd backend && pytest -q` (171) · `cd frontend && npm test` (14).
+Tests: `cd backend && pytest -q` (172) · `cd frontend && npm test` (16).
 
 ## Project Status
 
