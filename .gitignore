@@ -135,3 +135,6 @@ data_exports/
 
 # ML v1 baseline freeze (weights + old notebooks); safe to delete once v2 ships
 /archive/
+
+# Local env backups
+.env.*.bak

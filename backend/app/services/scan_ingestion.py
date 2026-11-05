@@ -72,7 +72,7 @@ class ScanIngestionService:
             await self.scans.update_scan(scan.id, ScanUpdate(status="failed", notes=f"AI analysis failed: {exc}"))
             raise UpstreamError("The scan was saved but the AI analysis failed. Check the ML service and re-analyse.") from exc
 
-        report = output.get("report")
+        report = output.get("ai_generated_report") or output.get("report")
         await self.scans.update_ml_results(
             scan_id=scan.id, ml_output=output, ai_report=report,
             image_width=output.get("image_width", 0), image_height=output.get("image_height", 0))

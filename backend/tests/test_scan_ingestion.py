@@ -28,7 +28,7 @@ class FakeScanStore:
         self.updates.append(data.model_dump(exclude_none=True))
 
     async def update_ml_results(self, **kw):
-        self.updates.append({"status": "analyzed"})
+        self.updates.append({"status": "analyzed", **kw})
 
     async def download_image(self, path):
         return b"stored-bytes"
@@ -79,6 +79,22 @@ async def test_upload_analyses_and_creates_pending_findings():
     assert svc.scans.uploads == ["scan.png"]          # the client's filename never reaches storage
     scan = next(iter(svc.scans.rows.values()))
     assert scan.dentist_id == DENTIST_ID
+
+
+class FakeMLNewReportKey(FakeML):
+    """The real ML service returns `ai_generated_report`, not `report`."""
+
+    async def analyze_scan(self, image_bytes, filename, confidence_threshold):
+        out = await super().analyze_scan(image_bytes, filename, confidence_threshold)
+        out["ai_generated_report"] = out.pop("report")
+        return out
+
+
+async def test_upload_stores_the_ml_ai_generated_report():
+    svc = service(ml=FakeMLNewReportKey())
+    res = await upload(svc)
+    assert res.ai_report == "AI report"
+    assert svc.scans.updates[-1]["ai_report"] == "AI report"
 
 
 async def test_upload_without_analysis_stops_after_storage():
