@@ -137,11 +137,12 @@ export const api = {
       page_size: opts.page_size !== undefined ? String(opts.page_size) : undefined,
     })}`),
   getScan: (scanId: string) => request<Scan>(`/scans/${scanId}`),
-  uploadScan: (patientId: string, file: File, autoAnalyze: boolean) => {
+  uploadScan: (patientId: string, file: File, autoAnalyze: boolean, confidenceThreshold = 0.2) => {
     const form = new FormData();
     form.append("file", file);
     form.append("patient_id", patientId);
     form.append("auto_analyze", String(autoAnalyze));
+    form.append("confidence_threshold", String(confidenceThreshold));
     return request<ScanAnalysisResponse>("/scans/upload", { method: "POST", body: form });
   },
   reanalyzeScan: (scanId: string) => request<ScanAnalysisResponse>(`/scans/${scanId}/reanalyze`, json({})),

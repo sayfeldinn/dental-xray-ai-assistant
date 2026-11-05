@@ -1,17 +1,22 @@
 import { useState } from "react";
-import type { Finding, ReviewStatus } from "../../lib/types";
+import type { Finding, MissingTooth, ReviewStatus } from "../../lib/types";
 
 const STROKE: Record<ReviewStatus, string> = { pending: "#f59e0b", confirmed: "#10b981", modified: "#0ea5e9", rejected: "#94a3b8" };
+const MISSING_STROKE = "#38bdf8";
 
 /**
  * The radiograph with one box per finding. Boxes are in image pixels, so the SVG uses the image's
  * own coordinate system (viewBox) and scales with it. Size comes from the scan record, else from the image.
+ *
+ * `missing` is the advisory missing-teeth layer: dashed boxes drawn behind the findings, never
+ * clickable, so a dentist cannot mistake them for reviewed disease findings.
  */
-export function XrayViewer({ src, width, height, findings, selectedId, onSelect }: {
+export function XrayViewer({ src, width, height, findings, missing = [], selectedId, onSelect }: {
   src: string;
   width: number | null;
   height: number | null;
   findings: Finding[];
+  missing?: MissingTooth[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -29,6 +34,20 @@ export function XrayViewer({ src, width, height, findings, selectedId, onSelect 
         onError={() => setFailed(true)} />
       {w && h && (
         <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" data-testid="overlay">
+          {missing.map((m) => {
+            if (!m.box) return null;
+            const [x1, y1, x2, y2] = m.box;
+            const sw = Math.max(w, h) / 500;
+            return (
+              <g key={`missing-${m.tooth_fdi}`} className="pointer-events-none" data-testid="missing-tooth">
+                <rect x={x1} y={y1} width={x2 - x1} height={y2 - y1} fill="rgba(56,189,248,0.10)"
+                  stroke={MISSING_STROKE} strokeWidth={sw} strokeDasharray={`${sw * 3} ${sw * 2}`} />
+                <text x={x1} y={Math.max(y1 - sw * 2, sw * 9)} fill={MISSING_STROKE} fontSize={sw * 9} fontWeight="bold">
+                  Missing {m.tooth_fdi}
+                </text>
+              </g>
+            );
+          })}
           {findings.map((f) => {
             const [x1, y1, x2, y2] = f.box;
             const selected = f.id === selectedId;

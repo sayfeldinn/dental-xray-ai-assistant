@@ -123,6 +123,40 @@ export interface PatientListResponse {
   page_size: number;
 }
 
+export interface MissingTooth {
+  quadrant: number;
+  tooth_id: number;
+  tooth: string;
+  /** FDI notation, e.g. "46". */
+  tooth_fdi: string;
+  /** Confidence of the neighbouring teeth that bracket the gap. */
+  confidence: number;
+  bounded_by: string[];
+  /** Gap-vs-tooth classifier probability, when the model is enabled. */
+  gap_probability?: number;
+  /** Interpolated gap box in image pixels: [x1, y1, x2, y2]. */
+  box?: [number, number, number, number];
+}
+
+/** One box from the advisory DentalOPG findings model (not in the clinical report). */
+export interface AdvisoryFinding {
+  finding_id: number;
+  finding: string;
+  confidence: number;
+  box: [number, number, number, number];
+}
+
+/** Stored ML payload. Disease findings are validated separately; these layers are advisory. */
+export interface ScanMlOutput {
+  missing_teeth?: MissingTooth[];
+  missing_teeth_advisory?: boolean;
+  findings?: AdvisoryFinding[];
+  findings_advisory?: boolean;
+  num_detections?: number;
+  confidence_threshold?: number;
+  [key: string]: unknown;
+}
+
 export interface Scan {
   id: string;
   patient_id: string;
@@ -136,6 +170,8 @@ export interface Scan {
   notes: string | null;
   /** Free-text report written by the ML service; always pending dentist validation. */
   ai_report: string | null;
+  /** Full ML response: detections, quadrants, missing teeth and advisory findings. */
+  raw_ml_output?: ScanMlOutput;
   created_at: string;
   updated_at?: string;
 }
@@ -152,6 +188,7 @@ export interface ScanAnalysisResponse {
   status: ScanStatus;
   ai_report: string | null;
   findings_count: number;
+  raw_ml_output?: ScanMlOutput;
 }
 
 export interface Finding {

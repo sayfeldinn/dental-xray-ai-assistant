@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Query
 from fastapi.responses import JSONResponse
 import uvicorn
 from pydantic import BaseModel
@@ -101,7 +101,8 @@ def health_check():
     return {"status": "ok", "models_loaded": models_loaded}
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(file: UploadFile = File(...),
+                  confidence_threshold: float = Query(0.20, ge=0.0, le=1.0)):
     if not models_loaded:
         raise HTTPException(status_code=500, detail="Models not loaded.")
 
@@ -113,7 +114,7 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
     # Run inference
-    results = run_dentex_pipeline(image_np)
+    results = run_dentex_pipeline(image_np, confidence_threshold=confidence_threshold)
     
     # Generate structured report based on findings
     generated_report = generate_clinical_report(results.get("detections", []))
