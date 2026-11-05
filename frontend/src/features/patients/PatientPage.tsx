@@ -109,8 +109,9 @@ function UploadCard({ patientId }: { patientId: string }) {
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [analyze, setAnalyze] = useState(true);
+  const [confidence, setConfidence] = useState(0.2);
   const upload = useMutation({
-    mutationFn: () => api.uploadScan(patientId, file!, analyze),
+    mutationFn: () => api.uploadScan(patientId, file!, analyze, confidence),
     onSettled: () => qc.invalidateQueries({ queryKey: ["scans", patientId] }),
   });
   const submit = (e: FormEvent) => { e.preventDefault(); if (file) upload.mutate(); };
@@ -121,6 +122,15 @@ function UploadCard({ patientId }: { patientId: string }) {
       <form onSubmit={submit} className="space-y-3 text-sm">
         <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="X-ray image" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-brand-700" />
         <label className="flex items-center gap-2"><input type="checkbox" checked={analyze} onChange={(e) => setAnalyze(e.target.checked)} /> Run AI analysis (needs the ML service on port 8001)</label>
+        <label className="flex items-center gap-2">
+          Detection confidence
+          <select value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} disabled={!analyze}
+            className="rounded-md border border-slate-300 px-2 py-1">
+            <option value={0.2}>0.20 (default)</option>
+            <option value={0.3}>0.30</option>
+            <option value={0.5}>0.50</option>
+          </select>
+        </label>
         <Button type="submit" disabled={!file || upload.isPending}>{upload.isPending ? "Uploading and analysing…" : "Upload"}</Button>
         {upload.data && (
           <p className="text-emerald-700">

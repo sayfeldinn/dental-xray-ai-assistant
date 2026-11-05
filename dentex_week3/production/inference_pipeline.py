@@ -152,9 +152,9 @@ def detect_teeth(image):
 # Stage 2 — lesions
 # ----------------------------------------------------------------------
 
-def detect_diseases(image):
+def detect_diseases(image, conf=DISEASE_CONF):
     result = _model("disease").predict(source=image, imgsz=DISEASE_IMGSZ,
-                                   conf=DISEASE_CONF, verbose=False)[0]
+                                   conf=conf, verbose=False)[0]
     if result.boxes is None:
         return []
 
@@ -468,7 +468,7 @@ def derive_missing_teeth(teeth, image=None, conf=MISSING_TEETH_CONF):
         model, ckpt = mv
         crops = []
         for c in candidates:
-            crop = _crop_tooth(image, c.pop("_box"))
+            crop = _crop_tooth(image, c["_box"])
             crops.append(crop)
         valid = [(c, crop) for c, crop in zip(candidates, crops) if crop is not None]
         if valid:
@@ -483,12 +483,13 @@ def derive_missing_teeth(teeth, image=None, conf=MISSING_TEETH_CONF):
                     c["gap_probability"] = round(float(p), 4)
                     kept.append(c)
             candidates = kept
-        else:
-            for c in candidates:
-                c.pop("_box", None)
-    else:
-        for c in candidates:
-            c.pop("_box", None)
+
+    # Keep the interpolated gap box so the UI can draw it. Additive: callers
+    # that only read tooth_fdi are unaffected.
+    for c in candidates:
+        box = c.pop("_box", None)
+        if box is not None:
+            c["box"] = [round(float(v), 1) for v in box]
 
     return candidates
 
@@ -515,22 +516,29 @@ def derive_quadrants(teeth):
 # Public entry point
 # ----------------------------------------------------------------------
 
-def run_dentex_pipeline(image, save_json=None):
+def run_dentex_pipeline(image, save_json=None, confidence_threshold=None):
     image = load_image_array(image)
     height, width = image.shape[:2]
 
+    # The model's own floor is DISEASE_CONF. A caller asking for a lower
+    # threshold gets more candidates; a higher one is filtered after association.
+    threshold = DISEASE_CONF if confidence_threshold is None else float(confidence_threshold)
+    threshold = max(0.0, min(1.0, threshold))
+
     teeth = detect_teeth(image)
-    lesions = detect_diseases(image)
+    lesions = detect_diseases(image, conf=min(DISEASE_CONF, threshold))
     # Optional caries re-ranker; never let a missing verifier break /predict.
     try:
         lesions = apply_caries_verifier(lesions, teeth, image)
     except Exception:
         pass
     detections = associate(lesions, teeth)
+    detections = [d for d in detections if d["disease_confidence"] >= threshold]
 
     output = {
         "image_width": int(width),
         "image_height": int(height),
+        "confidence_threshold": threshold,
         "quadrants": derive_quadrants(teeth),
         "detections": detections,
         "num_detections": len(detections),
