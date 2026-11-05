@@ -54,7 +54,9 @@ docker exec -i supabase_db_dental-xray-ai-assistant psql -U postgres -d postgres
 # 2) backend that can reach 127.0.0.1:54321 + the ML container
 docker compose stop backend
 docker run -d --name backend-e2e --network host --env-file .env \
-  -e ML_SERVICE_URL=http://127.0.0.1:8001 dental-xray-ai-assistant-backend:latest
+  -e ML_SERVICE_URL=http://127.0.0.1:8001 \
+  -e CORS_ORIGINS='["http://localhost:8080","http://127.0.0.1:8080"]' \
+  dental-xray-ai-assistant-backend:latest
 
 # 3) drive the flow
 python scripts/e2e_clinician_flow.py
