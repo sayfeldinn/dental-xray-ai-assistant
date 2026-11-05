@@ -145,7 +145,11 @@ export const api = {
     form.append("confidence_threshold", String(confidenceThreshold));
     return request<ScanAnalysisResponse>("/scans/upload", { method: "POST", body: form });
   },
-  reanalyzeScan: (scanId: string) => request<ScanAnalysisResponse>(`/scans/${scanId}/reanalyze`, json({})),
+  reanalyzeScan: (scanId: string, confidenceThreshold = 0.2) =>
+    request<ScanAnalysisResponse>(
+      `/scans/${scanId}/reanalyze${query({ confidence_threshold: String(confidenceThreshold) })}`,
+      json({}),
+    ),
   deleteScan: (scanId: string) => request<void>(`/scans/${scanId}`, { method: "DELETE" }),
 
   /* findings */

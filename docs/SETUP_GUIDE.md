@@ -70,6 +70,10 @@ Each dentist sees only their own patients; another dentist's records answer 404.
 docker compose up --build      # UI http://localhost:8080 · API http://localhost:8000 · ML http://localhost:8001
 ```
 
+If a host-network `backend-e2e` container is already using `:8000` (the local Supabase e2e setup), start
+only the other services: `docker compose up -d ml frontend`. The compose `backend` and `backend-e2e`
+both bind `:8000`, so run one or the other.
+
 The weights must be in `dentex_week3/production/` before building. Add `http://localhost:8080` to the
 Supabase Site URL / redirect URLs. Dentist feedback queued by the ML service is kept in the `ml-feedback` volume.
 

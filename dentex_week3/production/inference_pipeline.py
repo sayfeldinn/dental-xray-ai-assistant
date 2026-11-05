@@ -547,7 +547,10 @@ def run_dentex_pipeline(image, save_json=None, confidence_threshold=None):
         "model": {
             "tooth": CONFIG.get("tooth_model"),
             "disease": CONFIG.get("disease_model"),
+            "missing_teeth": MISSING_TEETH_MODEL,
+            "missing_teeth_gap_threshold": MISSING_TEETH_GAP,
             "architecture": "tooth_detector+disease_detector",
+            "pipeline_version": CONFIG.get("pipeline_version", "v3"),
         },
     }
 
