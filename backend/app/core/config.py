@@ -4,7 +4,8 @@ Loads environment variables and provides typed settings access.
 """
 
 from pydantic_settings import BaseSettings
-from typing import List
+from pydantic import field_validator
+from typing import List, Any
 import json
 
 
@@ -15,6 +16,19 @@ class Settings(BaseSettings):
     APP_NAME: str = "DentalAI"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug(cls, v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val in ("true", "1", "yes", "t", "dev", "development"):
+                return True
+            if val in ("false", "0", "no", "f", "release", "prod", "production"):
+                return False
+        return bool(v)
     
     # Supabase
     SUPABASE_URL: str
