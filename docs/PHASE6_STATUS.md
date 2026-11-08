@@ -1,7 +1,7 @@
 # Phase 6 Status: Authentication, Authorization, Security & Deployment
 
 **Verified:** backend 171 tests (24 new) pass, also from a clean install of `requirements.txt` on Python 3.12;
-frontend 25 tests, typecheck and build pass. Live run against the dev Supabase with two throwaway dentist
+frontend 14 tests, typecheck and build pass. Live run against the dev Supabase with two throwaway dentist
 accounts (deleted afterwards, with their patients and files): sign-in, patient creation, real X-ray upload with
 live AI analysis (9 findings), signed image URL, re-analysis, cross-dentist isolation, tamper rejection, sign-out.
 **Not verified:** the Docker images were not built (Docker daemon not running); `docker compose config` validates.

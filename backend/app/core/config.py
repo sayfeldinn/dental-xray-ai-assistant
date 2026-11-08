@@ -3,10 +3,16 @@ DentalAI - Core Configuration Management
 Loads environment variables and provides typed settings access.
 """
 
+import json
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import List, Any
-import json
+
+# Repo root = backend/app/core/ -> up three levels. Resolved from this file so settings load
+# regardless of the process working directory (the old "../.env" only worked from backend/).
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
@@ -30,13 +36,14 @@ class Settings(BaseSettings):
                 return False
         return bool(v)
     
-    # Supabase
+    # Supabase. Only these two are required by the backend at runtime.
     SUPABASE_URL: str
-    SUPABASE_PROJECT_REF: str
-    SUPABASE_PUBLISHABLE_KEY: str
-    SUPABASE_ANON_KEY: str
-    SUPABASE_SECRET_KEY: str
     SUPABASE_SERVICE_ROLE_KEY: str
+    # Kept for parity with .env.example / the frontend, but unused server-side.
+    SUPABASE_PROJECT_REF: str = ""
+    SUPABASE_PUBLISHABLE_KEY: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SECRET_KEY: str = ""
     SUPABASE_STORAGE_BUCKET: str = "xray-scans"
     # Only for projects still on the legacy shared-secret (HS256) JWTs; projects with asymmetric
     # signing keys are verified against the public JWKS and need no secret.
@@ -55,7 +62,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     
     # CORS
-    CORS_ORIGINS: str = '["http://localhost:5173","http://localhost:3000","http://127.0.0.1:5173"]'
+    CORS_ORIGINS: str = '["http://localhost:5173","http://localhost:3000","http://127.0.0.1:5173","http://localhost:8080","http://127.0.0.1:8080"]'
     
     @property
     def auth_issuer(self) -> str:
@@ -66,11 +73,11 @@ class Settings(BaseSettings):
         """Parse CORS origins from JSON string."""
         try:
             return json.loads(self.CORS_ORIGINS)
-        except:
+        except Exception:
             return ["http://localhost:5173", "http://localhost:3000"]
     
     class Config:
-        env_file = "../.env"  # Load from project root
+        env_file = str(_REPO_ROOT / ".env")  # repo-root .env, CWD-independent
         case_sensitive = True
         extra = "ignore"
 

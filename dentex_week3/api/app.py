@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Query
 from fastapi.responses import JSONResponse
 import uvicorn
 from pydantic import BaseModel
@@ -19,7 +19,7 @@ FEEDBACK_DIR = os.path.join(BASE_DIR, "feedback")
 sys.path.append(PROD_DIR)
 
 try:
-    from inference_pipeline import run_dentex_pipeline
+    from inference_pipeline import run_dentex_pipeline, run_findings
     models_loaded = True
 except Exception as e:
     models_loaded = False
@@ -101,7 +101,8 @@ def health_check():
     return {"status": "ok", "models_loaded": models_loaded}
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(file: UploadFile = File(...),
+                  confidence_threshold: float = Query(0.20, ge=0.0, le=1.0)):
     if not models_loaded:
         raise HTTPException(status_code=500, detail="Models not loaded.")
 
@@ -113,7 +114,7 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
     # Run inference
-    results = run_dentex_pipeline(image_np)
+    results = run_dentex_pipeline(image_np, confidence_threshold=confidence_threshold)
     
     # Generate structured report based on findings
     generated_report = generate_clinical_report(results.get("detections", []))
@@ -122,6 +123,32 @@ async def predict(file: UploadFile = File(...)):
     results["ai_generated_report"] = generated_report
     
     return JSONResponse(content=results)
+
+
+@app.post("/findings")
+async def findings(file: UploadFile = File(...)):
+    """Advisory findings layer: missing teeth, BDR, fillings, crowns, RCT, ...
+
+    Deliberately separate from /predict: the model is validated on DentalOPG
+    only and has no DENTEX ground truth, so its output is advisory.
+    """
+    if not models_loaded:
+        raise HTTPException(status_code=500, detail="Models not loaded.")
+
+    try:
+        image_bytes = await file.read()
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image_np = np.array(image)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
+
+    try:
+        results = run_findings(image_np)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Findings model unavailable: {e}")
+
+    return JSONResponse(content=results)
+
 
 @app.post("/feedback/finding")
 async def submit_finding_feedback(feedback: FindingFeedback):

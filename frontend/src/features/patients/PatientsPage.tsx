@@ -1,15 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { ageFrom } from "../../lib/format";
-import { Badge, Button, Card, Empty, ErrorNote, Input, Spinner } from "../../components/common/ui";
+import { Badge, Button, Card, Empty, ErrorNote, Input, Pagination, Spinner } from "../../components/common/ui";
 import { NewPatientForm } from "./NewPatientForm";
+
+const PAGE_SIZE = 20;
 
 export function PatientsPage() {
   const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
-  const patients = useQuery({ queryKey: ["patients", search], queryFn: () => api.listPatients(search || undefined) });
+
+  // Debounce the search so we don't fire a query per keystroke; reset to page 1 on new term.
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const patients = useQuery({
+    queryKey: ["patients", debounced, page],
+    queryFn: () => api.listPatients({ search: debounced || undefined, page, page_size: PAGE_SIZE }),
+  });
 
   return (
     <div className="space-y-4">
@@ -52,6 +66,9 @@ export function PatientsPage() {
             </tbody>
           </table>
           </div>
+        )}
+        {patients.data && (
+          <Pagination page={patients.data.page} pageSize={patients.data.page_size} total={patients.data.total} onPage={setPage} label="patients" />
         )}
       </Card>
     </div>

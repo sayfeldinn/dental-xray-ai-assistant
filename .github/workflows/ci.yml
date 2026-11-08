@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -25,7 +25,7 @@ jobs:
       - name: Forbid ML weight / archive artifacts in the tree
         run: |
           set -euo pipefail
-          bad=$(git ls-files | grep -E '\.(pt|pth|h5|onnx|ckpt|zip|tar|tar\.gz|7z)$' || true)
+          bad=$(git ls-files | grep -E '\.(pt|pth|h5|onnx|ckpt|joblib|zip|tar|tar\.gz|7z)$' || true)
           if [ -n "$bad" ]; then
             echo "::error::Binary artifacts must be published as Release assets, not committed:"
             echo "$bad"

@@ -40,8 +40,7 @@ dental-xray-ai-assistant/
 │   └── train_dental_yolov8s.ipynb
 ├── scripts/                # Dev tooling
 │   ├── setup-week1-board.ps1
-│   ├── start-dev.sh
-│   └── test_supabase_connection.py
+│   └── verify_supabase.py
 ├── docs/                   # Documentation
 │   ├── SETUP_GUIDE.md      # Single setup entry point
 │   ├── qa/                 # QA artifacts (synthetic profiles, test cases)
@@ -56,7 +55,9 @@ dental-xray-ai-assistant/
 
 Full instructions: **[`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md)**. In short:
 
-1. Run `supabase/schema.sql` in the Supabase SQL editor (existing projects: also `supabase/migrations/20261020_auth_lockdown.sql`).
+1. Database: for a local stack run `npx supabase start` — the base schema (`supabase/migrations/20261019_base_schema.sql`),
+   the auth lockdown (`20261020_auth_lockdown.sql`) and `supabase/seed.sql` are applied automatically.
+   For a hosted project run `supabase db push`, or apply `supabase/schema.sql` then the lockdown migration in the SQL editor.
 2. `cp .env.example .env` and fill in the Supabase values.
 3. Start the three services (Python 3.11/3.12, Node 20+):
    ```bash
@@ -65,9 +66,11 @@ Full instructions: **[`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md)**. In short:
    cd frontend && npm install && npm run dev  # UI         :5173
    ```
    Or everything at once: `docker compose up --build` (UI on :8080).
+   **Local e2e note:** if `backend-e2e` already runs on the host network (see `docs/qa/e2e-clinician-flow.md`),
+   start only `docker compose up -d ml frontend` — the compose `backend` also binds `:8000`.
 4. Sign up on the login page, or `cd backend && python -m scripts.create_dentist --email you@clinic.eg --name "Dr You"`.
 
-Tests: `cd backend && pytest -q` (171) · `cd frontend && npm test` (25).
+Tests: `cd backend && pytest -q` (172) · `cd frontend && npm test` (16).
 
 ## Project Status
 
@@ -80,7 +83,7 @@ Tests: `cd backend && pytest -q` (171) · `cd frontend && npm test` (25).
 | 5 | React frontend (review UI, decision drawer) | ✅ [`docs/PHASE5_STATUS.md`](docs/PHASE5_STATUS.md) |
 | 6 | Login (Supabase Auth), per-dentist access, security lockdown, Docker | ✅ [`docs/PHASE6_STATUS.md`](docs/PHASE6_STATUS.md) |
 
-The active ML service is `dentex_week3/`. `ml/`, `MLv2/` and `dentex_production_portable_run3/` are earlier/alternative models kept for reference. **New here? Read [`docs/AGENT_ONBOARDING.md`](docs/AGENT_ONBOARDING.md).**
+The active ML service is `dentex_week3/`. `ml/` and `MLv2/` are earlier/alternative models kept for reference (their heavy weights are not in git). **New here? Read [`docs/AGENT_ONBOARDING.md`](docs/AGENT_ONBOARDING.md).**
 
 ## Environment Variables
 
@@ -114,12 +117,12 @@ pytest
 ### Frontend Tests
 ```bash
 cd frontend
-npm run typecheck && npm test   # 21 tests (vitest)
+npm run typecheck && npm test   # 14 tests (vitest)
 ```
 
 ### Connection check
 ```bash
-python scripts/test_supabase_connection.py
+python scripts/verify_supabase.py
 ```
 
 ## Team Roles

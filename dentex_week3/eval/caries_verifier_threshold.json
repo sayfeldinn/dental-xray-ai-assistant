@@ -1,0 +1,20 @@
+{
+  "selected_on": "held-out 107-image DENTEX split (never the locked 50)",
+  "criterion": "max held-out Caries AP while retaining >= 70% of detected caries TPs",
+  "selected_threshold": 0.9,
+  "f1_optimal_threshold": 0.25,
+  "heldout_caries": {"detections": 553, "tp": 205, "fp": 348, "precision": 0.371},
+  "heldout_caries_ap": {
+    "baseline": 0.3707,
+    "gate_0.5": 0.3784,
+    "gate_0.7": 0.3910,
+    "gate_0.8": 0.3918,
+    "gate_0.9": 0.4083
+  },
+  "heldout_precision_recall": {
+    "0.5": [0.378, 0.941],
+    "0.7": [0.391, 0.893],
+    "0.8": [0.392, 0.839],
+    "0.9": [0.408, 0.717]
+  }
+}

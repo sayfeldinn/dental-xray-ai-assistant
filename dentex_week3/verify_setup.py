@@ -47,11 +47,9 @@ def check_model_files():
     production_dir = base_dir / "production"
     
     required_files = {
-        "Coordinator Model": "coordinator_best.pt",
-        "Disease Detector": "disease_detector_best.pt",
-        "Tooth Association RF": "tooth_association_rf_300.joblib",
+        "Tooth Detector": "tooth_best.pt",
+        "Disease Detector": "disease_best.pt",
         "Pipeline Config": "pipeline_config.json",
-        "Evaluation Results": "final_evaluation.json",
     }
     
     all_ok = True
@@ -83,32 +81,19 @@ def check_pipeline_config():
         
         print("✅ Config file loaded successfully")
         
-        # Check model paths
-        coordinator = config.get("coordinator_model", "")
-        disease = config.get("disease_model", "")
-        
-        # Check if paths are relative (not absolute Windows/Unix paths)
-        if coordinator.startswith(("D:", "C:", "/")) or "\\" in coordinator:
-            print(f"⚠️  Coordinator path appears to be absolute: {coordinator}")
-            print(f"   💡 Should be: coordinator_best.pt")
-        else:
-            print(f"✅ Coordinator path is relative: {coordinator}")
-        
-        if disease.startswith(("D:", "C:", "/")) or "\\" in disease:
-            print(f"⚠️  Disease path appears to be absolute: {disease}")
-            print(f"   💡 Should be: disease_detector_best.pt")
-        else:
-            print(f"✅ Disease path is relative: {disease}")
-        
-        # Check metrics
-        tooth_acc = config.get("final_tooth_accuracy", 0)
-        disease_acc = config.get("final_disease_accuracy", 0)
-        full_acc = config.get("final_full_accuracy", 0)
-        
-        print(f"\n📊 Model Performance Metrics:")
-        print(f"   - Tooth Accuracy: {tooth_acc * 100:.2f}%")
-        print(f"   - Disease Accuracy: {disease_acc * 100:.2f}%")
-        print(f"   - Full Match Accuracy: {full_acc * 100:.2f}%")
+        # Check model paths are relative (not absolute Windows/Unix paths)
+        for key in ("tooth_model", "disease_model"):
+            value = config.get(key, "")
+            if not value:
+                print(f"❌ Missing {key} in config")
+                return False
+            if value.startswith(("D:", "C:", "/")) or "\\" in value:
+                print(f"⚠️  {key} path appears to be absolute: {value}")
+            else:
+                print(f"✅ {key} is relative: {value}")
+
+        print(f"\n📊 Architecture: {config.get('architecture', 'unknown')}")
+        print(f"   Association: {config.get('association', 'unknown')}")
         
         print()
         return True
@@ -131,8 +116,6 @@ def check_python_dependencies():
         "ultralytics": "Ultralytics YOLO",
         "PIL": "Pillow (PIL)",
         "numpy": "NumPy",
-        "pandas": "Pandas",
-        "joblib": "Joblib",
     }
     
     all_ok = True
@@ -167,16 +150,14 @@ def test_model_loading():
     
     try:
         print("Attempting to import inference pipeline...")
-        from inference_pipeline import (
-            COORDINATOR_MODEL,
-            DISEASE_MODEL,
-            TOOTH_RF,
-            CONFIG
-        )
+        from inference_pipeline import CONFIG, _model
         print("✅ Inference pipeline imported successfully")
-        print(f"✅ Coordinator model loaded")
-        print(f"✅ Disease model loaded")
-        print(f"✅ Tooth RF classifier loaded")
+
+        # Models load lazily, so touch both to prove the weights are readable.
+        _model("tooth")
+        print(f"✅ Tooth detector loaded ({CONFIG['tooth_model']})")
+        _model("disease")
+        print(f"✅ Disease detector loaded ({CONFIG['disease_model']})")
         
         # Check disease map
         disease_map = CONFIG.get("disease_map", {})
@@ -192,7 +173,7 @@ def test_model_loading():
         print("\n💡 Troubleshooting:")
         print("   1. Check that model files exist in production/")
         print("   2. Verify pipeline_config.json has correct paths")
-        print("   3. Install dependencies: pip install ultralytics joblib")
+        print("   3. Install dependencies: pip install -r api/requirements.txt")
         print()
         return False
 

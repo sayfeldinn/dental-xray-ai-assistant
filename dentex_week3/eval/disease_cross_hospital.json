@@ -1,0 +1,13 @@
+{
+  "split": "Romanian external validation (tooth-converted GT)",
+  "images": 175,
+  "mAP50": 0.43291074406855173,
+  "mAP50_95": 0.2459821845408828,
+  "precision": 0.48839737305901704,
+  "recall": 0.5029477042585656,
+  "ap50_per_class": {
+    "Impacted": 0.7765169083735709,
+    "Caries": 0.1766194394018349,
+    "Periapical Lesion": 0.34559588443024936
+  }
+}

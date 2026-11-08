@@ -1,5 +1,16 @@
 # DENTEX Multi-Stage Detection Pipeline
 
+> **⚠️ SUPERSEDED — not the shipped model.** This is the **MLv2** generation, kept only as design
+> history. The model that actually ships and runs in production is **`dentex_week3/`** (a 3-stage
+> pipeline: quadrant coordinator → disease detector → Random Forest tooth association). The
+> per-quadrant **enumerators** described below were dropped from the shipped pipeline because
+> sequential counting misnumbers teeth when one is missing.
+>
+> The `mAP@50` figures quoted in this README (0.995 / >0.98 / 0.922) were measured with
+> `val = train` (the validation folder pointed at the training split), so they are **training-set
+> fit, not generalization**. See `MLv2/Evaluation_Report_v2.md` and `submission/FACTS.md` §4b.
+> Training logs are preserved in `MLv2/provenance/`.
+
 This repository contains an advanced, multi-stage Machine Learning pipeline built to solve the DENTEX challenge. By decoupling spatial anatomical reasoning from disease classification, we effectively eliminate the spatial ambiguity common in panoramic X-ray datasets.
 
 ## 🧠 Model Weights
@@ -39,16 +50,6 @@ This pipeline consists of **6 separate YOLOv8 models** working together in a mat
 
 ## 🚀 Running the API
 
-The inference logic is wrapped in a production-ready FastAPI application.
-
-1. Ensure you have downloaded the model weights (link above) and placed them in a `models/` directory.
-2. Install dependencies:
-   ```bash
-   cd api
-   pip install -r requirements.txt
-   ```
-3. Start the server:
-   ```bash
-   uvicorn app:app --host 0.0.0.0 --port 8000 --reload
-   ```
-4. Test the pipeline via the interactive swagger UI at `http://localhost:8000/docs` by uploading a panoramic X-ray image.
+> **Note:** the MLv2 FastAPI wrapper (`MLv2/api/`) has been removed — this generation is
+> superseded and was never the shipped service. Only `dentex_week3/` is wired into the backend and
+> `docker-compose.yml`. The design and training history are kept here for reference.

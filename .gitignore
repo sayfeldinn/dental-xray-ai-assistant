@@ -16,8 +16,13 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Python build dirs. These MUST stay anchored to the repo root: a bare `lib/` also matched
+# frontend/src/lib/ and silently kept the frontend's typed API client out of git (never committed,
+# so a fresh clone could not build). Never use a bare directory name for a Python pattern here.
+/lib/
+/lib64/
+**/venv/lib/
+**/venv/lib64/
 parts/
 sdist/
 var/
@@ -64,6 +69,10 @@ lerna-debug.log*
 /.next
 .cache
 
+# Frontend source (never ignore it): this directory holds the typed API client, and a bare
+# Python `lib/` pattern once swallowed it. Kept as an explicit guard against a repeat.
+!frontend/src/lib/
+
 # Testing
 .coverage
 .pytest_cache/
@@ -80,9 +89,20 @@ htmlcov/
 *.h5
 *.pb
 *.onnx
+*.joblib
 datasets/
 trained_models/
 checkpoints/
+
+# ML retraining feedback queue (runtime output; the Docker volume is the source of truth)
+dentex_week3/feedback/
+
+# Ultralytics stray predict output (written to CWD by default)
+/runs/
+
+# MLv2/provenance/ is INTENTIONALLY tracked: it holds only the tiny results.csv + args.yaml
+# training logs kept as evidence for the reported metrics. The heavy weights that used to
+# live alongside them were removed (see .github/workflows/ci.yml guard job).
 
 # Logs
 *.log
@@ -112,3 +132,9 @@ data_exports/
 .Python
 
 .playwright-mcp/
+
+# ML v1 baseline freeze (weights + old notebooks); safe to delete once v2 ships
+/archive/
+
+# Local env backups
+.env.*.bak

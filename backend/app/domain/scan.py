@@ -32,11 +32,15 @@ class ScanCreate(ScanBase):
 
 
 class ScanUpdate(BaseEntity):
-    """Schema for updating scan (all fields optional)."""
-    
+    """
+    Schema for updating a scan record.
+
+    Deliberately limited to `notes` and `status`. The AI outputs (`raw_ml_output`, `ai_report`)
+    are excluded: they are written only by the ingestion service after a real model run, so a
+    client cannot tamper with the stored model output.
+    """
+
     status: Optional[str] = Field(None, pattern="^(uploaded|processing|analyzed|reviewed|failed)$")
-    raw_ml_output: Optional[Dict[str, Any]] = None
-    ai_report: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -55,14 +59,6 @@ class ScanListResponse(BaseEntity):
     total: int
     page: int
     page_size: int
-
-
-class ScanUploadRequest(BaseEntity):
-    """Request schema for scan upload."""
-    
-    patient_id: UUID
-    scan_type: str = "panoramic"
-    notes: Optional[str] = None
 
 
 class ScanAnalysisResponse(BaseEntity):

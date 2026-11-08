@@ -4,15 +4,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { ageFrom, dateTime } from "../../lib/format";
 import type { Patient } from "../../lib/types";
-import { Badge, Button, Card, Empty, ErrorNote, Spinner } from "../../components/common/ui";
+import { Badge, Button, Card, Empty, ErrorNote, Pagination, Spinner } from "../../components/common/ui";
 import { PatientForm } from "./PatientForm";
 
 const SCAN_TONE = { uploaded: "slate", processing: "violet", analyzed: "sky", reviewed: "emerald", failed: "rose" } as const;
+const SCAN_PAGE_SIZE = 20;
 
 export function PatientPage() {
   const { patientId = "" } = useParams();
+  const [scanPage, setScanPage] = useState(1);
   const patient = useQuery({ queryKey: ["patient", patientId], queryFn: () => api.getPatient(patientId) });
-  const scans = useQuery({ queryKey: ["scans", patientId], queryFn: () => api.listScans(patientId) });
+  const scans = useQuery({
+    queryKey: ["scans", patientId, scanPage],
+    queryFn: () => api.listScans(patientId, { page: scanPage, page_size: SCAN_PAGE_SIZE }),
+  });
 
   if (patient.isLoading) return <Spinner />;
   if (patient.error) return <ErrorNote error={patient.error} />;
@@ -38,6 +43,9 @@ export function PatientPage() {
               </li>
             ))}
           </ul>
+          {scans.data && (
+            <Pagination page={scans.data.page} pageSize={scans.data.page_size} total={scans.data.total} onPage={setScanPage} label="scans" />
+          )}
         </Card>
         <UploadCard patientId={p.id} />
       </div>
@@ -101,8 +109,9 @@ function UploadCard({ patientId }: { patientId: string }) {
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [analyze, setAnalyze] = useState(true);
+  const [confidence, setConfidence] = useState(0.2);
   const upload = useMutation({
-    mutationFn: () => api.uploadScan(patientId, file!, analyze),
+    mutationFn: () => api.uploadScan(patientId, file!, analyze, confidence),
     onSettled: () => qc.invalidateQueries({ queryKey: ["scans", patientId] }),
   });
   const submit = (e: FormEvent) => { e.preventDefault(); if (file) upload.mutate(); };
@@ -113,6 +122,15 @@ function UploadCard({ patientId }: { patientId: string }) {
       <form onSubmit={submit} className="space-y-3 text-sm">
         <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="X-ray image" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-brand-700" />
         <label className="flex items-center gap-2"><input type="checkbox" checked={analyze} onChange={(e) => setAnalyze(e.target.checked)} /> Run AI analysis (needs the ML service on port 8001)</label>
+        <label className="flex items-center gap-2">
+          Detection confidence
+          <select value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} disabled={!analyze}
+            className="rounded-md border border-slate-300 px-2 py-1">
+            <option value={0.2}>0.20 (default)</option>
+            <option value={0.3}>0.30</option>
+            <option value={0.5}>0.50</option>
+          </select>
+        </label>
         <Button type="submit" disabled={!file || upload.isPending}>{upload.isPending ? "Uploading and analysing…" : "Upload"}</Button>
         {upload.data && (
           <p className="text-emerald-700">

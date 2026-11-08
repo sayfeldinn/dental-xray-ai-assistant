@@ -7,7 +7,7 @@ It talks **only** to the FastAPI backend (`VITE_API_URL`, default `http://localh
 npm install
 npm run dev         # http://localhost:5173 (the backend's CORS list already allows it)
 npm run typecheck
-npm test            # vitest, 25 tests, no network
+npm test            # vitest, 14 tests, no network
 npm run build       # typecheck + production bundle in dist/
 ```
 

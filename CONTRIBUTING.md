@@ -2,10 +2,12 @@
 
 Agreed for the 4-week competition build. Small repo, 5 people: keep the rules short and follow them exactly.
 
-## 1. Branching Strategy — trunk-based
+## 1. Branching Strategy — develop as integration branch
 
-- `main` is the only long-lived branch. **Never push directly to `main`.**
-- Branch off the latest `main` for every piece of work.
+- `develop` is the integration branch. **Never push directly to `main`.** `main` is only updated
+  from `develop` (release/demo cut).
+- Branch off the latest `develop` for every piece of work; open a PR back into `develop`.
+- CI (`.github/workflows/ci.yml`) runs on pushes and PRs to both `main` and `develop`.
 - Branch naming: `<type>/<ticket>-<short-slug>`
 
   | type | use for |

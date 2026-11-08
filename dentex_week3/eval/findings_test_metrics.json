@@ -1,0 +1,35 @@
+{
+  "split": "DentalOPG test (154 images, held out)",
+  "model": "/tmp/opencode/kaggle_out/findings/findings_best.pt",
+  "imgsz": 640,
+  "mAP50": 0.5937807656656676,
+  "mAP50_95": 0.24889410242569318,
+  "precision": 0.5764698083567411,
+  "recall": 0.6271518558377985,
+  "ap50_per_class": {
+    "BDR": 0.53791412213685,
+    "Bridge": 0.995,
+    "Cap": 0.9469387007328183,
+    "Distoangular Impaction": 0.2798411680911681,
+    "Filling": 0.5091280901057711,
+    "Horizontal Impaction": 0.6756318721057352,
+    "Missing Teeth": 0.6542179511814963,
+    "Periodontitis": 0.555,
+    "Root Canal": 0.2814817702447906,
+    "Unerupted Wisdom": 0.7831807794697452,
+    "Apical Abscess": 0.3132539682539683
+  },
+  "classes": [
+    "BDR",
+    "Bridge",
+    "Cap",
+    "Distoangular Impaction",
+    "Filling",
+    "Horizontal Impaction",
+    "Missing Teeth",
+    "Periodontitis",
+    "Root Canal",
+    "Unerupted Wisdom",
+    "Apical Abscess"
+  ]
+}

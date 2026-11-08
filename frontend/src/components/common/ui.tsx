@@ -58,6 +58,31 @@ export function Empty({ children }: { children: ReactNode }) {
   return <p className="p-6 text-center text-sm text-slate-500">{children}</p>;
 }
 
+/**
+ * Prev/next pager for the paginated list endpoints. Renders nothing when everything fits on
+ * one page, so it never clutters small lists.
+ */
+export function Pagination({ page, pageSize, total, onPage, label = "results" }: {
+  page: number; pageSize: number; total: number; onPage: (page: number) => void; label?: string;
+}) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (total <= pageSize) return null;
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-brand-100 px-4 py-2.5 text-sm">
+      <span className="text-slate-500">
+        {from}–{to} of {total} {label}
+      </span>
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</Button>
+        <span className="text-xs text-slate-500">Page {page} of {pages}</span>
+        <Button variant="secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next</Button>
+      </div>
+    </div>
+  );
+}
+
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   // The hint sits outside <label> so the field's accessible name is just the label.
   return (

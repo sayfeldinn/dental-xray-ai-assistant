@@ -24,3 +24,26 @@ test("without stored dimensions the overlay waits for the image", () => {
   render(<XrayViewer src="x.png" width={null} height={null} findings={[finding("a", "pending")]} selectedId={null} onSelect={() => {}} />);
   expect(screen.queryByTestId("overlay")).toBeNull();
 });
+
+test("missing teeth are dashed advisory boxes that do not capture clicks", () => {
+  const onSelect = vi.fn();
+  render(<XrayViewer src="x.png" width={700} height={350} findings={[finding("a", "pending")]}
+    missing={[{ quadrant: 4, tooth_id: 6, tooth: "Tooth_6", tooth_fdi: "46", confidence: 0.8, bounded_by: ["45", "47"], gap_probability: 0.93, box: [100, 100, 140, 160] }]}
+    selectedId={null} onSelect={onSelect} />);
+  const groups = screen.getAllByTestId("missing-tooth");
+  expect(groups).toHaveLength(1);
+  const rect = groups[0].querySelector("rect")!;
+  expect(rect.getAttribute("stroke-dasharray")).toBeTruthy();
+  expect(screen.getByText("Missing 46")).toBeTruthy();
+  fireEvent.click(rect);
+  expect(onSelect).not.toHaveBeenCalled();
+});
+
+test("zoom controls scale the viewport and reset returns to fit", () => {
+  render(<XrayViewer src="x.png" width={700} height={350} findings={[finding("a", "pending")]} selectedId={null} onSelect={() => {}} />);
+  const viewport = screen.getByTestId("viewport");
+  fireEvent.click(screen.getByLabelText("Zoom in"));
+  expect(viewport.style.transform).toContain("scale(1.25)");
+  fireEvent.click(screen.getByLabelText("Reset zoom"));
+  expect(viewport.style.transform).toContain("scale(1)");
+});

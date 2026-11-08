@@ -1,513 +1,590 @@
+"""DENTEX v2 inference pipeline — tooth detector + disease detector.
 
-import os
+Replaces the v1 design (quadrant coordinator -> disease detector -> random
+forest on lesion-box geometry). Here every tooth is localised and classified
+with its FDI number, and each lesion is assigned to the tooth it overlaps.
+
+Output contract is unchanged, so the FastAPI service and the backend keep
+working without modification:
+
+    {
+      "image_width", "image_height",
+      "quadrants": [{"quadrant", "confidence", "box"}],   # derived, for overlays
+      "detections": [{quadrant, tooth_id, tooth, tooth_confidence,
+                      disease, disease_id, disease_confidence,
+                      association_confidence, box}],
+      "num_detections", "model"
+    }
+"""
+
 import json
-import joblib
-import numpy as np
-import pandas as pd
+import os
 
+import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 
-
-# ================================================================
-# CONFIGURATION
-# ================================================================
-
-PACKAGE_DIR = os.path.dirname(
-    os.path.abspath(__file__)
-)
-
-with open(
-    os.path.join(
-        PACKAGE_DIR,
-        "pipeline_config.json"
-    ),
-    "r"
-) as f:
-    CONFIG = json.load(f)
-
-
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-COORDINATOR_PATH = os.path.join(PACKAGE_DIR, CONFIG["coordinator_model"])
-DISEASE_PATH = os.path.join(PACKAGE_DIR, CONFIG["disease_model"])
+# Evaluation can point at candidate weights without touching the shipped ones:
+#   DENTEX_MODEL_DIR=/tmp/v3_weights python ...
+MODEL_DIR = os.environ.get("DENTEX_MODEL_DIR", PACKAGE_DIR)
 
-TOOTH_RF_PATH = os.path.join(
-    PACKAGE_DIR,
-    "tooth_association_rf_300.joblib"
-)
+with open(os.path.join(PACKAGE_DIR, "pipeline_config.json")) as fh:
+    CONFIG = json.load(fh)
 
-
-DISEASE_MAP = {
-    int(k): v
-    for k, v in CONFIG["disease_map"].items()
-}
-
-TOOTH_MAP = {
-    int(k): v
-    for k, v in CONFIG["tooth_map"].items()
-}
-
-RAW_TO_ACTUAL_Q = {
-    int(k): v
-    for k, v in
-    CONFIG["coordinator_raw_to_actual_quadrant"].items()
-}
+_MODELS = {}
 
 
-# ================================================================
-# LOAD MODELS
-# ================================================================
+def _model(key):
+    """Load a detector on first use.
 
-COORDINATOR_MODEL = YOLO(
-    COORDINATOR_PATH
-)
+    Lazy so the service can start (and the tooth stage can be evaluated) while
+    one of the two weight files is still being produced.
+    """
+    if key not in _MODELS:
+        _MODELS[key] = YOLO(os.path.join(MODEL_DIR, CONFIG[f"{key}_model"]))
+    return _MODELS[key]
 
-DISEASE_MODEL = YOLO(
-    DISEASE_PATH
-)
+DISEASE_MAP = {int(k): v for k, v in CONFIG["disease_map"].items()}
 
-TOOTH_RF = joblib.load(
-    TOOTH_RF_PATH
-)
+TOOTH_IMGSZ = CONFIG.get("tooth_imgsz", 1024)
+DISEASE_IMGSZ = CONFIG.get("disease_imgsz", 1024)
+TOOTH_CONF = CONFIG.get("tooth_conf", 0.25)
+DISEASE_CONF = CONFIG.get("disease_conf", 0.25)
+TOOTH_NMS_IOU = CONFIG.get("tooth_nms_iou", 0.6)
 
-
-# ================================================================
-# EXACT STEP 51 FEATURES
-# ================================================================
-
-def production_features(df):
-
-    out = pd.DataFrame(index=df.index)
-
-    q = df["quadrant"].astype(float)
-    x = df["cx"].astype(float)
-    y = df["cy"].astype(float)
-    w = df["w"].astype(float)
-    h = df["h"].astype(float)
-    disease = df["disease"].astype(float)
-
-    out["quadrant"] = q
-    out["cx"] = x
-    out["cy"] = y
-    out["w"] = w
-    out["h"] = h
-    out["disease"] = disease
-
-    out["area"] = w * h
-    out["aspect"] = w / (h + 1e-6)
-
-    anatomical_x = np.where(
-        (q == 1) | (q == 4),
-        1.0 - x,
-        x
-    )
-
-    out["anatomical_x"] = anatomical_x
-    out["anatomical_y"] = y
-
-    out["q_x"] = q * x
-    out["q_y"] = q * y
-
-    out["disease_x"] = disease * x
-    out["disease_y"] = disease * y
-
-    out["disease_anatomical_x"] = (
-        disease * anatomical_x
-    )
-
-    return out
+FINDINGS_IMGSZ = CONFIG.get("findings_imgsz", 640)
+FINDINGS_CONF = CONFIG.get("findings_conf", 0.40)
+FINDINGS_MAP = {int(k): v for k, v in CONFIG.get("findings_map", {}).items()}
 
 
-# ================================================================
-# IMAGE LOADING
-# ================================================================
+# ----------------------------------------------------------------------
+# Image handling
+# ----------------------------------------------------------------------
 
 def load_image_array(image):
-
     if isinstance(image, str):
-
-        return np.array(
-            Image.open(image).convert("RGB")
-        )
-
+        return np.array(Image.open(image).convert("RGB"))
     if isinstance(image, Image.Image):
-
-        return np.array(
-            image.convert("RGB")
-        )
-
+        return np.array(image.convert("RGB"))
     if isinstance(image, np.ndarray):
-
         if image.ndim == 2:
-            image = np.stack(
-                [image] * 3,
-                axis=-1
-            )
-
+            image = np.stack([image] * 3, axis=-1)
         if image.shape[-1] == 4:
             image = image[..., :3]
-
         return image
-
-    raise TypeError(
-        "image must be a filepath, PIL Image, "
-        "or numpy array"
-    )
+    raise TypeError("image must be a filepath, PIL Image, or numpy array")
 
 
-# ================================================================
-# COORDINATOR
-# ================================================================
+# ----------------------------------------------------------------------
+# Geometry
+# ----------------------------------------------------------------------
 
-def detect_quadrants(image):
+def _iou(a, b):
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    ix1, iy1 = max(ax1, bx1), max(ay1, by1)
+    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+    iw, ih = max(0.0, ix2 - ix1), max(0.0, iy2 - iy1)
+    inter = iw * ih
+    if inter <= 0:
+        return 0.0
+    area_a = (ax2 - ax1) * (ay2 - ay1)
+    area_b = (bx2 - bx1) * (by2 - by1)
+    return inter / (area_a + area_b - inter)
 
-    H, W = image.shape[:2]
 
-    results = COORDINATOR_MODEL.predict(
-        source=image,
-        imgsz=640,
-        conf=0.25,
-        verbose=False
-    )
+def _center(box):
+    return ((box[0] + box[2]) / 2.0, (box[1] + box[3]) / 2.0)
 
-    result = results[0]
 
+def _contains(box, point):
+    return box[0] <= point[0] <= box[2] and box[1] <= point[1] <= box[3]
+
+
+# ----------------------------------------------------------------------
+# Stage 1 — teeth
+# ----------------------------------------------------------------------
+
+def _dedup_teeth(teeth, iou_thresh=TOOTH_NMS_IOU):
+    """Drop overlapping tooth boxes of different classes.
+
+    YOLO's NMS is per-class, so the 32-class head can keep two class
+    hypotheses for the same physical tooth. Without this, a lesion attaches
+    to whichever duplicate happens to have the higher IoU — a common
+    source of adjacent-tooth errors (e.g. 17 vs 18).
+    """
+    kept = []
+    for t in sorted(teeth, key=lambda t: -t["tooth_confidence"]):
+        if all(_iou(t["box"], k["box"]) < iou_thresh for k in kept):
+            kept.append(t)
+    return kept
+
+
+def detect_teeth(image):
+    """Return tooth boxes with FDI numbers.
+
+    Model class index -> FDI: index = (quadrant - 1) * 8 + (tooth - 1).
+    """
+    result = _model("tooth").predict(source=image, imgsz=TOOTH_IMGSZ,
+                                 conf=TOOTH_CONF, verbose=False)[0]
     if result.boxes is None:
         return []
 
-    best_by_q = {}
-
+    teeth = []
     for box in result.boxes:
-
-        raw_class = int(
-            box.cls[0].item()
-        )
-
-        confidence = float(
-            box.conf[0].item()
-        )
-
-        x1, y1, x2, y2 = (
-            box.xyxy[0]
-            .cpu()
-            .numpy()
-        )
-
-        actual_q = RAW_TO_ACTUAL_Q.get(
-            raw_class
-        )
-
-        if actual_q is None:
-            continue
-
-        record = {
-            "quadrant": actual_q,
-            "confidence": confidence,
-            "box": [
-                float(x1),
-                float(y1),
-                float(x2),
-                float(y2),
-            ],
-        }
-
-        if (
-            actual_q not in best_by_q
-            or confidence >
-               best_by_q[actual_q]["confidence"]
-        ):
-            best_by_q[actual_q] = record
-
-    return [
-        best_by_q[q]
-        for q in sorted(best_by_q)
-    ]
+        idx = int(box.cls[0].item())
+        x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
+        quadrant, tooth = idx // 8 + 1, idx % 8 + 1
+        teeth.append({
+            "quadrant": quadrant,
+            "tooth_id": tooth,
+            "tooth": f"Tooth_{tooth}",
+            "tooth_fdi": f"{quadrant}{tooth}",
+            "tooth_confidence": float(box.conf[0].item()),
+            "box": [x1, y1, x2, y2],
+        })
+    return _dedup_teeth(teeth)
 
 
-# ================================================================
-# DISEASE DETECTOR
-# ================================================================
+# ----------------------------------------------------------------------
+# Stage 2 — lesions
+# ----------------------------------------------------------------------
 
-def detect_diseases(
-    image,
-    quadrants
-):
-
-    # IMPORTANT:
-    # The frozen benchmark used the disease detector
-    # on the FULL panorama at imgsz=416, conf=0.20.
-
-    results = DISEASE_MODEL.predict(
-        source=image,
-        imgsz=416,
-        conf=0.20,
-        verbose=False
-    )
-
-    result = results[0]
-
+def detect_diseases(image, conf=DISEASE_CONF):
+    result = _model("disease").predict(source=image, imgsz=DISEASE_IMGSZ,
+                                   conf=conf, verbose=False)[0]
     if result.boxes is None:
         return []
 
-    detections = []
-
+    lesions = []
     for box in result.boxes:
-
-        disease_id = int(
-            box.cls[0].item()
-        )
-
-        disease_confidence = float(
-            box.conf[0].item()
-        )
-
-        bx1, by1, bx2, by2 = (
-            box.xyxy[0]
-            .cpu()
-            .numpy()
-        )
-
-        bx1 = float(bx1)
-        by1 = float(by1)
-        bx2 = float(bx2)
-        by2 = float(by2)
-
-        # Disease-box center in panorama coordinates.
-        cx = (bx1 + bx2) / 2.0
-        cy = (by1 + by2) / 2.0
-
-        # First try to find a quadrant containing
-        # the disease-box center.
-        containing = []
-
-        for q in quadrants:
-
-            qx1, qy1, qx2, qy2 = q["box"]
-
-            if (
-                qx1 <= cx <= qx2
-                and
-                qy1 <= cy <= qy2
-            ):
-                containing.append(q)
-
-        if containing:
-
-            # If overlapping quadrant boxes contain the
-            # center, choose the smallest containing box.
-            quadrant_record = min(
-                containing,
-                key=lambda q: (
-                    (q["box"][2] - q["box"][0])
-                    *
-                    (q["box"][3] - q["box"][1])
-                )
-            )
-
-        else:
-
-            # Fallback: nearest quadrant center.
-            quadrant_record = min(
-                quadrants,
-                key=lambda q: (
-                    (
-                        (
-                            q["box"][0]
-                            +
-                            q["box"][2]
-                        ) / 2.0
-                        -
-                        cx
-                    ) ** 2
-                    +
-                    (
-                        (
-                            q["box"][1]
-                            +
-                            q["box"][3]
-                        ) / 2.0
-                        -
-                        cy
-                    ) ** 2
-                )
-            )
-
-        detections.append({
-            "quadrant":
-                quadrant_record["quadrant"],
-
-            "disease_id":
-                disease_id,
-
-            "disease":
-                DISEASE_MAP.get(
-                    disease_id,
-                    f"Unknown_{disease_id}"
-                ),
-
-            "disease_confidence":
-                disease_confidence,
-
-            "box": [
-                bx1,
-                by1,
-                bx2,
-                by2,
-            ],
+        disease_id = int(box.cls[0].item())
+        x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
+        lesions.append({
+            "disease_id": disease_id,
+            "disease": DISEASE_MAP.get(disease_id, f"Unknown_{disease_id}"),
+            "disease_confidence": float(box.conf[0].item()),
+            "box": [x1, y1, x2, y2],
         })
+    return lesions
 
-    return detections
+
+# ----------------------------------------------------------------------
+# Optional stage — caries verifier (tooth-crop re-ranker)
+# ----------------------------------------------------------------------
+
+_VERIFIER = {}
+CARIES_TARGETS = ("Caries", "Deep Caries")
+VERIFIER_SIZE = 224
+VERIFIER_PAD = 0.10
 
 
-# ================================================================
-# TOOTH ASSOCIATION
-# ================================================================
+def _verifier_config():
+    """Config block, overridable for experiments with
+    DENTEX_CARIES_VERIFIER=/abs/path/verifier.pt[:alpha|gate:threshold]."""
+    env = os.environ.get("DENTEX_CARIES_VERIFIER")
+    if env:
+        parts = env.split(":")
+        cfg = {"enabled": True, "model": parts[0]}
+        if len(parts) > 1 and parts[1] == "gate":
+            cfg["mode"] = "gate"
+            cfg["threshold"] = float(parts[2]) if len(parts) > 2 else 0.5
+        elif len(parts) > 1:
+            cfg["alpha"] = float(parts[1] or 1.0)
+        return cfg
+    return CONFIG.get("caries_verifier", {})
 
-def associate_teeth(
-    detections,
-    image_shape
-):
 
-    if not detections:
+def _load_verifier(cfg):
+    if "model" in _VERIFIER:
+        return _VERIFIER["model"]
+    import torch
+
+    from torchvision import models
+
+    path = cfg["model"]
+    if not os.path.isabs(path):
+        path = os.path.join(MODEL_DIR, path)
+    ckpt = torch.load(path, map_location="cpu")
+    model = models.resnet18(weights=None)
+    model.fc = torch.nn.Linear(model.fc.in_features, 2)
+    model.load_state_dict(ckpt["state_dict"])
+    model.eval()
+    _VERIFIER["model"] = (model, ckpt)
+    return _VERIFIER["model"]
+
+
+def _crop_tooth(image, tb, size=VERIFIER_SIZE, pad=VERIFIER_PAD):
+    from PIL import Image as _Image
+
+    x1, y1, x2, y2 = tb
+    w, h = x2 - x1, y2 - y1
+    x1, x2 = x1 - pad * w, x2 + pad * w
+    y1, y2 = y1 - pad * h, y2 + pad * h
+    x1, y1 = max(0, x1), max(0, y1)
+    x2, y2 = min(image.shape[1], x2), min(image.shape[0], y2)
+    if x2 - x1 < 8 or y2 - y1 < 8:
+        return None
+    im = _Image.fromarray(image[int(y1):int(y2), int(x1):int(x2)])
+    return im.resize((size, size), _Image.BILINEAR)
+
+
+def apply_caries_verifier(lesions, teeth, image):
+    """Down-weight caries detections whose tooth crop looks caries-free.
+
+    confidence *= p_verifier ** alpha. This only re-ranks: the detector and
+    the association logic are untouched. No-op when disabled or no teeth.
+    """
+    cfg = _verifier_config()
+    if not cfg.get("enabled") or not cfg.get("model") or not teeth or not lesions:
+        return lesions
+    targets = [l for l in lesions if l["disease"] in CARIES_TARGETS]
+    if not targets:
+        return lesions
+
+    crops = []
+    for lesion in targets:
+        lbox = lesion["box"]
+        center = _center(lbox)
+        best = max(teeth, key=lambda t: _iou(lbox, t["box"]))
+        if _iou(lbox, best["box"]) <= 0.0:
+            containing = [t for t in teeth if _contains(t["box"], center)]
+            if containing:
+                best = min(containing, key=lambda t: (t["box"][2] - t["box"][0]) *
+                           (t["box"][3] - t["box"][1]))
+            else:
+                best = min(teeth, key=lambda t: (_center(t["box"])[0] - center[0]) ** 2 +
+                           (_center(t["box"])[1] - center[1]) ** 2)
+        crops.append(_crop_tooth(image, best["box"]))
+
+    valid = [(l, c) for l, c in zip(targets, crops) if c is not None]
+    if not valid:
+        return lesions
+
+    import torch
+    from torchvision import transforms
+
+    model, ckpt = _load_verifier(cfg)
+    mean = ckpt.get("mean", (0.485, 0.456, 0.406))
+    std = ckpt.get("std", (0.229, 0.224, 0.225))
+    tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
+    batch = torch.stack([tf(c) for _, c in valid])
+    with torch.no_grad():
+        probs = torch.softmax(model(batch), 1)[:, 1].tolist()
+
+    mode = cfg.get("mode", "scale")
+    alpha = float(cfg.get("alpha", 1.0))
+    threshold = float(cfg.get("threshold", 0.0))
+
+    if mode == "gate":
+        # drop caries detections the verifier thinks are caries-free
+        drop = {id(l) for (l, _), p in zip(valid, probs)
+                if p < threshold and l["disease"] in CARIES_TARGETS}
+        kept = [l for l in lesions if id(l) not in drop]
+        for (l, _), p in zip(valid, probs):
+            l["caries_verifier_p"] = float(p)
+        return kept
+
+    for (lesion, _), p in zip(valid, probs):
+        lesion["disease_confidence"] = float(lesion["disease_confidence"] * p ** alpha)
+        lesion["caries_verifier_p"] = float(p)
+    return lesions
+
+
+
+# ----------------------------------------------------------------------
+# Optional stage — restorations / missing teeth (advisory)
+# ----------------------------------------------------------------------
+
+def detect_findings(image):
+    """Return restoration and dentition findings from the DentalOPG model.
+
+    The model is trained and validated on DentalOPG only, and there is no
+    DENTEX ground truth for missing teeth, BDR, fillings or crowns. Its output
+    is advisory, is flagged with ``findings_advisory`` in ``/predict``, and
+    never feeds the clinical report.
+    """
+    if not CONFIG.get("findings_model"):
+        return []
+    result = _model("findings").predict(source=image, imgsz=FINDINGS_IMGSZ,
+                                        conf=FINDINGS_CONF, verbose=False)[0]
+    if result.boxes is None:
         return []
 
-    H, W = image_shape[:2]
-
-    rows = []
-
-    for d in detections:
-
-        x1, y1, x2, y2 = d["box"]
-
-        rows.append({
-            "quadrant":
-                d["quadrant"],
-
-            "cx":
-                ((x1 + x2) / 2.0) / W,
-
-            "cy":
-                ((y1 + y2) / 2.0) / H,
-
-            "w":
-                (x2 - x1) / W,
-
-            "h":
-                (y2 - y1) / H,
-
-            "disease":
-                d["disease_id"],
+    findings = []
+    for box in result.boxes:
+        idx = int(box.cls[0].item())
+        x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
+        findings.append({
+            "finding_id": idx,
+            "finding": FINDINGS_MAP.get(idx, f"Unknown_{idx}"),
+            "confidence": float(box.conf[0].item()),
+            "box": [x1, y1, x2, y2],
         })
+    return findings
 
-    df = pd.DataFrame(rows)
 
-    X = production_features(df)
+# ----------------------------------------------------------------------
+# Stage 3 — association
+# ----------------------------------------------------------------------
 
-    predictions = TOOTH_RF.predict(X)
+def associate(lesions, teeth):
+    """Assign every lesion to a tooth.
 
-    probabilities = TOOTH_RF.predict_proba(X)
+    Priority: highest IoU with a tooth box; else the tooth whose box contains
+    the lesion centre; else the nearest tooth centre. A lesion with no teeth
+    to attach to is dropped rather than mislabelled.
+    """
+    if not lesions or not teeth:
+        return []
 
     output = []
+    for lesion in lesions:
+        lbox = lesion["box"]
+        center = _center(lbox)
 
-    for i, d in enumerate(detections):
+        best = max(teeth, key=lambda t: _iou(lbox, t["box"]))
+        if _iou(lbox, best["box"]) <= 0.0:
+            containing = [t for t in teeth if _contains(t["box"], center)]
+            if containing:
+                best = min(containing, key=lambda t: (t["box"][2] - t["box"][0]) *
+                                                      (t["box"][3] - t["box"][1]))
+            else:
+                best = min(teeth, key=lambda t: (_center(t["box"])[0] - center[0]) ** 2 +
+                                                 (_center(t["box"])[1] - center[1]) ** 2)
 
-        tooth_id = int(
-            predictions[i]
-        )
-
-        tooth_confidence = float(
-            np.max(probabilities[i])
-        )
-
-        item = dict(d)
-
-        item["tooth_id"] = tooth_id
-
-        item["tooth"] = (
-            TOOTH_MAP[tooth_id]
-        )
-
-        item["tooth_confidence"] = (
-            tooth_confidence
-        )
-
-        item["association_confidence"] = (
-            d["disease_confidence"]
-            * tooth_confidence
-        )
-
-        output.append(item)
-
+        output.append({
+            "quadrant": best["quadrant"],
+            "tooth_id": best["tooth_id"],
+            "tooth": best["tooth"],
+            "tooth_fdi": best["tooth_fdi"],
+            "tooth_confidence": best["tooth_confidence"],
+            "disease": lesion["disease"],
+            "disease_id": lesion["disease_id"],
+            "disease_confidence": lesion["disease_confidence"],
+            "association_confidence": lesion["disease_confidence"] * best["tooth_confidence"],
+            "box": lbox,
+        })
     return output
 
 
-# ================================================================
-# COMPLETE PIPELINE
-# ================================================================
+MISSING_TEETH_CONF = CONFIG.get("missing_teeth_conf", 0.30)
+MISSING_TEETH_MODEL = CONFIG.get("missing_teeth_model")
+MISSING_TEETH_GAP = CONFIG.get("missing_teeth_gap_threshold", 0.40)
+_MISSING_MODEL = {}
 
-def run_dentex_pipeline(
-    image,
-    save_json=None
-):
 
+def _missing_teeth_model():
+    """Lazy ResNet18 gap-vs-tooth classifier; None if not configured/missing."""
+    if "model" in _MISSING_MODEL:
+        return _MISSING_MODEL["model"]
+    if not MISSING_TEETH_MODEL:
+        _MISSING_MODEL["model"] = None
+        return None
+    try:
+        import torch
+
+        from torchvision import models as _tv
+
+        path = MISSING_TEETH_MODEL
+        if not os.path.isabs(path):
+            path = os.path.join(MODEL_DIR, path)
+        ckpt = torch.load(path, map_location="cpu")
+        model = _tv.resnet18(weights=None)
+        model.fc = torch.nn.Linear(model.fc.in_features, 2)
+        model.load_state_dict(ckpt["state_dict"])
+        model.eval()
+        _MISSING_MODEL["model"] = (model, ckpt)
+    except Exception:
+        _MISSING_MODEL["model"] = None
+    return _MISSING_MODEL["model"]
+
+
+def _interp_box(boxes, t):
+    """Linear slot position between the nearest detected neighbours in a quadrant."""
+    lo = [x for x in boxes if x < t]
+    hi = [x for x in boxes if x > t]
+    if not lo or not hi:
+        return None
+    L, H = max(lo), min(hi)
+    bl, bh = boxes[L], boxes[H]
+    a = (t - L) / (H - L)
+    x = (bl[0] + bl[2]) / 2 * (1 - a) + (bh[0] + bh[2]) / 2 * a
+    y = (bl[1] + bl[3]) / 2 * (1 - a) + (bh[1] + bh[3]) / 2 * a
+    w = ((bl[2] - bl[0]) + (bh[2] - bh[0])) / 2
+    h = ((bl[3] - bl[1]) + (bh[3] - bh[1])) / 2
+    return [x - w / 2, y - h / 2, x + w / 2, y + h / 2]
+
+
+def derive_missing_teeth(teeth, image=None, conf=MISSING_TEETH_CONF):
+    """Interior edentulous gaps from the detected FDI teeth.
+
+    A tooth is "missing" if its FDI slot is empty while detected teeth exist on
+    both sides of it inside the same quadrant -- an interior gap. Third molars
+    and arch edges are excluded (ambiguous with agenesis and cropping).
+
+    If a gap-vs-tooth classifier is configured, each candidate gap crop is
+    scored and kept only when it looks like a gap (P 0.90 / R 0.72 / F1 0.80 on
+    the tooth detector's held-out 94-image DENTEX split). Without the model it
+    falls back to the plain rule (P 0.73 / R 0.73 / F1 0.73).
+    """
+    by_q = {}
+    for t in teeth:
+        if t["tooth_confidence"] < conf:
+            continue
+        q, tid = t["quadrant"], t["tooth_id"]
+        by_q.setdefault(q, {})
+        if tid not in by_q[q] or t["tooth_confidence"] > by_q[q][tid]["tooth_confidence"]:
+            by_q[q][tid] = t
+
+    candidates = []
+    for q in sorted(by_q):
+        boxes = {tid: t["box"] for tid, t in by_q[q].items()}
+        for t in range(2, 8):  # interior teeth 2..7 (third molar excluded)
+            if t in boxes:
+                continue
+            box = _interp_box(boxes, t)
+            if box is None:
+                continue
+            lower = [x for x in boxes if x < t]
+            higher = [x for x in boxes if x > t]
+            nl, nh = max(lower), min(higher)
+            candidates.append({
+                "quadrant": q, "tooth_id": t, "tooth": f"Tooth_{t}",
+                "tooth_fdi": f"{q}{t}",
+                "confidence": round(min(by_q[q][nl]["tooth_confidence"],
+                                         by_q[q][nh]["tooth_confidence"]), 4),
+                "bounded_by": [f"{q}{nl}", f"{q}{nh}"],
+                "_box": box,
+            })
+
+    mv = _missing_teeth_model()
+    if mv is not None and image is not None and candidates:
+        import torch
+        from torchvision import transforms
+
+        model, ckpt = mv
+        crops = []
+        for c in candidates:
+            crop = _crop_tooth(image, c["_box"])
+            crops.append(crop)
+        valid = [(c, crop) for c, crop in zip(candidates, crops) if crop is not None]
+        if valid:
+            tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(
+                ckpt.get("mean", (0.485, 0.456, 0.406)), ckpt.get("std", (0.229, 0.224, 0.225)))])
+            batch = torch.stack([tf(crop) for _, crop in valid])
+            with torch.no_grad():
+                probs = torch.softmax(model(batch), 1)[:, 1].tolist()
+            kept = []
+            for (c, _), p in zip(valid, probs):
+                if p >= MISSING_TEETH_GAP:
+                    c["gap_probability"] = round(float(p), 4)
+                    kept.append(c)
+            candidates = kept
+
+    # Keep the interpolated gap box so the UI can draw it. Additive: callers
+    # that only read tooth_fdi are unaffected.
+    for c in candidates:
+        box = c.pop("_box", None)
+        if box is not None:
+            c["box"] = [round(float(v), 1) for v in box]
+
+    return candidates
+
+
+def derive_quadrants(teeth):
+    """Union of tooth boxes per FDI quadrant, for UI overlays."""
+    by_q = {}
+    for tooth in teeth:
+        q = tooth["quadrant"]
+        if q not in by_q:
+            by_q[q] = {"quadrant": q, "confidence": 0.0,
+                       "box": list(tooth["box"])}
+            by_q[q]["confidence"] = tooth["tooth_confidence"]
+        else:
+            b = by_q[q]["box"]
+            t = tooth["box"]
+            by_q[q]["box"] = [min(b[0], t[0]), min(b[1], t[1]),
+                              max(b[2], t[2]), max(b[3], t[3])]
+            by_q[q]["confidence"] = min(by_q[q]["confidence"], tooth["tooth_confidence"])
+    return [by_q[q] for q in sorted(by_q)]
+
+
+# ----------------------------------------------------------------------
+# Public entry point
+# ----------------------------------------------------------------------
+
+def run_dentex_pipeline(image, save_json=None, confidence_threshold=None):
     image = load_image_array(image)
+    height, width = image.shape[:2]
 
-    H, W = image.shape[:2]
+    # The model's own floor is DISEASE_CONF. A caller asking for a lower
+    # threshold gets more candidates; a higher one is filtered after association.
+    threshold = DISEASE_CONF if confidence_threshold is None else float(confidence_threshold)
+    threshold = max(0.0, min(1.0, threshold))
 
-    quadrants = detect_quadrants(
-        image
-    )
-
-    # Run disease detector once on the full panorama.
-    disease_detections = detect_diseases(
-        image,
-        quadrants
-    )
-
-    final_detections = associate_teeth(
-        disease_detections,
-        image.shape
-    )
+    teeth = detect_teeth(image)
+    lesions = detect_diseases(image, conf=min(DISEASE_CONF, threshold))
+    # Optional caries re-ranker; never let a missing verifier break /predict.
+    try:
+        lesions = apply_caries_verifier(lesions, teeth, image)
+    except Exception:
+        pass
+    detections = associate(lesions, teeth)
+    detections = [d for d in detections if d["disease_confidence"] >= threshold]
 
     output = {
-        "image_width": int(W),
-        "image_height": int(H),
-
-        "quadrants": quadrants,
-
-        "detections":
-            final_detections,
-
-        "num_detections":
-            len(final_detections),
-
+        "image_width": int(width),
+        "image_height": int(height),
+        "confidence_threshold": threshold,
+        "quadrants": derive_quadrants(teeth),
+        "detections": detections,
+        "num_detections": len(detections),
+        "missing_teeth": derive_missing_teeth(teeth, image),
+        "missing_teeth_advisory": True,
         "model": {
-            "coordinator":
-                "best.pt",
-
-            "disease":
-                "best.pt",
-
-            "tooth":
-                "Step_51_RF_300",
-
-            "enumerator":
-                False,
+            "tooth": CONFIG.get("tooth_model"),
+            "disease": CONFIG.get("disease_model"),
+            "missing_teeth": MISSING_TEETH_MODEL,
+            "missing_teeth_gap_threshold": MISSING_TEETH_GAP,
+            "architecture": "tooth_detector+disease_detector",
+            "pipeline_version": CONFIG.get("pipeline_version", "v3"),
         },
     }
 
+    # Advisory layer: never let a missing findings weight break /predict.
+    if CONFIG.get("findings_in_predict", False):
+        try:
+            output["findings"] = detect_findings(image)
+        except Exception as exc:
+            output["findings"] = []
+            output["findings_error"] = str(exc)
+        output["findings_advisory"] = True
+        output["model"]["findings"] = CONFIG.get("findings_model")
+
     if save_json is not None:
-
-        with open(
-            save_json,
-            "w"
-        ) as f:
-
-            json.dump(
-                output,
-                f,
-                indent=2
-            )
-
+        with open(save_json, "w") as fh:
+            json.dump(output, fh, indent=2)
     return output
+
+
+def run_findings(image):
+    """Run the advisory findings model only (no tooth/disease detectors).
+
+    The same boxes are appended to ``/predict`` when ``findings_in_predict`` is
+    enabled; this entry point exists for clients that want findings alone and
+    for isolating the model during validation.
+    """
+    image = load_image_array(image)
+    height, width = image.shape[:2]
+    findings = detect_findings(image)
+    return {
+        "image_width": int(width),
+        "image_height": int(height),
+        "findings": findings,
+        "num_findings": len(findings),
+        "model": {"findings": CONFIG.get("findings_model")},
+        "advisory": True,
+    }
