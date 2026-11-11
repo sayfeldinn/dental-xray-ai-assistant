@@ -1,0 +1,39 @@
+name: Supabase keep-alive
+
+# Free-plan Supabase projects pause after 7 days without activity, which takes the
+# whole app down (the backend's /health stays green while every query fails).
+# One read a day keeps the project active. It uses the public anon key: RLS
+# denies it every row, but the request still reaches Postgres.
+#
+# Setup: repo Settings -> Secrets and variables -> Actions -> add
+#   SUPABASE_URL       https://<project-ref>.supabase.co
+#   SUPABASE_ANON_KEY  the anon / publishable key (never the service-role key)
+
+on:
+  schedule:
+    - cron: "17 6 * * *"   # daily, 06:17 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::error::Add the SUPABASE_URL and SUPABASE_ANON_KEY repository secrets."
+            exit 1
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL%/}/rest/v1/patients?select=id&limit=1")
+          echo "Supabase responded HTTP ${code}"
+          if [ "${code}" -ge 300 ]; then
+            echo "::error::Supabase is unreachable or paused (HTTP ${code}). Restore it from the dashboard."
+            exit 1
+          fi
