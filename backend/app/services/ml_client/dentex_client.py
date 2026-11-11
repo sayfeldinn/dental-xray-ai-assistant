@@ -3,10 +3,27 @@ DentalAI - Dentex Week 3 ML Client
 HTTP client for communicating with the dentex_week3 AI microservice.
 """
 
+import time
 import httpx
-from typing import Dict, Any, List
+from typing import Awaitable, Callable, Dict, Any, List, Optional
 from io import BytesIO
 from app.core.config import settings
+
+# Cloud Run metadata server: mints an identity token for the service's own account.
+METADATA_IDENTITY_URL = (
+    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
+)
+TOKEN_LIFETIME_SECONDS = 50 * 60   # Google identity tokens live 60 minutes
+
+
+async def fetch_identity_token(audience: str) -> str:
+    """Identity token for calling a private Cloud Run service at `audience`."""
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        response = await client.get(
+            METADATA_IDENTITY_URL, params={"audience": audience}, headers={"Metadata-Flavor": "Google"}
+        )
+        response.raise_for_status()
+        return response.text.strip()
 
 
 class DentexClient:
@@ -15,7 +32,10 @@ class DentexClient:
     def __init__(
         self,
         base_url: str = None,
-        timeout: int = None
+        timeout: int = None,
+        auth: Optional[bool] = None,
+        token_fetcher: Callable[[str], Awaitable[str]] = fetch_identity_token,
+        transport: Optional[httpx.AsyncBaseTransport] = None,
     ):
         """
         Initialize Dentex client.
@@ -23,10 +43,30 @@ class DentexClient:
         Args:
             base_url: ML service URL (defaults to settings)
             timeout: Request timeout in seconds (defaults to settings)
+            auth: Send a Google identity token (defaults to settings.ML_SERVICE_AUTH)
+            token_fetcher: Mints the token for an audience (the metadata server on Cloud Run)
+            transport: httpx transport override, for tests
         """
         self.base_url = (base_url or settings.ML_SERVICE_URL).rstrip('/')
         self.timeout = timeout or settings.ML_TIMEOUT_SECONDS
         self.default_confidence = settings.ML_DEFAULT_CONFIDENCE
+        self.auth = settings.ML_SERVICE_AUTH if auth is None else auth
+        self._fetch_token = token_fetcher
+        self._transport = transport
+        self._token: Optional[str] = None
+        self._token_expires = 0.0
+
+    async def _headers(self) -> Dict[str, str]:
+        """Authorization for a private ML service; empty when auth is off (local, Docker)."""
+        if not self.auth:
+            return {}
+        if self._token is None or time.monotonic() >= self._token_expires:
+            self._token = await self._fetch_token(self.base_url)
+            self._token_expires = time.monotonic() + TOKEN_LIFETIME_SECONDS
+        return {"Authorization": f"Bearer {self._token}"}
+
+    def _client(self, timeout: float) -> httpx.AsyncClient:
+        return httpx.AsyncClient(timeout=timeout, transport=self._transport)
     
     async def health_check(self) -> Dict[str, Any]:
         """
@@ -38,8 +78,8 @@ class DentexClient:
         Raises:
             httpx.HTTPError: If service is unreachable
         """
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(f"{self.base_url}/")
+        async with self._client(10.0) as client:
+            response = await client.get(f"{self.base_url}/", headers=await self._headers())
             response.raise_for_status()
             return response.json()
     
@@ -75,11 +115,12 @@ class DentexClient:
             'file': (filename, BytesIO(image_bytes), 'image/jpeg')
         }
         
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with self._client(self.timeout) as client:
             response = await client.post(
                 f"{self.base_url}/predict",
                 files=files,
-                params={'confidence_threshold': confidence}
+                params={'confidence_threshold': confidence},
+                headers=await self._headers(),
             )
             response.raise_for_status()
             return response.json()
@@ -183,10 +224,11 @@ class DentexClient:
             'notes': notes
         }
         
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with self._client(10.0) as client:
             response = await client.post(
                 f"{self.base_url}/feedback/finding",
-                json=payload
+                json=payload,
+                headers=await self._headers(),
             )
             response.raise_for_status()
             return response.json()

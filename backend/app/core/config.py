@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     # AI Microservice (dentex_week3)
     ML_SERVICE_URL: str = "http://localhost:8001"
     ML_TIMEOUT_SECONDS: int = 60
+    # Cloud Run: the ML service is private, so calls carry a Google identity token for it.
+    ML_SERVICE_AUTH: bool = False
     ML_DEFAULT_CONFIDENCE: float = 0.20
     
     # Backend API
