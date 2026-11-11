@@ -16,14 +16,33 @@ from typing import List, Optional
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PROD_DIR = os.path.join(BASE_DIR, "production")
 FEEDBACK_DIR = os.path.join(BASE_DIR, "feedback")
+# Gitignored runtime output, so a fresh checkout has no folder and the CSV writes would fail.
+os.makedirs(FEEDBACK_DIR, exist_ok=True)
 sys.path.append(PROD_DIR)
 
 try:
-    from inference_pipeline import run_dentex_pipeline, run_findings
+    from inference_pipeline import CONFIG, MODEL_DIR, run_dentex_pipeline, run_findings
     models_loaded = True
 except Exception as e:
     models_loaded = False
     print(f"Error loading production pipeline: {e}")
+
+# /predict cannot run without these; findings and missing teeth degrade gracefully.
+REQUIRED_WEIGHTS = ("tooth", "disease")
+OPTIONAL_WEIGHTS = ("findings", "missing_teeth")
+
+
+def weights_status():
+    """Which configured weight files are present. The pipeline loads them lazily,
+    so an import alone does not prove /predict can run."""
+    if not models_loaded:
+        return {}
+    status = {}
+    for key in REQUIRED_WEIGHTS + OPTIONAL_WEIGHTS:
+        name = CONFIG.get(f"{key}_model")
+        if name:
+            status[key] = os.path.isfile(os.path.join(MODEL_DIR, name))
+    return status
 
 app = FastAPI(
     title="DENTEX Week 3 API (AI Report & Feedback)",
@@ -98,7 +117,9 @@ def generate_clinical_report(detections):
 
 @app.get("/")
 def health_check():
-    return {"status": "ok", "models_loaded": models_loaded}
+    weights = weights_status()
+    ready = models_loaded and all(weights.get(k) for k in REQUIRED_WEIGHTS)
+    return {"status": "ok" if ready else "degraded", "models_loaded": ready, "weights": weights}
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...),
@@ -113,9 +134,12 @@ async def predict(file: UploadFile = File(...),
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
-    # Run inference
-    results = run_dentex_pipeline(image_np, confidence_threshold=confidence_threshold)
-    
+    # Run inference. A missing or corrupt weight file only surfaces here (lazy loading).
+    try:
+        results = run_dentex_pipeline(image_np, confidence_threshold=confidence_threshold)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Inference failed: {e}")
+
     # Generate structured report based on findings
     generated_report = generate_clinical_report(results.get("detections", []))
     

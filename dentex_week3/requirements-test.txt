@@ -1,0 +1,10 @@
+# Unit tests for the ML service. ultralytics/torch are deliberately absent:
+# tests/conftest.py stubs YOLO, so CI never downloads weights or a 2 GB torch wheel.
+fastapi>=0.110,<1
+uvicorn>=0.27,<1
+python-multipart>=0.0.9,<1
+numpy>=1.26,<3
+Pillow>=10,<12
+pydantic>=2.6,<3
+httpx>=0.27,<1
+pytest>=8,<9
