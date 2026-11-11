@@ -97,7 +97,8 @@ export function ScanPage() {
 
       {tab === "findings" && (
         <div className="grid gap-4 lg:grid-cols-5">
-          <div className="space-y-3 lg:col-span-3">
+          {/* Pinned on wide screens: selecting a box scrolls the card list, and the X-ray must stay in view. */}
+          <div className="space-y-3 lg:sticky lg:top-24 lg:col-span-3 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto">
             <XrayViewer src={s.image_url} width={s.image_width} height={s.image_height} findings={list} missing={missing} selectedId={selected} onSelect={selectFinding} />
             <p className="text-xs text-slate-500">Boxes: <span className="text-amber-600">pending</span> · <span className="text-emerald-600">confirmed</span> · <span className="text-sky-600">modified</span> · <span className="text-slate-400">rejected</span> · <span className="text-sky-500">missing (dashed, advisory)</span>. Click a box to select its finding.</p>
             {s.ai_report && (

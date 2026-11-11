@@ -29,6 +29,8 @@ export function XrayViewer({ src, width, height, findings, missing = [], selecte
 }) {
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [failed, setFailed] = useState(false);
+  // Panoramas are several MB; until one arrives, boxes on a black panel look like a broken page.
+  const [loaded, setLoaded] = useState(false);
   const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
@@ -76,7 +78,8 @@ export function XrayViewer({ src, width, height, findings, missing = [], selecte
     if (event.button !== 0) return;
     drag.current = { x: event.clientX, y: event.clientY, panX: view.x, panY: view.y, moved: false };
     dragged.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    // No pointer capture yet: browsers retarget the following click to the capturing element,
+    // which would swallow clicks on the finding boxes. Capture only once a drag really starts.
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -84,7 +87,10 @@ export function XrayViewer({ src, width, height, findings, missing = [], selecte
     if (!d) return;
     const dx = event.clientX - d.x;
     const dy = event.clientY - d.y;
-    if (!d.moved && Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) > 4) {
+      d.moved = true;
+      event.currentTarget.setPointerCapture(event.pointerId);   // keep panning outside the viewer
+    }
     if (!d.moved) return;
     dragged.current = true;
     setView((v) => ({ ...v, x: d.panX + dx, y: d.panY + dy }));
@@ -117,9 +123,15 @@ export function XrayViewer({ src, width, height, findings, missing = [], selecte
         data-testid="viewport"
       >
         <img src={src} alt="Panoramic radiograph" className="block w-full select-none" draggable={false}
-          onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+          style={w && h && !loaded ? { aspectRatio: `${w} / ${h}` } : undefined}
+          onLoad={(e) => { setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight }); setLoaded(true); }}
           onError={() => setFailed(true)} />
-        {w && h && (
+        {!loaded && (
+          <div className="absolute inset-0 flex min-h-40 items-center justify-center text-sm text-slate-300" role="status">
+            Loading radiograph…
+          </div>
+        )}
+        {loaded && w && h && (
           <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" data-testid="overlay">
             {missing.map((m) => {
               if (!m.box) return null;

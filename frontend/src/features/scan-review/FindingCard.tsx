@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { pct, toothName } from "../../lib/format";
-import { DISEASES, type Finding } from "../../lib/types";
+import { DISEASES, type Finding, type FindingListResponse } from "../../lib/types";
 import { ReviewBadge } from "../../components/common/badges";
 import { Button, ErrorNote, Select, Textarea } from "../../components/common/ui";
 
@@ -18,8 +18,11 @@ export function FindingCard({ finding: f, selected, onSelect }: { finding: Findi
       finding_id: f.id, review_status: status, dentist_notes: notes.trim() || undefined,
       confirmed_disease: status === "modified" ? disease : undefined,
     }),
-    onSuccess: () => {
+    onSuccess: (updated) => {
       setEditing(false);
+      // Show the saved review at once; the refetch below can lag behind the closed editor.
+      qc.setQueryData<FindingListResponse>(["findings", f.scan_id], (old) =>
+        old && { ...old, findings: old.findings.map((x) => (x.id === updated.id ? updated : x)) });
       qc.invalidateQueries({ queryKey: ["findings", f.scan_id] });
       qc.invalidateQueries({ queryKey: ["feedback", f.scan_id] });
     },
