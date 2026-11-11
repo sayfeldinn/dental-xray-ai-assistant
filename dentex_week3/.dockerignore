@@ -1,0 +1,11 @@
+# Build context for deploy/ml.Dockerfile. Only api/app.py, api/requirements.txt and
+# production/ are copied; keep everything else (notably the 1 GB+ local venv) out of
+# the context so builds stay fast.
+**/venv
+**/.venv
+**/__pycache__
+**/*.pyc
+feedback
+eval
+tests
+.DS_Store

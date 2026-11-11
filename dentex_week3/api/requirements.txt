@@ -1,11 +1,12 @@
 # dentex_week3 inference service dependencies.
 # v2 has no scikit-learn / joblib dependency: the tooth-association random
 # forest was retired in favour of the 32-class tooth detector.
-# ultralytics is bounded to <9 to stay on the YOLOv8 API the pipeline uses.
+# ultralytics is pinned to the version that reproduced the locked benchmark;
+# bump it only after re-running dentex_week3/evaluate.py on the locked 50.
 fastapi>=0.110,<1
 uvicorn>=0.27,<1
 python-multipart>=0.0.9,<1
-ultralytics>=8.4.0,<9
+ultralytics==8.4.174
 numpy>=1.26,<3
 Pillow>=10,<12
 pydantic>=2.6,<3

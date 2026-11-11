@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv/dentex
+# CPU-only torch first: the default Linux wheel bundles CUDA (several GB) that this
+# container never uses. Versions match the build that reproduced the locked benchmark.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.14.1 torchvision==0.29.1
 COPY api/requirements.txt api/requirements.txt
 RUN pip install --no-cache-dir -r api/requirements.txt
 
