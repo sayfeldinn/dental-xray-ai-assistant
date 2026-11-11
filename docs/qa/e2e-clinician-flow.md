@@ -5,8 +5,11 @@ confirmed-findings gate → re-analysis refusal → treatment proposal.
 
 **Why local:** the cloud Supabase project in `.env` (`vudxogycxfaarnirtxhf`)
 returns **NXDOMAIN** (Cloudflare DoH `Status: 3`) from the host and from the
-backend container. A paused project still resolves; NXDOMAIN means the project
-was deleted. `/health` only reports that env vars are set, so it stayed green.
+backend container. `/health` only reports that env vars are set, so it stayed green.
+**Correction (2026-11-09):** the project had only been paused for inactivity; it was
+restored from the dashboard with its data intact. A paused free-plan project can stop
+resolving, so NXDOMAIN does not prove deletion. `.github/workflows/supabase-keepalive.yml`
+now pings it daily.
 The run therefore used a local Supabase stack.
 
 ## Environment
@@ -119,3 +122,26 @@ manual `psql` step is needed. Then run the host-network `backend-e2e` and start
 that was created with the old manual steps keeps working; the new migration only
 matters for a fresh volume. `.env` points at local Supabase; the cloud config is
 in `.env.cloud.bak` (gitignored) and needs a recreated project to work again.
+
+## Cloud run against the live project (2026-11-11)
+
+Full stack from `docker compose up --build` (ML image with CPU torch, ultralytics
+pinned to 8.4.174) against the restored cloud Supabase project, scripted as
+`scripts/e2e_cloud_flow.py` on the held-out DENTEX image `val_28.png`.
+**28/28 checks passed**; the script deletes its dentist, patient and scan, and the
+six table row counts matched before and after.
+
+| Area | Observed |
+| --- | --- |
+| Access | unauthenticated 401; a new dentist sees 0 of the existing patients, another dentist's patient is 404, a direct PostgREST read with the user token returns `[]` |
+| Upload + analyze | 201, 9 findings, AI report and `pipeline_version: v3` stored; X-ray readable only via the signed URL |
+| Review | 36 Periapical confirmed, 27 Caries rejected, 46 Caries -> Periapical; planning sees exactly the 2 validated findings; re-analyze 409 |
+| Plan | penicillin allergy: Clindamycin + Ibuprofen, no Amoxicillin, `FIRST_LINE_EXCLUDED`; accepting without acknowledging is 422 |
+| Feedback | ledger rows `false_positive` + `misclassification`; both also reached the ML retraining CSV |
+
+Upload + analysis took ~21 s, of which ML inference is ~1.5 s. The rest is the
+5.4 MB PNG upload to Supabase eu-west-1 over a ~2 Mbit/s uplink; venue Wi-Fi decides
+this number on demo day.
+
+Locked-50 benchmark through the same container's HTTP API: all 101 metrics identical
+to the local run (tooth 91.7%, disease 89.0%, joint 82.8%, mAP@0.5 54.9%).
