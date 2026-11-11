@@ -1,0 +1,15 @@
+# `gcloud builds submit` uploads only what deploy/cloudbuild.yaml needs.
+# Weights are downloaded from the GitHub Release inside the build.
+/*
+!/backend/
+!/dentex_week3/
+!/deploy/
+**/venv/
+**/.venv/
+**/__pycache__/
+**/*.pt
+**/.pytest_cache/
+backend/tests/
+dentex_week3/eval/
+dentex_week3/tests/
+dentex_week3/feedback/

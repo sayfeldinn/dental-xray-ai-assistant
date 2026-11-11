@@ -1,0 +1,36 @@
+# Builds both Cloud Run images in Google Cloud (run by deploy/deploy_cloud_run.sh).
+# The weights are fetched from the GitHub Release inside the build and checked
+# against the committed weights.sha256, so the upload stays a few MB.
+steps:
+  - id: weights
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -euo
+      - pipefail
+      - -c
+      - |
+        cd dentex_week3/production
+        for f in $$(awk '{print $$2}' weights.sha256); do
+          curl -fsSL --retry 3 -o "$$f" "https://github.com/${_REPO_SLUG}/releases/download/${_WEIGHTS_TAG}/$$f"
+        done
+        sha256sum -c weights.sha256
+
+  - id: ml
+    name: gcr.io/cloud-builders/docker
+    args: [build, -f, deploy/ml.Dockerfile, -t, "${_IMAGE_BASE}/ml:${_TAG}", dentex_week3]
+
+  - id: backend
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: [build, -t, "${_IMAGE_BASE}/backend:${_TAG}", backend]
+
+images:
+  - "${_IMAGE_BASE}/ml:${_TAG}"
+  - "${_IMAGE_BASE}/backend:${_TAG}"
+
+substitutions:
+  _REPO_SLUG: sayfeldinn/dental-xray-ai-assistant
+  _WEIGHTS_TAG: weights-v3
+
+timeout: 1800s
