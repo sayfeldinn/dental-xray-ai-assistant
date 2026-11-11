@@ -79,10 +79,13 @@ export function toothName(toothFdi: string): string {
   return `${QUADRANTS[quadrant]} ${POSITIONS[position]}`;
 }
 
-/** "penicillin,  aspirin ," -> ["penicillin", "aspirin"]. Backs the comma-separated history fields. */
+/**
+ * "penicillin,  aspirin ," -> ["penicillin", "aspirin"]. Backs the history fields, which are
+ * textareas, so a new line separates items too.
+ */
 export function splitList(value: string): string[] {
   return value
-    .split(",")
+    .split(/[,\n]/)
     .map((item) => item.trim())
     .filter(Boolean);
 }

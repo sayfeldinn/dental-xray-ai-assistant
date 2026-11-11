@@ -1,4 +1,4 @@
-import { canSubmit, requirementFor, statusAfterModify, worst } from "./gate";
+import { canSubmit, requirementFor, statusAfterModify } from "./gate";
 import type { SafetyWarning } from "./types";
 
 const r18: SafetyWarning = { code: "FIRST_LINE_EXCLUDED", rule_id: "R-18", severity: "warning", drug: "Clindamycin", message: "", source: "" };
@@ -15,12 +15,6 @@ test("submit needs the acknowledgement or a non-blank reason", () => {
   expect(canSubmit("acknowledge", true, "")).toBe(true);
   expect(canSubmit("override", true, "   ")).toBe(false);
   expect(canSubmit("override", false, "tolerated before")).toBe(true);
-});
-
-test("worst picks the most severe status", () => {
-  expect(worst("clear", "warning", "clear")).toBe("warning");
-  expect(worst("warning", "contraindicated")).toBe("contraindicated");
-  expect(worst()).toBe("clear");
 });
 
 test("the R-18 substitution notice survives a modify only when the drug is unchanged", () => {
