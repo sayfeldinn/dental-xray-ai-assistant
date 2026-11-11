@@ -20,6 +20,13 @@ from .rules import INFECTION_ELIGIBLE, PROPHYLAXIS_ELIGIBLE, TREATMENT_RULES
 
 GUIDE = "docs/CLINICAL_GUIDELINES.md"
 
+# How each indication reads in a dentist-facing alert.
+INDICATION_LABEL = {
+    "active_infection": "An antibiotic for the infection",
+    "pre_procedure_prophylaxis": "Pre-procedure antibiotic prophylaxis",
+    "pain_management": "Pain relief",
+}
+
 
 @dataclass
 class PrescriptionProposal:
@@ -91,8 +98,8 @@ class RecommendationEngine:
             if indication in proposed_under:
                 proposal.alerts.append(PlanAlert(
                     code="DUPLICATE_DRUG_SKIPPED",
-                    message=f"{indication} medication is already proposed under tooth {proposed_under[indication]}; "
-                            "not repeated."))
+                    message=f"{INDICATION_LABEL[indication]} is already proposed under tooth "
+                            f"{proposed_under[indication]}; not repeated."))
                 continue
             proposed_under[indication] = finding.tooth_fdi
             prescription, exclusions = self._select_drug(indication, patient)
@@ -101,7 +108,8 @@ class RecommendationEngine:
             else:
                 proposal.alerts.append(PlanAlert(
                     code="NO_SAFE_DRUG",
-                    message=f"No safe {indication} drug could be proposed ({exclusions}). Dentist decision required."))
+                    message=f"{INDICATION_LABEL[indication]}: no safe drug could be proposed ({exclusions}). "
+                            "Dentist decision required."))
 
         if {rx.indication_type for rx in proposal.prescriptions} >= {"active_infection", "pre_procedure_prophylaxis"}:
             proposal.alerts.append(PlanAlert(

@@ -12,9 +12,9 @@ const STEPS = [
 ];
 
 const STATS = [
-  ["97.5%", "of disease labels correct on held-out test images*"],
+  ["82.8%", "of detected lesions given the right tooth and the right condition*"],
   ["4", "conditions detected, each mapped to a tooth"],
-  ["26", "published drug-safety rules checked before any prescription"],
+  ["24", "published drug-safety rules checked before any prescription"],
   ["0", "decisions made without the treating dentist"],
 ];
 
@@ -66,7 +66,7 @@ export function LandingPage() {
           ))}
         </div>
         <p className="mx-auto max-w-7xl px-4 pb-6 text-xs text-ink/50 sm:px-6">
-          *23 held-out images, 122 detections. A research prototype: the clinical rules come from ADA, AHA and AAPD guidance and have not yet been reviewed by a clinician.
+          *Official DENTEX validation set (50 panoramas, 182 lesions) never used in training; the AI detects 74% of those lesions, and every finding still needs the dentist's confirmation. A research prototype: the clinical rules come from ADA, AHA and AAPD guidance and have not yet been reviewed by a clinician.
         </p>
       </section>
 
