@@ -50,7 +50,20 @@ unique images with 4 classes (caries, deep caries, periapical, impacted).
 | `production/findings_best.pt` | ~22 MB | 11 advisory findings classes, `imgsz=640`, `conf=0.40` |
 | `production/pipeline_config.json` | small | class maps, thresholds, training provenance |
 
-Weights are **not committed** (gitignored). Fetch them with:
+Weights are **not committed** (gitignored). The shipped set is published as the
+`weights-v3` GitHub Release; install and checksum-verify it with:
+
+```bash
+./notebooks/fetch_release_weights.sh            # needs `gh auth login`
+```
+
+`production/weights.sha256` pins the exact files scored on the locked 50.
+
+> **macOS:** Safari unzips `.pt` files on download (a `.pt` is a zip archive), leaving
+> a folder with `data.pkl` inside instead of the file. Use the script above, or
+> turn off Safari's "Open safe files after downloading".
+
+To pull the raw training runs from Kaggle instead:
 
 ```bash
 KAGGLE_BIN=~/.local/bin/kaggle ./notebooks/fetch_weights.sh

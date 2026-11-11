@@ -1,59 +1,59 @@
 {
-  "pipeline": "DENTEX v2 (tooth detector + disease detector)",
-  "architecture": "yolov8s tooth (32 FDI) + yolov8s disease (4 classes), IoU association",
+  "pipeline": "DENTEX v3 (tooth detector + disease detector)",
+  "architecture": "yolov8s tooth (32 FDI) + yolov8s disease (4 classes, DENTEX + OralXrays-9), IoU association",
   "held_out_images": 50,
-  "held_out_detections": 272,
+  "held_out_detections": 303,
   "ground_truth_lesions": 182,
   "tooth": {
-    "correct": 116,
-    "total": 130,
-    "accuracy": 0.8923076923076924
+    "correct": 133,
+    "total": 145,
+    "accuracy": 0.9172413793103448
   },
   "disease": {
-    "correct": 114,
-    "total": 130,
-    "accuracy": 0.8769230769230769
+    "correct": 129,
+    "total": 145,
+    "accuracy": 0.8896551724137931
   },
   "full": {
-    "correct": 102,
-    "total": 130,
-    "accuracy": 0.7846153846153846
+    "correct": 120,
+    "total": 145,
+    "accuracy": 0.8275862068965517
   },
   "quadrants": {
-    "Q3": {
-      "tooth": 0.9767441860465116,
-      "full": 0.813953488372093,
-      "n": 43
-    },
-    "Q4": {
-      "tooth": 0.8787878787878788,
-      "full": 0.7878787878787878,
-      "n": 33
-    },
     "Q1": {
-      "tooth": 0.7666666666666667,
-      "full": 0.6666666666666666,
-      "n": 30
+      "tooth": 0.8235294117647058,
+      "full": 0.7352941176470589,
+      "n": 34
     },
     "Q2": {
+      "tooth": 0.896551724137931,
+      "full": 0.8275862068965517,
+      "n": 29
+    },
+    "Q3": {
+      "tooth": 1.0,
+      "full": 0.9347826086956522,
+      "n": 46
+    },
+    "Q4": {
       "tooth": 0.9166666666666666,
-      "full": 0.875,
-      "n": 24
+      "full": 0.7777777777777778,
+      "n": 36
     }
   },
   "detection": {
-    "mAP50": 0.5170919465977606,
-    "mAP50_95": 0.3751725981263835,
-    "precision": 0.43014705882352944,
-    "recall": 0.6428571428571429,
+    "mAP50": 0.5424751243781094,
+    "mAP50_95": 0.3824980997788833,
+    "precision": 0.44554455445544555,
+    "recall": 0.7417582417582418,
     "ap50_per_class": {
-      "Impacted": 0.7674418604651163,
-      "Caries": 0.3333333333333333,
-      "Periapical Lesion": 0.375,
-      "Deep Caries": 0.5925925925925926
+      "Impacted": 0.75,
+      "Caries": 0.35323383084577115,
+      "Periapical Lesion": 0.5555555555555556,
+      "Deep Caries": 0.5111111111111111
     }
   },
-  "source": "dentex_week3/eval/evaluation_results_v2.json",
+  "source": "dentex_week3/eval/evaluation_results_v3.json",
   "protocol": {
     "iou_match": 0.5,
     "disease_conf": 0.2,

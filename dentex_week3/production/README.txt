@@ -1,58 +1,52 @@
-DENTEX PRODUCTION PIPELINE
-============================
-
-Frozen production configuration.
-
-FINAL UNTOUCHED BENCHMARK
--------------------------
-Held-out images:       23
-Held-out detections:   122
-
-Disease accuracy:      97.54%
-Tooth accuracy:        76.23%
-Disease + tooth:       75.41%
+DENTEX PRODUCTION PIPELINE (v3)
+===============================
 
 ARCHITECTURE
 ------------
 Panorama
-  -> Coordinator
-  -> Quadrants
-  -> Disease detector
-  -> RF tooth association
-  -> Disease + tooth
+  -> tooth detector   (yolov8s, 32 FDI classes, 1024 px)  -> tooth boxes + numbers
+  -> disease detector (yolov8s, 4 classes, 1024 px)       -> lesion boxes + labels
+  -> association: IoU -> centre containment -> nearest centre
+  -> disease + FDI tooth
 
-The enumerator is NOT used in the final pipeline.
+Advisory only (never in the clinical report):
+  -> missing teeth: interior FDI gaps, checked by a ResNet18 gap classifier
+  -> findings detector (yolov8s, 11 classes: fillings, crowns, RCT, ...)
 
 FILES
 -----
-tooth_association_rf_300.joblib
-    Frozen Step 51 RF tooth-association model.
+tooth_best.pt          32-class tooth detector
+disease_best.pt        4-class disease detector (DENTEX + OralXrays-9)
+findings_best.pt       11-class advisory findings detector (DentalOPG)
+missing_teeth.pt       ResNet18 gap-vs-tooth classifier
+weights.sha256         checksums of the exact files scored below
+pipeline_config.json   class maps, thresholds, training provenance
+final_evaluation.json  locked-set benchmark summary
+inference_pipeline.py  run_dentex_pipeline(image, confidence_threshold=None)
 
-pipeline_config.json
-    Model paths, mappings, feature contract and benchmark.
+The .pt files are not in git. Install them with
+    ./notebooks/fetch_release_weights.sh
+then check them with
+    cd dentex_week3/production && shasum -a 256 -c weights.sha256
 
-final_evaluation.json
-    Final untouched evaluation record.
+LOCKED BENCHMARK
+----------------
+Official DENTEX validation set: 50 panoramas, 182 lesions, never used for
+training or model selection. Scored with dentex_week3/evaluate.py.
 
-inference_pipeline.py
-    Standalone inference wrapper.
+Tooth number (on found lesions):     91.7%
+Disease label (on found lesions):    89.0%
+Tooth + disease:                     82.8%
+Lesions found (recall, conf 0.20):   74.2%
+Precision (conf 0.20):               44.6%
+mAP@0.5:                             54.2%
+Caries AP@0.5 (weakest class):       35.3%
 
-USAGE
------
-from inference_pipeline import run_dentex_pipeline
-
-result = run_dentex_pipeline(
-    "/path/to/panorama.png"
-)
-
-The coordinator and disease detector paths in
-pipeline_config.json point to the Kaggle model
-artifacts used during validation.
+Re-run on a different machine, the same weights reproduce the label
+accuracies exactly; mAP moves by under 1 pp from GPU/CPU float differences.
 
 IMPORTANT
 ---------
-The reported 75.41% figure is the empirical
-untouched held-out disease+tooth accuracy.
-Confidence values produced by the RF are model
-probabilities and are not calibrated clinical
-probabilities.
+Confidence values are detector scores, not calibrated clinical
+probabilities. Roughly half the boxes at the default threshold are false
+positives, which is why every finding requires dentist confirmation.
