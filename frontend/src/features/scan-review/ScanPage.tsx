@@ -44,6 +44,15 @@ export function ScanPage() {
   const raw = s.raw_ml_output ?? {};
   const missing = raw.missing_teeth ?? [];
   const advisory = raw.findings ?? [];
+  // Provenance is stored with every run; show it so the audit trail is visible in the UI.
+  const model = (raw.model ?? {}) as {
+    pipeline_version?: string;
+    tooth?: string;
+    disease?: string;
+    missing_teeth?: string;
+    missing_teeth_gap_threshold?: number;
+    findings?: string;
+  };
 
   // Selecting a box should bring its card into view; the card is already rendered.
   const selectFinding = (id: string) => {
@@ -151,6 +160,23 @@ export function ScanPage() {
                       {advisory.length > 12 && <p className="mt-1 text-xs text-slate-500">+{advisory.length - 12} more boxes.</p>}
                     </div>
                   )}
+                </details>
+              </Card>
+            )}
+            {Boolean(raw.model) && (
+              <Card className="p-3">
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium">
+                    Model provenance <span className="font-normal text-slate-500">(stored with this run)</span>
+                  </summary>
+                  <dl className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                    <div><dt className="inline font-medium text-slate-700">Pipeline: </dt><dd className="inline">{model.pipeline_version ?? "—"}</dd></div>
+                    <div><dt className="inline font-medium text-slate-700">Tooth: </dt><dd className="inline">{model.tooth ?? "—"}</dd></div>
+                    <div><dt className="inline font-medium text-slate-700">Disease: </dt><dd className="inline">{model.disease ?? "—"}</dd></div>
+                    <div><dt className="inline font-medium text-slate-700">Missing teeth: </dt><dd className="inline">{model.missing_teeth ?? "rule fallback"}</dd></div>
+                    <div><dt className="inline font-medium text-slate-700">Gap gate: </dt><dd className="inline">{model.missing_teeth_gap_threshold ?? "—"}</dd></div>
+                    {model.findings && <div><dt className="inline font-medium text-slate-700">Findings: </dt><dd className="inline">{model.findings}</dd></div>}
+                  </dl>
                 </details>
               </Card>
             )}
