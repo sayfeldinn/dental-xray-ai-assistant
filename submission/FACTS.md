@@ -1,136 +1,307 @@
-# DentalAI — Verified Facts for the IC-FTAI 2026 Submission
+# DentalAI — verified facts for IC-FTAI 2026 (v3)
 
-Source of truth: the repository at commit `3b295e9` ("phases done", 2026-10-20) plus the uncommitted Phase 6 work
-(auth, security, Docker, UI redesign) in the working tree on 2026-10-21. Every claim in the summary and the deck must
-trace to a row here. `[UNVERIFIED]` = not provable from the repo; it appears highlighted in the drafts.
+**Status:** source of truth for the conference deck, one-page summary and Q&A.
+**Updated:** 2026-11-18, on `feature/conference-v3` (based on `main` `c78a525`).
+**Rule:** every number in the deck or summary must trace to a row here and to a file
+in the repository. If a number is not here, do not put it on a slide.
+
+> DentalAI is a **research prototype**, not a medical device. The dentist reviews and
+> confirms every AI finding; the system never diagnoses, prescribes or writes to the
+> record autonomously.
 
 ---
 
-## 1. Datasets
+## 1. Scope and current status
 
-| Dataset | Used in the **shipped** pipeline? | Evidence |
-| --- | --- | --- |
-| **DENTEX Challenge 2023** (Kaggle mirror `truthisneverlinear/dentex-challenge-2023`) | **Yes.** The shipped quadrant coordinator was trained on DENTEX `quadrant` data; the shipped detector's four classes are DENTEX's diagnosis classes. | `MLv2/notebook93943e382e.ipynb` cells 1 and 6 (DENTEX paths); coordinator hash identical, see §3; `dentex_week3/production/pipeline_config.json` `disease_map` (line 25) |
-| Tufts Dental Database | **No** (used only for the earlier 5-class YOLOv8s, `ml/`, which is not shipped) | `ml/README.md` lines 27–30 |
-| Loki Silvres (caries) | **No** (same earlier `ml/` model only) | `ml/README.md` class table and "Datasets" |
-| Roboflow | **No** — appears only in Week-1 plans; no code or data uses it | `grep -ri roboflow` hits only `docs/Week1_Execution_Plan.md`, `docs/Project_Context.md`, `docs/WEEK1_STATUS.md`, `scripts/setup-week1-board.ps1` |
+| Item | Value |
+| --- | --- |
+| Conference | IEEE IC-FTAI 2026, Student Project Track, Alexandria, 23–26 Nov 2026 |
+| Project | AI-assisted dental radiography + patient-history system |
+| Current model | **v3** (frozen; `pipeline_version` in `raw_ml_output.model`) |
+| Core task | Panoramic X-ray → tooth enumeration + 4 lesion classes + lesion-to-tooth association |
+| Clinical loop | scan → AI → dentist review → treatment/drug safety → record → feedback |
+| Validation stage | retrospective locked-50 + external Romanian set; **no reader study, no clinic pilot** |
+| Regulatory | none; not a medical device |
 
-Provenance of the **shipped disease-detector weights** (`disease_detector_best.pt`, SHA-256 `cf92c8ca…`): it is **not** the
-MLv2 detector (`b79c69a9…`), and no training notebook for it is in the repo → its exact training data/split is
-**[UNVERIFIED]** (its class set and the pipeline name "DENTEX production candidate" indicate DENTEX).
+---
 
-## 2. Classes (shipped)
+## 2. Data and training
 
-**4 pathology classes:** Impacted, Caries, Periapical Lesion, Deep Caries
-(`pipeline_config.json` `disease_map`; `backend/app/domain/finding.py` `DISEASE_LABELS`). Teeth are reported in FDI
-notation (quadrant 1–4 × tooth 1–8). The earlier `ml/` model had 5 different classes (not shipped).
+| Dataset | Use | Size | Notes |
+| --- | --- | --- | --- |
+| **DENTEX 2023** | Tooth detector (32 FDI classes); disease detector mix | Tooth: 540 train / 94 val. Disease mix: 10,120 train / 9,848 unique / 107 val | Official challenge data; CC BY-NC-SA 4.0 |
+| **OralXrays-9** | Disease detector mix | Included in the 10,120/9,848/107 figures above | Upstream terms apply |
+| **DentalOPG** | Advisory 11-class findings detector | DentalOPG test: 154 held-out images | Advisory only |
+| **Romanian hospital set** | External validation only | 175 images (176 for findings) | Never used for training/selection |
 
-## 3. Which model ships, and which one the app calls
+**Locked-50:** the official DENTEX validation split — **50 images, 182 lesions** — was
+never used for training or model selection. It is the final judge. A candidate is
+promoted only if it beats the incumbent on **mAP@0.5, Caries AP@0.5, tooth accuracy and
+joint accuracy** (`dentex_week3/evaluate.py`).
 
-**Shipped:** the `dentex_week3` 3-stage pipeline (an older byte-identical copy, `dentex_production_portable_run3/`, was removed from the repo in the cleanup — same weights, superseded API):
-1. **Coordinator** — YOLOv8n, detects the 4 quadrants (`coordinator_best.pt`, SHA-256 `d53c8b4e…` — byte-identical to MLv2 `coordinator_quadrant/weights/best.pt`).
-2. **Disease detector** — YOLOv8 (22.5 MB checkpoint; YOLOv8s-sized), 4 classes, run on the full panoramic image.
-3. **Tooth association** — Random Forest, 300 trees, 15 spatial features, maps each lesion to a tooth.
+The earlier v1 coordinator + random-forest pipeline and the v2 model are archived under
+`archive/`. Do not quote their metrics as current.
 
-The 4-stage MLv2 design (per-quadrant **enumerators** + IoU association) is **not** shipped:
-`dentex_week3/production/README.txt` line 24 "The enumerator is NOT used in the final pipeline"; `pipeline_config.json`
-line 49 `"enumerator_used": false`; Run-3 report §1 ("removed the YOLO enumerators").
+---
 
-**The app calls it:** backend `DentexClient` posts to `{ML_SERVICE_URL}/predict` (`backend/app/services/ml_client/dentex_client.py`
-line 80); `ML_SERVICE_URL` defaults to the `dentex_week3` service on port 8001 (`backend/app/core/config.py`;
-`CHANGELOG_MODEL_SWITCH.md`).
+## 3. Pipeline (v3)
 
-## 4. Metrics (exact; never mix without labels)
+```
+panoramic X-ray (JPEG/PNG/WebP)
+  ├─ tooth detector      YOLOv8s, 32 FDI classes, 1024 px
+  ├─ disease detector    YOLOv8s, 4 classes, 1024 px
+  │     └─ association: IoU → containment → nearest centre
+  ├─ missing teeth       ResNet18 classifier + rule fallback (advisory)
+  └─ findings            YOLOv8s, 11 classes, 640 px (advisory)
+```
 
-### 4a. Shipped pipeline — held-out benchmark (the only held-out evaluation of the shipped system)
-`dentex_week3/production/final_evaluation.json`; `README.txt` lines 11–13. **23 held-out images, 122 detections.**
+- Tooth classes: FDI 11–18, 21–28, 31–38, 41–48 (32).
+- Disease classes: `Impacted`, `Caries`, `Periapical Lesion`, `Deep Caries`.
+- Missing teeth: interior FDI gaps only; classifier F1 **0.796**, P **0.896**, R
+  **0.717**, validation AUC **0.931**; rule baseline F1 **0.733**. Production gate:
+  `conf 0.3`, `t_gap 0.4`. Advisory; never in the report.
+- Findings: 11 classes (BDR, Bridge, Cap, Distoangular/Horizontal Impaction, Filling,
+  Missing Teeth, Periodontitis, Root Canal, Unerupted Wisdom, Apical Abscess). Advisory;
+  never in the report.
+- The caries verifier was trained but is **off by default** and is not part of the v3
+  production result. Do not claim it improves caries.
+
+**What the app calls:** backend `DentexClient` → `ML_SERVICE_URL/predict` (default
+`http://localhost:8001`). `/predict` honours `confidence_threshold` (UI: 0.20 / 0.30 /
+0.50; default 0.20). Re-analysis is disabled after the first finding is reviewed.
+
+---
+
+## 4. Detection results — locked-50 (confidence 0.20)
+
+50/50 images scored · 182 ground-truth lesions · 303 predictions · greedy one-to-one
+matching at IoU ≥ 0.5.
+
+| Class | GT | Pred | Precision (95% CI) | Recall (95% CI) | F1 | AP@0.5 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Impacted | 40 | 48 | 75.0% [61.2, 85.1] | 90.0% [76.9, 96.0] | 81.8% | **75.0** |
+| Caries | 101 | 201 | 35.3% [29.0, 42.2] | 70.3% [60.8, 78.3] | 47.0% | **35.3** |
+| Periapical Lesion | 9 | 9 | 55.6% [26.7, 81.1] | 55.6% [26.7, 81.1] | 55.6% | **55.6** |
+| Deep Caries | 32 | 45 | 51.1% [37.0, 65.0] | 71.9% [54.6, 84.4] | 59.7% | **51.1** |
+| **micro avg** | **182** | **303** | **44.6% [39.1, 50.2]** | **74.2% [67.4, 80.0]** | **55.7%** | **54.2** |
+
+**mAP@0.5 = 54.2 · mAP@0.5:0.95 = 38.2.**
+
+---
+
+## 5. Label and end-to-end accuracy
+
+**On the 145 lesions the model matched** (IoU ≥ 0.5, any label):
+
+| Metric | Rate (95% CI) | Correct / total |
+| --- | ---: | ---: |
+| Disease label | **89.0%** [82.8, 93.1] | 129 / 145 |
+| Tooth number | **91.7%** [86.1, 95.2] | 133 / 145 |
+| Quadrant | **100.0%** [97.4, 100.0] | 145 / 145 |
+| Disease **and** tooth (joint) | **82.8%** [75.8, 88.0] | 120 / 145 |
+
+**End-to-end** (all 182 ground-truth lesions; missed lesions count as errors):
+
+| Metric | Rate | Correct / total |
+| --- | ---: | ---: |
+| Tooth number | **73.1%** | 133 / 182 |
+| Joint (disease + tooth) | **65.9%** | 120 / 182 |
+
+**Disease confusion matrix (rows = GT, columns = prediction):**
+
+| GT \ pred | Impacted | Caries | Periapical | Deep Caries |
+| --- | ---: | ---: | ---: | ---: |
+| Impacted | 36 | 0 | 0 | 2 |
+| Caries | 0 | 68 | 0 | 5 |
+| Periapical | 0 | 2 | 5 | 0 |
+| Deep Caries | 0 | 6 | 1 | 20 |
+
+**Tooth accuracy by quadrant (matched):** Q1 82.4% (n=34), Q2 89.7% (n=29), Q3 100.0%
+(n=46), Q4 91.7% (n=36).
+
+> Label accuracy is **conditional on detection**. It is not sensitivity. The end-to-end
+> row is the honest headline when a clinician asks "how often is the tooth right?"
+
+---
+
+## 6. Operating point / threshold sweep
+
+| Threshold | Precision | Recall | F1 | Disease acc on matches | n |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.20 (default) | 44.6% | 74.2% | 55.7% | 89.0% | 145 |
+| 0.25 | 48.2% | 73.6% | 58.3% | 88.9% | 144 |
+| 0.30 | 51.4% | 69.2% | 59.0% | 88.9% | 135 |
+| 0.40 | 61.5% | 64.8% | 63.1% | 91.3% | 126 |
+| 0.50 | 68.0% | 57.1% | 62.1% | 92.7% | 110 |
+
+The UI exposes 0.20 / 0.30 / 0.50. Higher thresholds trade recall for precision. The
+threshold is an operating-point choice; confidences are **not calibrated**.
+
+---
+
+## 7. Model iterations and significance
+
+| Metric | v2 | v3 | Δ | 95% CI (paired bootstrap) | P(v3 > v2) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| mAP@0.5 | 51.7 | 54.2 | +2.5 | [−6.9, +12.4] | 0.714 (ns) |
+| Recall | 64.3 | 74.2 | **+9.9** | [+4.5, +15.8] | 1.000 |
+| Tooth (end-to-end) | 65.4 | 73.1 | **+7.7** | [+2.7, +13.0] | 0.998 |
+| Joint (end-to-end) | 57.1 | 65.9 | **+8.8** | [+2.8, +14.9] | 1.000 |
+
+McNemar exact (per-lesion): detection 26 vs 8, p = 0.0029; tooth 20 vs 6, p = 0.0094;
+joint 24 vs 8, p = 0.0070.
+
+**v4 was rejected** (2026-11-04): mAP +0.8 pp (ns), recall −2.7 pp, tooth −2.7 pp,
+joint **−5.5 pp** (p = 0.029). It did improve Deep Caries AP (+12.5 pp) but failed the
+promotion rule. Do not present v4 as the model.
+
+---
+
+## 8. External validation — Romanian hospital set
+
+175 images, tooth-converted GT, no Deep Caries GT in this set:
 
 | Metric | Value |
-| --- | --- |
-| Disease label correct | 119/122 = **97.54%** |
-| Tooth number correct | 93/122 = **76.23%** |
-| Disease **and** tooth correct | 92/122 = **75.41%** |
-| Full-match by quadrant | Q1 74.19% · Q2 85.71% · Q3 75.76% · Q4 66.67% |
+| --- | ---: |
+| mAP@0.5 | **43.3** |
+| mAP@0.5:0.95 | 24.6 |
+| Precision | 48.8 |
+| Recall | 50.3 |
+| AP@0.5 Impacted | 77.7 |
+| AP@0.5 Caries | **17.7** |
+| AP@0.5 Periapical | 34.6 |
 
-Caveats: the denominator is detections that were matched, so "disease accuracy" is label correctness, **not**
-sensitivity/recall; 23 images is a small set; RF confidences are uncalibrated model probabilities (Run-3 report line 23).
-mAP50 / mAP50-95 / precision / recall of the **shipped detector** on a held-out split: **not in the repo [UNVERIFIED]**.
+The drop from 54.2 → 43.3 mAP is a real domain-shift result. Say it on the limitations
+slide; do not hide it. It is evidence for external validation, not a failure to explain
+away.
 
-### 4b. MLv2 training runs (Kaggle, DENTEX) — fit on **training images**, not a held-out estimate
-In every MLv2 data YAML the validation path is the training folder (`val: {output_dir}images/train`, notebook cells 2 and 7,
-with the comment "Split this properly later"). The numbers below therefore measure **training-set fit**:
+---
 
-| Model | Images / instances | P | R | mAP50 | mAP50-95 | Shipped? |
-| --- | --- | --- | --- | --- | --- | --- |
-| Coordinator (YOLOv8n) | 693 / 2772 | 0.999 | 0.999 | **0.995** | 0.809 | **Yes (same weights)** |
-| Enumerators Q1–Q4 (YOLOv8n) | e.g. 634 / 5039 | ≈0.97–0.98 | ≈0.97 | **0.986–0.987** | ≈0.66 | No |
-| Disease detector (YOLOv8s) | 678 / 3528 | 0.884 | 0.854 | **0.922** | 0.726 | **No (different weights)** |
+## 9. Advisory layers (not in the clinical report)
 
-MLv2 per-class (training-set fit; class order = DENTEX disease ids): Impacted 0.988 / Caries 0.836 / Periapical Lesion
-0.919 / Deep Caries 0.946 mAP50. The MLv2 report calls these "exceptional"; they are **not** generalization results and
-must not be presented as test performance.
-
-### 4c. Earlier model (`ml/`, 5-class YOLOv8s, Tufts + Loki, **validation split**, not shipped)
-`ml/Evaluation_Report.md` §2: all P 0.544, R 0.463, mAP50 0.380; Caries P 0.555, R 0.667, mAP50 0.648. Shown only as
-history ("DENTEX boxes were tooth-level; purging them lifted Caries mAP50 from 0.009 to 0.648").
-
-## 5. Drug and dosage recommendations
-
-**Built** (Phase 3): finding → treatment mapping **plus** candidate drugs with regimens (adult and weight-based
-pediatric), 26-rule contraindication register (R-01…R-26), daily-dose limits, decision gates
-(`backend/app/services/recommendation/`, `backend/app/services/contraindication/`, `docs/CLINICAL_GUIDELINES.md` §2, §4).
-**Validation status: source-backed, NOT clinician-validated.** Every value cites ADA 2019 / AHA 2021 / AAPD / FDA /
-AGS Beers 2023 or is marked PROJECT (`docs/PHASE3_STATUS.md` line 5, line 110; `docs/PHASE6_STATUS.md` line 51). Every
-API response carries "Pending Dentist Validation" (`backend/app/domain/prescription.py` line 17). The QA tables in
-`docs/qa/` are marked UNVALIDATED (no dentist meeting held).
-
-## 6. Feedback loop
-
-**Corrections are logged for future retraining.** Rejections, relabels, missed lesions, drug overrides, dose changes and
-treatment cancellations are written to the append-only `clinical_feedback_logs` table; detection corrections are also
-forwarded to the ML service's CSV queue (`docs/PHASE4_STATUS.md`). **No retraining job or retraining run exists**
-(`docs/PHASE4_STATUS.md` line 53). Never claim "the model improves".
-
-## 7. Test evidence
-
-| Item | Evidence |
-| --- | --- |
-| Backend automated tests | **171 passed** (pytest; also from a clean install of `requirements.txt` on Python 3.12) — `docs/PHASE6_STATUS.md`; re-run 2026-10-21 |
-| Frontend automated tests | **25 passed** (vitest) + typecheck + production build |
-| HTTP/route tests | `backend/tests/test_api.py`, `test_auth.py` (401 without token, 404 across dentists). A test literally named "route-contract" **does not exist** |
-| CI | `.github/workflows/ci.yml`: **guard** (no weights/.env/keys committed), **backend** (compile + pytest), **frontend** (typecheck + test + build) |
-| Synthetic profiles | 6 (P-001…P-006) — `docs/qa/synthetic-patient-profiles.md`; 23 contraindication/negative cases in `docs/qa/contraindication-test-cases.md` (marked UNVALIDATED) |
-| Three demo branches | `backend/tests/test_recommendation_engine.py` lines 29, 34, 41: (1) caries → restorative referral, **no drug**; (2) periapical lesion + infection → **amoxicillin 500 mg q8h, no conflict**; (3) same with penicillin allergy → **clindamycin with visible warning (R-18)** |
-| Live end-to-end runs | throwaway patients/accounts on the dev Supabase, deleted afterwards (`docs/PHASE3–6_STATUS.md`) |
-
-## 8. Clinic pilot
-
-**No pilot is recorded in the repo** (no pilot notes/logs; `docs/qa/*` state the dentist meeting was not held;
-`docs/PHASE3_STATUS.md` line 5 "no clinic partner yet"). → Pilot status **[UNVERIFIED]**; the drafts say "clinic pilot:
-planned" unless the team confirms otherwise.
-
-## 9. Team
-
-| Item | Value | Source |
+| Layer | Result | Status |
 | --- | --- | --- |
-| Affiliation | Alexandria University (CDS) | `ml/README.md` line 8 |
-| ML engineering | Abdullah Tarek Habashy | `ml/README.md` line 8; git author `abdullahtarek4` |
-| Repo owner / commits | Seif Ahmed (`sayfeldinn`) | `git log` authors |
-| Five names and roles | Roles defined (ML Engineer, Backend Engineer, Frontend Engineer, Integration/QA Engineer, Team Lead/Clinical Liaison) but **names not in repo** → **[UNVERIFIED]** except the two above | `docs/Week1_Execution_Plan.md` §2 |
-| Advisor | Ashraf Eshta | task brief (not in repo) |
-| Partner dentist | Mohamed Fatah | task brief (not in repo); note §5/§8: no clinician review recorded |
-| Repo | https://github.com/sayfeldinn/dental-xray-ai-assistant | `git remote -v` |
-| Duration | 21 Sep – 18 Oct 2026 | task brief; git history spans 2026-09-26 → 2026-10-20 |
+| Missing teeth (ResNet18 + rules) | F1 **0.796**, P **0.896**, R **0.717**, val AUC **0.931**; split-half mean 0.798; rule baseline 0.733 | advisory; dashed boxes + panel |
+| 11-class findings (DentalOPG) | In-hospital mAP@0.5 **59.4**, P 57.6, R 62.7 (154 images); cross-hospital mAP **11.8**, P 21.1, R 19.4 (176 images) | advisory; panel only |
 
-## 10. Known limitations
+Both layers are explicitly labelled `*_advisory: true` in the API and visually separated
+in the UI. They are excluded from the report, the confirmed-findings gate and the
+treatment engine. The findings model's cross-hospital mAP of 11.8 is why it is not a
+clinical output.
 
-1. **Small held-out set** (23 images, 122 detections); no held-out mAP/recall for the shipped detector (§4a).
-2. **MLv2 metrics are training-set fit** (validation split = training folder) (§4b).
-3. **Tooth numbering:** the MLv2 enumerators shifted numbering when a tooth is missing (`MLv2/Evaluation_Report_v2.md`
-   line 24); the shipped RF association was introduced to address it, but tooth accuracy is still 76.23% — tooth numbers
-   remain the weakest output.
-4. **Uncalibrated confidences** (RF model probabilities; Run-3 report line 23).
-5. **Domain gap:** trained and evaluated on public DENTEX images only; no real-clinic images (our assessment — not
-   written in the evaluation reports).
-6. **Clinical rules not clinician-validated** (§5); **no retraining yet** (§6); **no pilot** (§8).
-7. Not modelled: pregnancy, renal dose adjustment, penicillin-reaction severity (`docs/PHASE3_STATUS.md` §7).
+---
+
+## 10. Clinical loop and safety
+
+- **Six steps:** scan ingestion → AI detection → dentist confirm/modify/reject →
+  recommendation → prescription decision → feedback/audit.
+- **26 contraindication rules** (R-01…R-26), deterministic, cited to ADA 2019 / AHA 2021
+  / AAPD / FDA / AGS Beers 2023 or marked PROJECT. **Source-backed, not
+  clinician-validated.**
+- **Three demo branches:** (1) caries, no infection → restorative referral, no drug;
+  (2) periapical lesion + active infection → amoxicillin 500 mg q8h, no conflict;
+  (3) same + penicillin allergy → clindamycin with visible warning (R-18).
+- **Safety gates:** warnings require acknowledgement; a contraindicated drug requires a
+  written justification; the AI report is never committed without dentist action.
+- **Provenance:** model weights, thresholds and `pipeline_version` are stored with every
+  AI run and shown in the scan page's **Model provenance** card; re-analysis is blocked
+  after the first review.
+- **No LLM** is used for drug selection or dosing.
+
+**No clinic pilot and no clinician validation are recorded in the repo.** The partner
+dentist has not reviewed the rules in a recorded session. Do not claim either.
+
+---
+
+## 11. Feedback loop
+
+- Rejections, relabels, missed lesions, drug overrides, dose changes and treatment
+  cancellations are logged in the append-only feedback ledger; detection corrections
+  also go to the ML CSV queue.
+- **No retraining job or retraining run exists.** The model is frozen. Never say "the
+  model improves with feedback"; say "feedback is captured for future retraining."
+
+---
+
+## 12. Tests, CI and reproducibility
+
+| Gate | Command | Current (2026-11-18) |
+| --- | --- | --- |
+| Backend | `cd backend && python3 -m pytest -q` | **176 passed** |
+| Frontend | `cd frontend && npm run typecheck && npm test` | **29 passed** (7 files); typecheck clean |
+| Model | `python dentex_week3/evaluate.py` | v3 frozen on locked-50 |
+| E2E | local Supabase + host-network backend | passed 2026-11-05; see `docs/qa/e2e-clinician-flow.md` |
+| CI | GitHub Actions: guard, backend, frontend | green on `main` |
+
+The 2026-11-05 e2e record shows 172/16 because it was written before the latest test
+additions. Use **176/29** in the deck. The container reproduction of the model scored
+mAP 54.9 vs 54.2 local — a <1 pp float/backend difference; use 54.2 as canonical.
+
+---
+
+## 13. Privacy and security
+
+- Supabase Auth; backend verifies the JWT and scopes every request to the dentist.
+- RLS on all clinical tables with **no client policies**; private `xray-scans` bucket;
+  short-lived signed URLs; service-role key server-side only.
+- Cross-dentist access returns 404.
+- Local development uses the Supabase CLI stack at `127.0.0.1:54321`; the old cloud
+  project is not the demo path. The public Cloudflare Pages URL was unreachable at the
+  time of writing (522/523), so the conference demo is **local + recorded video**.
+- Do not upload identifiable patient data to the public demo.
+
+---
+
+## 14. Team and affiliation
+
+| Item | Value | Status |
+| --- | --- | --- |
+| Affiliation | Alexandria University (CDS) | confirmed in repo |
+| ML engineering | Abdullah Tarek Habashy | confirmed in repo |
+| Repo owner / integration | Seif Ahmed (`sayfeldinn`) | confirmed in git history |
+| Other three roles | Backend, Frontend, Team Lead | **names on the team roster, not in the repo — fill before submission** |
+| Advisor | Ashraf Eshta | task brief |
+| Partner dentist | Mohamed Fatah | task brief; no recorded validation session |
+| Duration | 21 Sep – Nov 2026 | update from the old 18 Oct date |
+| Repo | https://github.com/sayfeldinn/dental-xray-ai-assistant | public |
+| Weights | `weights-v3` release | public; tensor-identical to validated weights |
+
+The deck must not contain "UNVERIFIED" highlights or competitor "verify" cells. Use the
+five roles above; add names only when the roster is confirmed. If a name is not
+confirmed, show the role only.
+
+---
+
+## 15. Claims we must not make
+
+| Do not say | Why |
+| --- | --- |
+| "97.5% accuracy" / "76.2% tooth accuracy" / "75.4% joint" | v1 numbers on 23 images; obsolete |
+| "23 held-out images / 122 detections" | v1 benchmark; current is locked-50 / 182 lesions |
+| "No held-out mAP/recall" | false since v3; mAP 54.2, recall 74.2 |
+| "Coordinator + random forest" | v1; v3 is tooth + disease detectors + association |
+| "The model improves with feedback" | feedback is logged; no retraining |
+| "Clinically validated" / "clinician-reviewed rules" | no reader study/pilot; rules source-backed only |
+| "Diagnoses caries" / "replaces the dentist" | assistive only; dentist confirms every finding |
+| "Works on any dental X-ray" | panoramic JPEG/PNG/WebP only; no DICOM |
+| "State-of-the-art" | no external SOTA comparison |
+| "FDA/CE cleared" | not a medical device |
+| "The live site is available" | Cloudflare Pages was 522/523 at writing; use local/video |
+
+---
+
+## 16. Source index
+
+| Claim | Source |
+| --- | --- |
+| Locked-50 detection, per-class, label accuracy, threshold sweep | `dentex_week3/eval/evaluation_report_v3.md` |
+| Machine-readable locked-50 summary | `dentex_week3/production/final_evaluation.json` |
+| v2→v3 significance, McNemar | `dentex_week3/eval/paired_significance_v2_v3.md` |
+| v4 rejection | `dentex_week3/eval/paired_significance_v3_v4.md` |
+| External Romanian set | `dentex_week3/eval/disease_cross_hospital.json` |
+| Missing teeth | `dentex_week3/eval/missing_teeth_model_results.json` |
+| Findings | `dentex_week3/eval/findings_test_metrics.json`, `findings_cross_hospital.json` |
+| Architecture, thresholds, training provenance | `dentex_week3/production/pipeline_config.json` |
+| Clinical rules | `docs/CLINICAL_GUIDELINES.md` (R-01…R-26) |
+| Tests/e2e | `backend/tests/`, `frontend/src/**/*.test.*`, `docs/qa/e2e-clinician-flow.md` |
+| License/data terms | `LICENSE`, `NOTICE`, `MODEL_CARD.md` |
