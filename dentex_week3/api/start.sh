@@ -1,76 +1,97 @@
-#!/bin/bash
-# Start script for dentex_week3 ML API
+#!/usr/bin/env bash
+# Start the DENTEX v3 inference API (port 8001 by default).
+#
+# The production pipeline needs two weights: the 32-class FDI tooth detector and
+# the 4-class disease detector. The advisory findings and missing-teeth weights
+# are optional: if absent, the API still starts, but those advisory layers are
+# unavailable (the missing-teeth rule fallback remains).
+set -euo pipefail
 
-echo "============================================"
-echo "Starting DENTEX Week 3 ML API"
-echo "============================================"
+cd "$(dirname "$0")"
 
-# Get the script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-# Check if Python is available
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 is not installed or not in PATH"
-    exit 1
-fi
-
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
-    echo "📦 Creating virtual environment..."
-    python3 -m venv venv
-fi
-
-# Activate virtual environment
-echo "🔄 Activating virtual environment..."
-source venv/bin/activate
-
-# Install/update dependencies
-echo "📥 Installing dependencies..."
-pip install -q --upgrade pip
-pip install -q -r requirements.txt
-
-# Verify model files exist
-echo "🔍 Verifying model files..."
 MODELS_DIR="../production"
+REQUIRED_WEIGHTS=(
+  "$MODELS_DIR/tooth_best.pt"
+  "$MODELS_DIR/disease_best.pt"
+)
+OPTIONAL_WEIGHTS=(
+  "$MODELS_DIR/findings_best.pt"
+  "$MODELS_DIR/missing_teeth.pt"
+)
 REQUIRED_FILES=(
-    "coordinator_best.pt"
-    "disease_detector_best.pt"
-    "tooth_association_rf_300.joblib"
+  "$MODELS_DIR/pipeline_config.json"
+  "inference_pipeline.py"
+  "app.py"
 )
 
-ALL_EXIST=true
-for file in "${REQUIRED_FILES[@]}"; do
-    if [ ! -f "$MODELS_DIR/$file" ]; then
-        echo "   ❌ Missing: $file"
-        ALL_EXIST=false
-    else
-        SIZE=$(du -h "$MODELS_DIR/$file" | cut -f1)
-        echo "   ✅ Found: $file ($SIZE)"
-    fi
-done
-
-if [ "$ALL_EXIST" = false ]; then
-    echo ""
-    echo "❌ ERROR: Some model files are missing!"
-    echo "Please ensure all model files are in: $MODELS_DIR/"
-    exit 1
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "ERROR: python3 not found. Install Python 3.11 or 3.12 first." >&2
+  exit 1
 fi
 
-echo ""
-echo "✅ All checks passed!"
-echo ""
-echo "============================================"
-echo "🚀 Starting API server on port 8001..."
-echo "============================================"
-echo ""
-echo "API will be available at:"
-echo "  - Local:   http://localhost:8001"
-echo "  - Network: http://0.0.0.0:8001"
-echo "  - Docs:    http://localhost:8001/docs"
-echo ""
-echo "Press Ctrl+C to stop the server"
-echo ""
+if [ ! -d venv ]; then
+  echo "Creating virtual environment..."
+  python3 -m venv venv
+fi
 
-# Start the server
-python3 -m uvicorn app:app --host 0.0.0.0 --port 8001 --reload
+# shellcheck disable=SC1091
+source venv/bin/activate
+
+if ! python -c "import fastapi, uvicorn, ultralytics, torch" >/dev/null 2>&1; then
+  echo "Installing API dependencies..."
+  python -m pip install --upgrade pip
+  python -m pip install -r requirements.txt
+fi
+
+missing=0
+for f in "${REQUIRED_FILES[@]}"; do
+  if [ ! -f "$f" ]; then
+    echo "ERROR: missing required file: $f" >&2
+    missing=1
+  fi
+done
+for w in "${REQUIRED_WEIGHTS[@]}"; do
+  if [ ! -f "$w" ]; then
+    echo "ERROR: missing required weights: $w" >&2
+    missing=1
+  fi
+done
+
+if [ "$missing" -ne 0 ]; then
+  cat >&2 <<'EOF'
+
+Download the v3 weights from the public release, then re-run this script:
+
+  # from the repository root
+  ./notebooks/fetch_release_weights.sh
+
+Release: https://github.com/sayfeldinn/dental-xray-ai-assistant/releases/tag/weights-v3
+EOF
+  exit 1
+fi
+
+for w in "${OPTIONAL_WEIGHTS[@]}"; do
+  if [ ! -f "$w" ]; then
+    echo "WARNING: optional weights not found: $w"
+    echo "         The API will start, but that advisory layer will be unavailable."
+  fi
+done
+
+PORT="${PORT:-8001}"
+HOST="${HOST:-0.0.0.0}"
+
+echo
+echo "DENTEX v3 inference API"
+echo "  tooth detector:   $MODELS_DIR/tooth_best.pt"
+echo "  disease detector: $MODELS_DIR/disease_best.pt"
+echo "  findings:         $MODELS_DIR/findings_best.pt (advisory, optional)"
+echo "  missing teeth:    $MODELS_DIR/missing_teeth.pt (advisory, optional)"
+echo "  listening on:     http://${HOST}:${PORT}"
+echo "  docs:             http://127.0.0.1:${PORT}/docs"
+echo
+
+if [ "${RELOAD:-0}" = "1" ]; then
+  exec python -m uvicorn app:app --host "$HOST" --port "$PORT" --reload
+else
+  exec python -m uvicorn app:app --host "$HOST" --port "$PORT"
+fi
