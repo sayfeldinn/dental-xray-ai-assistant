@@ -453,6 +453,26 @@ github.com/sayfeldinn/dental-xray-ai-assistant · weights-v3 release.
 
 ---
 
+### B11 — Comparison with the DENTEX baseline (context, not controlled)
+
+| Diagnosis task | v3 · val-50, our harness | HierarchicalDet · hidden test-250, challenge evaluator |
+| --- | ---: | ---: |
+| AP@0.5 | 54.2 | **60.2** |
+| AP@0.5:0.95 | **38.2** | 37.6 |
+| AP@0.75 | 42.5 | **44.0** |
+| AR@0.5:0.95 | 51.3 | **69.1** |
+
+**Say the caveats out loud:** different sample and evaluator. The baseline is a
+Swin-Transformer diffusion detector with SimMIM self-supervised pretraining on 1,571
+unlabeled images; ours is a lightweight YOLOv8s pair.
+
+**Why there is no same-protocol re-run:** the baseline's code is MIT but **its weights
+were never released**; and the challenge's 4-class test GT was never released — the
+public test labels use a broader 8-class clinical ontology with no documented mapping
+to the 4 benchmark classes. **Never claim SOTA or "best open-source".**
+
+---
+
 ## 6. Figure and asset replacement list
 
 Current assets are in `submission/assets/`. Keep the v3 detection/GT-vs-pred images;

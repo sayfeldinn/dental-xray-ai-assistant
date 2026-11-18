@@ -40,6 +40,7 @@ limitation that must stay visible.
 | 25 | UI screenshots show v3 advisory panel, dashed missing boxes, threshold, provenance | current `ScanPage.tsx` / `XrayViewer.tsx` | ⬜ recapture (old assets are v2) |
 | 26 | Architecture diagram shows tooth + disease + association + advisory layers | `DECK_V3_REWRITE.md` | ⬜ replace old diagram |
 | 27 | Live cloud site | Cloudflare Pages returned 522/523 at writing | ⚠️ do not claim; use local/video |
+| 28 | DENTEX test-250 same-protocol comparison | **Not possible from public data**: the challenge's 4-class test GT was never released; the public test labels use a broader 8-class clinical ontology (`saglam/çürük/küretaj/kanal/çekim/gömülü/lezyon/kırık`) with no owner-supported mapping to the 4 benchmark classes | ✅ investigated 2026-11-18 (`DENTEX_test_data.zip` sha256 `ed396d6d…` ≡ HF LFS); comparison stays caveated (B11) |
 
 ## 2. Removed from the old deck
 

@@ -284,7 +284,8 @@ the same block goes on the title slide and in `CITATION.cff`.
 | "Clinically validated" / "clinician-reviewed rules" | no reader study/pilot; rules source-backed only |
 | "Diagnoses caries" / "replaces the dentist" | assistive only; dentist confirms every finding |
 | "Works on any dental X-ray" | panoramic JPEG/PNG/WebP only; no DICOM |
-| "State-of-the-art" | no external SOTA comparison |
+| "State-of-the-art" / "best open-source" | the open-code DENTEX baseline scored AP50 60.2 on the hidden test vs our 54.2 on val-50 (different sample/evaluator); we are below it and say so |
+| "We reproduced the DENTEX winners' numbers" | the 4-class test GT and the baseline's weights are not public; no same-protocol comparison is possible |
 | "FDA/CE cleared" | not a medical device |
 | "The live site is available" | Cloudflare Pages was 522/523 at writing; use local/video |
 

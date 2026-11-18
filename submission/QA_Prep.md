@@ -32,6 +32,7 @@ old test counts (171/25/14).
 | 24 | Who is on the team? | Two people, both at Alexandria University (CDS): `sayfeldinn`, ML Engineer (research & evaluation lead); `Seif-shawky`, Full-stack / Platform Engineer (backend + frontend + DevOps). The same two-person roster is on the title slide and in `CITATION.cff`. | B10 |
 
 | 25 | How do you audit an AI run? | Every run stores the weights, thresholds and `pipeline_version` in `raw_ml_output.model`; the scan page shows a **Model provenance** card with the pipeline version, tooth/disease/findings weights and missing-teeth gate. Re-analysis is blocked after the first review, so the audit trail refers to what the dentist saw. | B9 |
+| 26 | How do you compare with the DENTEX challenge winners? | We don't claim a controlled comparison. The best open-code entry — the organizers' baseline — scored AP50 60.2 / AP75 44.0 / AR 0.691 on the 250-image hidden test; our v3 scores mAP@0.5 54.2 / mAP@0.75 42.5 / AR 51.3 on the 50-image validation split with our own harness. The challenge's 4-class test ground truth was never released — the public test labels use a broader 8-class clinical ontology with no documented mapping — so a same-protocol re-run is impossible from public data. | B11 |
 
 ## Delivery notes
 
