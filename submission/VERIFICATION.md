@@ -18,7 +18,7 @@ limitation that must stay visible.
 | 3 | 11-class findings = advisory only, excluded from the report | `pipeline_config.json`; `findings_*.json`; `ScanPage.tsx` | ✅ |
 | 4 | Data: DENTEX 2023 (540/94 tooth; 10,120/9,848/107 disease mix) + OralXrays; DentalOPG advisory; Romanian external | `pipeline_config.json` `training`; `FACTS.md` §2 | ✅ |
 | 5 | Locked-50: 50 images, 182 lesions, 303 predictions, conf 0.20 | `evaluation_report_v3.md` | ✅ |
-| 6 | mAP@0.5 54.2; mAP@0.5:0.95 38.2; P 44.6 [39.1–50.2]; R 74.2 [67.4–80.0] | `evaluation_report_v3.md` | ✅ |
+| 6 | mAP@0.5 54.2; mAP@0.5:0.95 38.2; mAP@0.75 42.5; AR@0.5:0.95 51.3; P 44.6 [39.1–50.2]; R 74.2 [67.4–80.0] | `evaluation_report_v3.md` | ✅ |
 | 7 | Per-class AP: Impacted 75.0, Caries 35.3, Periapical 55.6, Deep Caries 51.1 | `evaluation_report_v3.md` | ✅ |
 | 8 | Matched-label accuracy: disease 89.0, tooth 91.7, quadrant 100, joint 82.8 (n=145) | `evaluation_report_v3.md` | ✅ |
 | 9 | End-to-end: tooth 73.1, joint 65.9 (n=182) | `paired_significance_v2_v3.md` | ✅ |

@@ -347,7 +347,8 @@ detection; human-in-the-loop.
 Caries 0/6/1/20. **Matched label accuracy (95% CI):** tooth 133/145 = 91.7%
 [86.1–95.2]; disease 129/145 = 89.0% [82.8–93.1]; joint 120/145 = 82.8% [75.8–88.0];
 quadrant 145/145 = 100% [97.4–100]. **End-to-end:** tooth 133/182 = 73.1%; joint
-120/182 = 65.9%.
+120/182 = 65.9%. **Stricter detection averages:** mAP@0.75 42.5 · AR@0.5:0.95 51.3
+(macro over the four classes, same harness; v2 for comparison 42.7 / 47.1).
 
 ### B3 — Iterations: v1 → v2 → v3, and why v4 lost
 

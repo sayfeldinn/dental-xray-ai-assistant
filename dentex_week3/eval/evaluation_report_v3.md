@@ -8,15 +8,17 @@ Official DENTEX **validation** split (50 panoramas / 182 lesions), which the mod
 
 ## 1. Detection quality (per disease class, IoU ≥ 0.5)
 
-| class | GT | pred | precision (95% CI) | recall (95% CI) | F1 | AP@0.5 |
-|---|---|---|---|---|---|---|
-| Impacted | 40 | 48 | 75.0% [61.2%, 85.1%] | 90.0% [76.9%, 96.0%] | 81.8% | 75.0% |
-| Caries | 101 | 201 | 35.3% [29.0%, 42.2%] | 70.3% [60.8%, 78.3%] | 47.0% | 35.3% |
-| Periapical Lesion | 9 | 9 | 55.6% [26.7%, 81.1%] | 55.6% [26.7%, 81.1%] | 55.6% | 55.6% |
-| Deep Caries | 32 | 45 | 51.1% [37.0%, 65.0%] | 71.9% [54.6%, 84.4%] | 59.7% | 51.1% |
-| **micro avg** | 182 | 303 | 44.6% [39.1%, 50.2%] | 74.2% [67.4%, 80.0%] | 55.7% | 54.2% |
+| class | GT | pred | precision (95% CI) | recall (95% CI) | F1 | AP@0.5 | AP@0.75 |
+|---|---|---|---|---|---|---|---|
+| Impacted | 40 | 48 | 75.0% [61.2%, 85.1%] | 90.0% [76.9%, 96.0%] | 81.8% | 75.0% | 64.6% |
+| Caries | 101 | 201 | 35.3% [29.0%, 42.2%] | 70.3% [60.8%, 78.3%] | 47.0% | 35.3% | 29.9% |
+| Periapical Lesion | 9 | 9 | 55.6% [26.7%, 81.1%] | 55.6% [26.7%, 81.1%] | 55.6% | 55.6% | 33.3% |
+| Deep Caries | 32 | 45 | 51.1% [37.0%, 65.0%] | 71.9% [54.6%, 84.4%] | 59.7% | 51.1% | 42.2% |
+| **micro avg** | 182 | 303 | 44.6% [39.1%, 50.2%] | 74.2% [67.4%, 80.0%] | 55.7% | 54.2% | 42.5% |
 
-**mAP@0.5 = 54.2% · mAP@0.5:0.95 = 38.2%**
+**mAP@0.5 = 54.2% · mAP@0.5:0.95 = 38.2% · mAP@0.75 = 42.5% · AR@0.5:0.95 = 51.3%**
+
+`AP@0.75` and `AR@0.5:0.95` are macro averages over the four disease classes; AR is the mean per-class recall across the ten IoU thresholds (COCO-style), computed on the detections the pipeline returns at conf ≥ 0.20.
 
 ## 2. Label accuracy on matched lesions (IoU ≥ 0.5, any label)
 

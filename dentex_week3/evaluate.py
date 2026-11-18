@@ -298,6 +298,11 @@ def evaluate(cache, gt, thresholds=(IOU_MATCH,), sweep=DEFAULT_SWEEP):
     sweep_stats = {c: {"tp": 0, "fp": 0, "fn": 0, "disease_ok": 0, "disease_n": 0}
                    for c in sweep}
 
+    gt_per_class = defaultdict(int)
+    for name in scored_images:
+        for g in gt[name]:
+            gt_per_class[DISEASE_NAMES[g["disease_id"]]] += 1
+
     for name in scored_images:
         rec = cache[name]
         gts = gt[name]
@@ -442,6 +447,26 @@ def evaluate(cache, gt, thresholds=(IOU_MATCH,), sweep=DEFAULT_SWEEP):
             aps.append(sum(per) / len(per))
     results["mAP50_95"] = sum(aps) / len(aps) if aps else None
 
+    # AP@0.75 and macro AR over the IoU sweep (averaged over the four classes)
+    per_class_ap75 = {c: average_precision(ap_flags[0.75][c]) for c in DISEASE_NAMES}
+    for c in DISEASE_NAMES:
+        results["ap_per_class"][c]["AP75"] = per_class_ap75[c]
+    ap75_scored = [v for v in per_class_ap75.values() if v is not None]
+    results["mAP75"] = sum(ap75_scored) / len(ap75_scored) if ap75_scored else None
+
+    ar_per_class = {}
+    for c in DISEASE_NAMES:
+        n_gt = gt_per_class[c]
+        recalls = []
+        for t in IOU_SWEEP:
+            tp_t = sum(1 for _, is_tp in ap_flags[t][c] if is_tp)
+            if n_gt:
+                recalls.append(tp_t / n_gt)
+        ar_per_class[c] = sum(recalls) / len(recalls) if recalls else None
+    ar_scored = [v for v in ar_per_class.values() if v is not None]
+    results["ar_per_class"] = ar_per_class
+    results["AR50_95"] = sum(ar_scored) / len(ar_scored) if ar_scored else None
+
     for key, st in label_stats.items():
         results["label_accuracy"][key] = dict(zip(
             ("rate", "ci_low", "ci_high", "correct", "total"),
@@ -483,8 +508,8 @@ def render_report(results):
         "",
         "## 1. Detection quality (per disease class, IoU ≥ 0.5)",
         "",
-        "| class | GT | pred | precision (95% CI) | recall (95% CI) | F1 | AP@0.5 |",
-        "|---|---|---|---|---|---|---|",
+        "| class | GT | pred | precision (95% CI) | recall (95% CI) | F1 | AP@0.5 | AP@0.75 |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for cname in DISEASE_NAMES:
         d = results["detection_per_class"][cname]
@@ -492,16 +517,22 @@ def render_report(results):
         p_ci = f"{fmt_pct(d['precision'])} [{fmt_pct(d['precision_ci'][0])}, {fmt_pct(d['precision_ci'][1])}]"
         r_ci = f"{fmt_pct(d['recall'])} [{fmt_pct(d['recall_ci'][0])}, {fmt_pct(d['recall_ci'][1])}]"
         ap = results["ap_per_class"][cname]["AP50"]
+        ap75 = results["ap_per_class"][cname]["AP75"]
         out.append(f"| {cname} | {gt_n} | {pred_n} | {p_ci} | {r_ci} | "
-                   f"{fmt_pct(d['f1'])} | {fmt_pct(ap)} |")
+                   f"{fmt_pct(d['f1'])} | {fmt_pct(ap)} | {fmt_pct(ap75)} |")
     m = results["detection_micro"]
     out += [
         f"| **micro avg** | {m['tp'] + m['fn']} | {m['tp'] + m['fp']} | "
         f"{fmt_pct(m['precision'])} [{fmt_pct(m['precision_ci'][0])}, {fmt_pct(m['precision_ci'][1])}] | "
         f"{fmt_pct(m['recall'])} [{fmt_pct(m['recall_ci'][0])}, {fmt_pct(m['recall_ci'][1])}] | "
-        f"{fmt_pct(m['f1'])} | {fmt_pct(results['mAP50'])} |",
+        f"{fmt_pct(m['f1'])} | {fmt_pct(results['mAP50'])} | {fmt_pct(results['mAP75'])} |",
         "",
-        f"**mAP@0.5 = {fmt_pct(results['mAP50'])} · mAP@0.5:0.95 = {fmt_pct(results['mAP50_95'])}**",
+        f"**mAP@0.5 = {fmt_pct(results['mAP50'])} · mAP@0.5:0.95 = {fmt_pct(results['mAP50_95'])} · "
+        f"mAP@0.75 = {fmt_pct(results['mAP75'])} · AR@0.5:0.95 = {fmt_pct(results['AR50_95'])}**",
+        "",
+        "`AP@0.75` and `AR@0.5:0.95` are macro averages over the four disease classes; "
+        "AR is the mean per-class recall across the ten IoU thresholds (COCO-style), "
+        "computed on the detections the pipeline returns at conf ≥ 0.20.",
         "",
         "## 2. Label accuracy on matched lesions (IoU ≥ 0.5, any label)",
         "",

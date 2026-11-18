@@ -85,7 +85,9 @@ matching at IoU ≥ 0.5.
 | Deep Caries | 32 | 45 | 51.1% [37.0, 65.0] | 71.9% [54.6, 84.4] | 59.7% | **51.1** |
 | **micro avg** | **182** | **303** | **44.6% [39.1, 50.2]** | **74.2% [67.4, 80.0]** | **55.7%** | **54.2** |
 
-**mAP@0.5 = 54.2 · mAP@0.5:0.95 = 38.2.**
+**mAP@0.5 = 54.2 · mAP@0.5:0.95 = 38.2 · mAP@0.75 = 42.5 · AR@0.5:0.95 = 51.3**
+(macro over the four classes; AR is COCO-style mean recall across 0.5:0.95 on the
+returned detections. v2 for comparison: mAP@0.75 42.7 · AR 47.1.)
 
 ---
 
