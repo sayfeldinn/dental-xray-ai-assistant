@@ -20,7 +20,7 @@ OPTIONAL_WEIGHTS=(
 )
 REQUIRED_FILES=(
   "$MODELS_DIR/pipeline_config.json"
-  "inference_pipeline.py"
+  "$MODELS_DIR/inference_pipeline.py"
   "app.py"
 )
 
