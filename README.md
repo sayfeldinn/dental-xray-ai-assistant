@@ -123,9 +123,9 @@ cd backend && pytest -q                          # 176 tests, no network
 cd frontend && npm run typecheck && npm test     # 29 tests (vitest)
 ```
 
-CI runs three jobs (guard, backend, frontend) on every push/PR, plus a Supabase
-keep-alive workflow. The clinician loop is also exercised end-to-end against a local
-Supabase stack; the run record is in
+CI runs three jobs (guard, backend, frontend) on pushes to `main`/`develop` and on
+pull requests, plus a Supabase keep-alive workflow. The clinician loop is also exercised
+end-to-end against a local Supabase stack; the run record is in
 [`docs/qa/e2e-clinician-flow.md`](docs/qa/e2e-clinician-flow.md).
 
 ## What is and is not validated
