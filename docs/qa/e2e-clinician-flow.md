@@ -143,5 +143,17 @@ Upload + analysis took ~21 s, of which ML inference is ~1.5 s. The rest is the
 5.4 MB PNG upload to Supabase eu-west-1 over a ~2 Mbit/s uplink; venue Wi-Fi decides
 this number on demo day.
 
-Locked-50 benchmark through the same container's HTTP API: all 101 metrics identical
-to the local run (tooth 91.7%, disease 89.0%, joint 82.8%, mAP@0.5 54.9%).
+Locked-50 benchmark through the same container's HTTP API: the label metrics match the
+local run (tooth 91.7%, disease 89.0%, joint 82.8%); mAP@0.5 is 54.9 vs 54.2 local, a
+<1 pp float/backend difference. Use 54.2 as the canonical `evaluate.py` number.
+
+## Current status (2026-11-18)
+
+- **Tests: 176 backend / 29 frontend**, typecheck clean (the 172/16/15 counts above are
+  historical snapshots from the dates of those runs).
+- The scan page now also shows a collapsed **Model provenance** card
+  (`raw_ml_output.model`: pipeline version, tooth/disease/findings weights,
+  missing-teeth gate), so the audit trail is visible during the demo.
+- The public Cloudflare Pages UI was unreachable (522/523) at writing; the conference
+  demo uses the local stack or the recorded video. The cloud backend/DB e2e above is a
+  separate, dated result — do not promise the public URL.

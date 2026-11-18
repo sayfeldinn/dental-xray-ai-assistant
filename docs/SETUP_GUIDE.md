@@ -8,8 +8,10 @@ the ML service (`dentex_week3`, port 8001), the backend API (port 8000) and the 
 
 1. Create a project at supabase.com. From **Project Settings → API** copy the Project URL, the
    `anon`/publishable key and the `service_role` key.
-2. **SQL Editor:** run `supabase/schema.sql` (tables, constraints, indexes, RLS, private `xray-scans` bucket).
-   Optional demo data: `supabase/seed.sql`.
+2. **SQL Editor:** for a new project run `supabase/migrations/20261019_base_schema.sql` then
+   `supabase/migrations/20261020_auth_lockdown.sql` (or `supabase db push`). `supabase/schema.sql`
+   remains the consolidated DDL for reference. Optional demo data: `supabase/seed.sql`.
+   For local development `npx supabase start` applies the migrations and seed automatically.
 3. **Existing projects created before Phase 6:** also run `supabase/migrations/20261020_auth_lockdown.sql`.
    It removes the old development policies that let anyone holding the anon key read and change
    every clinical table, and makes the X-ray bucket private. **Do this before deploying the frontend**:
@@ -37,15 +39,22 @@ the legacy shared JWT secret need `SUPABASE_JWT_SECRET`.
 Python **3.11 or 3.12** (3.14 breaks `pydantic-core`), Node **20+**.
 
 ```bash
-# ML service (needs the model weights in dentex_week3/production/, published as a GitHub Release)
+# Weights (once, from the repo root; public weights-v3 release)
+./notebooks/fetch_release_weights.sh
+
+# ML service (own terminal)
 cd dentex_week3/api && ./start.sh                 # http://localhost:8001
 
-# Backend
+# Backend (own terminal)
 cd backend && ./start.sh                          # http://localhost:8000/docs
 
-# Frontend
+# Frontend (own terminal)
 cd frontend && npm install && npm run dev         # http://localhost:5173
 ```
+
+The optional advisory weights (`findings_best.pt`, `missing_teeth.pt`) can be absent; the
+ML service still starts, but those advisory layers are unavailable. The missing-teeth
+rule fallback remains. The script prints which weights it found.
 
 ## 4. First sign-in
 
@@ -74,16 +83,19 @@ If a host-network `backend-e2e` container is already using `:8000` (the local Su
 only the other services: `docker compose up -d ml frontend`. The compose `backend` and `backend-e2e`
 both bind `:8000`, so run one or the other.
 
-The weights must be in `dentex_week3/production/` before building. Add `http://localhost:8080` to the
+The weights must be in `dentex_week3/production/` before building; run
+`./notebooks/fetch_release_weights.sh` first. Add `http://localhost:8080` to the
 Supabase Site URL / redirect URLs. Dentist feedback queued by the ML service is kept in the `ml-feedback` volume.
 
 ## 6. Checks
 
 ```bash
-cd backend && pytest -q                          # 171 tests, no network
-cd frontend && npm run typecheck && npm test     # 14 tests
+cd backend && pytest -q                          # 176 tests, no network
+cd frontend && npm run typecheck && npm test     # 29 tests
+curl http://localhost:8001/                      # ML: models_loaded true
 curl http://localhost:8000/health                # public
 curl -i http://localhost:8000/api/v1/patients    # 401 without a token (expected)
+./scripts/demo_check.sh                          # pre-demo port/health check (optional)
 ```
 
 ## 7. Troubleshooting
