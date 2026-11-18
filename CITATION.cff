@@ -3,14 +3,12 @@ message: "If you use DentalAI, please cite this repository and the DENTEX datase
 title: "DentalAI: AI-Assisted Dental Radiography and Patient-History System"
 type: software
 authors:
-  - family-names: Ahmed
-    given-names: Seif
+  - name: "sayfeldinn"
     affiliation: "Alexandria University"
-  - family-names: Habashy
-    given-names: Abdullah Tarek
+  - name: "Seif-shawky"
     affiliation: "Alexandria University"
-# TODO: add the remaining team members (and Seif's/their exact roles) before the
-# IC-FTAI 2026 submission. The deck currently uses placeholders.
+# Two-person team. GitHub handles are used because they are the confirmed
+# identifiers; display names can be substituted without changing the roster.
 repository-code: "https://github.com/sayfeldinn/dental-xray-ai-assistant"
 url: "https://github.com/sayfeldinn/dental-xray-ai-assistant"
 abstract: >-

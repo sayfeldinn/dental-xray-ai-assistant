@@ -35,7 +35,7 @@ Owner: Person D — Integration/QA Engineer. See [docs/Week1_Execution_Plan.md](
 - **R-06 / R-07 / R-08 have no covering profile** — no patient in `synthetic-patient-profiles.md`
   has liver disease, alcohol use, or a QT-prolonging co-medication, so TC-06, TC-16 and TC-17
   rely on QA-invented overrides. Needs either three appended profiles (P-007…P-009) or a scope
-  decision from Team Lead — see §6 of that file.
+  decision from the ML lead — see §6 of that file.
 - **#28 still blocks #17.** The test cases use QA free-text finding names so they stay usable
   independently of the taxonomy reconciliation, but Backend cannot map results into the API
   until `FindingTypeEnum` is settled. Four of six profiles' draft findings have no enum member.

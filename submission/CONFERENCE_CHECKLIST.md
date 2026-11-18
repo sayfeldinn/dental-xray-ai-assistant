@@ -14,18 +14,18 @@ The binary deck/summary are still v2 and must be updated from `DECK_V3_REWRITE.m
 
 | # | Item | Owner | Done |
 | ---: | --- | --- | :---: |
-| 1 | Fill the three missing names/roles on the title slide and in `CITATION.cff` | Team Lead | ☐ |
-| 2 | Apply `DECK_V3_REWRITE.md` to the PPTX: numbers, architecture, advisory, tests, team | Deck owner | ☐ |
-| 3 | Replace the v2 screenshots with current UI (advisory panel, dashed missing boxes, threshold, provenance, zoom) | Frontend | ☐ |
-| 4 | Replace architecture/loop diagrams; remove the v1 23-image charts | ML/design | ☐ |
-| 5 | Rewrite the one-page summary from the abstract in `DECK_V3_REWRITE.md` §4 | Summary owner | ☐ |
-| 6 | Run the claim→source check in `VERIFICATION.md` against the final PDF | ML + Team Lead | ☐ |
-| 7 | Remove every "UNVERIFIED" highlight and competitor "verify" cell | Deck owner | ☐ |
-| 8 | Confirm the test counts on the slide are **176/29** (not 171/25/14) | ML | ☐ |
-| 9 | Add `LICENSE`, `NOTICE`, `CITATION.cff`, `MODEL_CARD.md` to the repo (done in this branch) | Repo owner | ✅ |
-| 10 | Verify `weights-v3` release download and `start.sh` on a clean checkout | ML/QA | ☐ |
-| 11 | Record the 2–3 minute demo video and store it offline | Demo driver | ☐ |
-| 12 | Print the one-page summary and a Q&A card; pack the USB | Team Lead | ☐ |
+| 1 | Confirm the two-person roster on the title slide and in `CITATION.cff` (`sayfeldinn`, `Seif-shawky`) | Both | ✅ |
+| 2 | Apply `DECK_V3_REWRITE.md` to the PPTX: numbers, architecture, advisory, tests, team | Both | ☐ |
+| 3 | Replace the v2 screenshots with current UI (advisory panel, dashed missing boxes, threshold, provenance, zoom) | `Seif-shawky` | ☐ |
+| 4 | Replace architecture/loop diagrams; remove the v1 23-image charts | `sayfeldinn` | ☐ |
+| 5 | Rewrite the one-page summary from the abstract in `DECK_V3_REWRITE.md` §4 | Both | ☐ |
+| 6 | Run the claim→source check in `VERIFICATION.md` against the final PDF | Both | ☐ |
+| 7 | Remove every "UNVERIFIED" highlight and competitor "verify" cell | Both | ☐ |
+| 8 | Confirm the test counts on the slide are **176/29** (not 171/25/14) | `sayfeldinn` | ☐ |
+| 9 | Add `LICENSE`, `NOTICE`, `CITATION.cff`, `MODEL_CARD.md` to the repo (done in this branch) | Both | ✅ |
+| 10 | Verify `weights-v3` release download and `start.sh` on a clean checkout | Both | ☐ |
+| 11 | Record the 2–3 minute demo video and store it offline | `Seif-shawky` | ☐ |
+| 12 | Print the one-page summary and a Q&A card; pack the USB | Both | ☐ |
 
 ---
 
@@ -33,8 +33,8 @@ The binary deck/summary are still v2 and must be updated from `DECK_V3_REWRITE.m
 
 ### Wed 18 Nov — freeze content
 
-- [ ] Team call: confirm the three names/roles; confirm who presents, who drives, who
-      keeps time, who handles Q&A.
+- [ ] Team call: confirm the two-person roster (`sayfeldinn`, `Seif-shawky`) and who
+      presents, who drives, who keeps time, who handles Q&A.
 - [ ] Apply all text changes to the PPTX from `DECK_V3_REWRITE.md` (slides 1–7 + B1–B10).
 - [ ] Replace the summary text with the §4 abstract; keep it to one A4 page.
 - [ ] Delete the old numbers everywhere: 97.54, 76.23, 75.41, 23 images, 122 detections,
@@ -120,7 +120,7 @@ laptop.
 | Overrun 3:00 | medium | medium | Rehearse 5×; cut slide 5 detail |
 | Judge asks for a number not in FACTS | medium | medium | Say "we have not measured that"; offer the closest verified number |
 | Judge challenges caries/domain gap | high | low | Use B4/B5; lead with the limitation |
-| Team name missing | high | medium | Fill before printing; role-only if not confirmed |
+| Team block stale in binary deck/summary | high | medium | Apply the two-person block from `DECK_V3_REWRITE.md`; text docs are already updated |
 | Old v2 numbers in the deck | high | high | Run the forbidden-string grep; `VERIFICATION.md` |
 | No internet at venue | medium | medium | Offline video, local stack, PDF, USB |
 
@@ -145,7 +145,7 @@ laptop.
 
 - [ ] The final PDF has 7 main slides + backup, every number traceable to `FACTS.md`.
 - [ ] The one-page summary is 1 page, abstract ≤250 words, same numbers.
-- [ ] The title slide has the confirmed team names/roles.
+- [ ] The title slide has the confirmed two-person roster (`sayfeldinn`, `Seif-shawky`).
 - [ ] The demo runs locally end-to-end, and the video plays offline.
 - [ ] The 3:00 script is rehearsed to time; Q&A answers are ≤20 seconds.
 - [ ] The repo has LICENSE, NOTICE, CITATION, MODEL_CARD, and the v3 docs.

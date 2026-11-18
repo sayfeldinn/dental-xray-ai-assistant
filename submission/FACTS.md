@@ -257,18 +257,16 @@ mAP 54.9 vs 54.2 local — a <1 pp float/backend difference; use 54.2 as canonic
 | Item | Value | Status |
 | --- | --- | --- |
 | Affiliation | Alexandria University (CDS) | confirmed in repo |
-| ML engineering | Abdullah Tarek Habashy | confirmed in repo |
-| Repo owner / integration | Seif Ahmed (`sayfeldinn`) | confirmed in git history |
-| Other three roles | Backend, Frontend, Team Lead | **names on the team roster, not in the repo — fill before submission** |
-| Advisor | Ashraf Eshta | task brief |
-| Partner dentist | Mohamed Fatah | task brief; no recorded validation session |
+| ML Engineer (research & evaluation lead) | `sayfeldinn` | confirmed |
+| Full-stack / Platform Engineer (backend + frontend + DevOps) | `Seif-shawky` | confirmed |
+| Team size | 2 | confirmed |
 | Duration | 21 Sep – Nov 2026 | update from the old 18 Oct date |
 | Repo | https://github.com/sayfeldinn/dental-xray-ai-assistant | public |
 | Weights | `weights-v3` release | public; tensor-identical to validated weights |
 
-The deck must not contain "UNVERIFIED" highlights or competitor "verify" cells. Use the
-five roles above; add names only when the roster is confirmed. If a name is not
-confirmed, show the role only.
+The team is exactly two people. The deck must not contain "UNVERIFIED" highlights,
+competitor "verify" cells, or any additional team members. Use the two roles above;
+the same block goes on the title slide and in `CITATION.cff`.
 
 ---
 

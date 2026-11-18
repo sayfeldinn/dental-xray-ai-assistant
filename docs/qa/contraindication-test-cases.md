@@ -102,7 +102,7 @@ that, it is recorded here so the gap is visible to Backend and to the dentist me
 **Consequence:** TC-16, TC-17, TC-06 currently depend on QA-invented `override` inputs. They
 are marked `TEST-ONLY` / `(no profile)` accordingly.
 
-**Recommendation for Team Lead (#11):** ask the dentist to add three profiles —
+**Recommendation for the ML lead (#11):** ask the dentist to add three profiles —
 `P-007` (liver disease), `P-008` (alcohol use), `P-009` (QT-prolonging co-medication) —
 or confirm that R-06/R-07/R-08 should be dropped from scope. Per profiles §5, **append new
 IDs, never renumber the existing six**; downstream artifacts already reference P-001…P-006.
@@ -166,7 +166,7 @@ NC-01, NC-02, NC-03, NC-04, NC-05 = **5 zero-warning cases** → requirement (�
 | --- | --- | --- |
 | Cases written | Integration/QA (Person D) | ✅ v1 |
 | Handed to Backend by end of Day 3 | Integration/QA | pending issue #17 |
-| Rules re-validated against dentist table | Team Lead (#11) | ⛔ **not done — blocks** |
+| Rules re-validated against dentist table | ML lead (#11) | ⛔ **not done — blocks** |
 | Cases executed against engine | Backend (#17) | pending |
 | Failures triaged | Integration/QA + Backend | pending |
 

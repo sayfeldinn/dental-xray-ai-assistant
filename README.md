@@ -49,7 +49,7 @@ of end-to-end joint accuracy (p = 0.029). Full report:
 
 ## Locked stack
 
-Do not swap these without Team Lead sign-off.
+Do not swap these without team sign-off.
 
 | Layer | Choice | Notes |
 | --- | --- | --- |
@@ -168,16 +168,17 @@ care outside a supervised research setting.
 - [`submission/VERIFICATION.md`](submission/VERIFICATION.md) — claim→source check
 - [`submission/CONFERENCE_CHECKLIST.md`](submission/CONFERENCE_CHECKLIST.md) — 5-day readiness plan
 
-## Team roles
+## Team
 
-- ML Engineer — dataset preparation and model training
-- Backend Engineer — API, clinical rules, data access
-- Frontend Engineer — clinician UI/UX
-- Integration/QA Engineer — end-to-end testing and synthetic data
-- Team Lead — coordination and clinical liaison
+Two members:
 
-The confirmed authors are listed in [`CITATION.cff`](CITATION.cff); add the remaining
-team members and roles there and on the submission title slide before the conference.
+- **sayfeldinn** — ML Engineer (research & evaluation lead): dataset preparation,
+  model training and evaluation, the locked-50 judge, and the conference numbers.
+- **Seif-shawky** — Full-stack / Platform Engineer (backend + frontend + DevOps):
+  API, clinical rules, data access, clinician UI, deployment and CI.
+
+Both are listed in [`CITATION.cff`](CITATION.cff); the same two-person roster appears
+on the submission title slide.
 
 ## License and citation
 

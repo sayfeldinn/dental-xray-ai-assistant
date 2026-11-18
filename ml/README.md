@@ -5,7 +5,8 @@ directory holds the training notebook and the model card. **Weights are not in g
 they are published as a [GitHub Release](https://github.com/sayfeldinn/dental-xray-ai-assistant/releases)
 asset because they are 22.6 MB (see `CONTRIBUTING.md`).
 
-> Engineering by Abdullah Tarek Habashy (Alexandria University, CDS).
+> Engineering: `sayfeldinn` (ML Engineer, research & evaluation lead) and
+> `Seif-shawky` (Full-stack / Platform Engineer). Alexandria University (CDS).
 
 ## Status
 

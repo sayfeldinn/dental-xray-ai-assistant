@@ -74,9 +74,9 @@ The times total 3:00. The script in §2 is ~350 words (~2:55 at a measured pace)
 DentalAI
 A second opinion on every panoramic X-ray — the dentist stays in charge
 
-[Team Lead — Name] · [Backend — Name] · [Frontend — Name]
-Seif Ahmed — Integration/Repo · Abdullah Tarek Habashy — ML
-Alexandria University (CDS) · Advisor: Ashraf Eshta
+sayfeldinn — ML Engineer (research & evaluation lead)
+Seif-shawky — Full-stack / Platform Engineer (backend + frontend + DevOps)
+Alexandria University (CDS)
 
 IEEE IC-FTAI 2026 · Student Project Track
 Alexandria · 23–26 November 2026
@@ -89,8 +89,9 @@ advisory panel), cropped to the X-ray and the right-hand findings list. Replace
 **Notes:** "Good morning. DentalAI is an assistive second opinion for panoramic
 X-rays; the dentist reviews and decides every finding." (10 s)
 
-**Fill before submission:** the three names/roles. The repo confirms Seif Ahmed
-(integration/repo owner) and Abdullah Tarek Habashy (ML). Do not use "UNVERIFIED".
+**Team block:** exactly two people — `sayfeldinn` (ML Engineer, research &
+evaluation lead) and `Seif-shawky` (Full-stack / Platform Engineer). The same block
+goes in `CITATION.cff`; do not add any other names or roles.
 
 ---
 
@@ -442,9 +443,9 @@ treatment engine. The findings model's external mAP is why it is not a clinical 
 - No DICOM/PACS; confidence uncalibrated; no retraining; no commercial license for
   DENTEX-derived weights.
 
-**Team:** Alexandria University (CDS); Seif Ahmed (integration/repo), Abdullah Tarek
-Habashy (ML), plus backend, frontend and QA/team-lead roles; advisor Ashraf Eshta;
-partner dentist Mohamed Fatah.
+**Team (2):** Alexandria University (CDS); `sayfeldinn` — ML Engineer (research &
+evaluation lead); `Seif-shawky` — Full-stack / Platform Engineer (backend + frontend +
+DevOps).
 
 **License:** code MIT; DENTEX CC BY-NC-SA 4.0; weights research/non-commercial. Repo:
 github.com/sayfeldinn/dental-xray-ai-assistant · weights-v3 release.

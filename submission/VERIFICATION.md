@@ -3,6 +3,8 @@
 **Updated:** 2026-11-18. This table verifies the **v3 rewrite** (`FACTS.md`,
 `DECK_V3_REWRITE.md`, `QA_Prep.md`). The binary deck/summary in this folder are the
 **old v2 versions** until the team applies the rewrite; do not submit them as-is.
+Their title/team lines were patched to the two-person roster on 2026-11-18, so no
+binary mentions any other person.
 
 Status: ✅ verified in the repo · ⬜ must be applied/captured before submission · ⚠️ known
 limitation that must stay visible.
@@ -33,8 +35,8 @@ limitation that must stay visible.
 | 20 | No clinic pilot, no reader study, no regulatory clearance | repo search; `FACTS.md` §10/§14 | ✅ / ⚠️ |
 | 21 | Code MIT; DENTEX CC BY-NC-SA; weights research/non-commercial | `LICENSE`, `NOTICE`, `MODEL_CARD.md` | ✅ |
 | 22 | Repo public; `weights-v3` public release; tensor-identical weights | release page; verification notes | ✅ |
-| 23 | Team: Alexandria University (CDS); Seif Ahmed; Abdullah Tarek Habashy; advisor Ashraf Eshta; partner dentist Mohamed Fatah | `FACTS.md` §14 | ✅ |
-| 24 | Remaining three names/roles | team roster, **not in repo** | ⬜ fill before submission |
+| 23 | Team: Alexandria University (CDS); two members — `sayfeldinn` (ML Engineer, research & evaluation lead) and `Seif-shawky` (Full-stack / Platform Engineer) | `FACTS.md` §14 | ✅ |
+| 24 | Title slide (`sayfeldinn`, `Seif-shawky`), summary, `CITATION.cff`, PPTX, DOCX and exported PDFs all use the same two-person roster; no other names | patched text in the binaries (2026-11-18); `CITATION.cff` | ✅ for the roster; numbers in those binaries are still v2 |
 | 25 | UI screenshots show v3 advisory panel, dashed missing boxes, threshold, provenance | current `ScanPage.tsx` / `XrayViewer.tsx` | ⬜ recapture (old assets are v2) |
 | 26 | Architecture diagram shows tooth + disease + association + advisory layers | `DECK_V3_REWRITE.md` | ⬜ replace old diagram |
 | 27 | Live cloud site | Cloudflare Pages returned 522/523 at writing | ⚠️ do not claim; use local/video |
@@ -71,10 +73,8 @@ limitation that must stay visible.
 
 | Role | Name | Date |
 | --- | --- | --- |
-| ML / numbers | Abdullah Tarek Habashy | |
-| Integration / demo | Seif Ahmed | |
-| Team Lead | | |
-| Advisor | Ashraf Eshta | |
+| ML / numbers | `sayfeldinn` | |
+| Full-stack / platform | `Seif-shawky` | |
 
 The deck is submission-ready only when every ⬜ above is closed and the binary PDF/PPTX
 matches this table.
