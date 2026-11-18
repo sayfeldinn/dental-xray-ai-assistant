@@ -45,9 +45,9 @@ Do **not** use DentalAI for:
 
 | Dataset | Use | Notes |
 | --- | --- | --- |
-| **DENTEX 2023** | Tooth detector (540 train / 94 val); disease detector mix | 32 FDI tooth classes, 4 disease classes; CC BY-NC-SA 4.0 |
-| **OralXrays-9** | Disease detector mix (10,120 train / 9,848 unique / 107 val) | See upstream dataset terms |
-| **DentalOPG** | Advisory 11-class findings detector | See upstream dataset terms |
+| **DENTEX 2023** | Tooth detector (540 train / 94 val); disease detector mix | 32 FDI tooth classes, 4 disease classes; combined disease mix: 10,120 train / 9,848 unique / 107 val; CC BY-NC-SA 4.0 |
+| **OralXrays-9** | Additional images in the combined disease mix | Same 10,120 / 9,848 / 107 combined figures; see upstream dataset terms |
+| **DentalOPG** | Advisory 11-class findings detector | DentalOPG test: 154 held-out images; see upstream dataset terms |
 | **Romanian hospital set** | External validation only (175 images) | Never used for training or selection |
 
 The **locked-50** official DENTEX validation split (50 images, 182 lesions) was never
