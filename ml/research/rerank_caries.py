@@ -27,6 +27,7 @@ from torchvision import models, transforms
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE.parent, "eval"))
 sys.path.insert(0, os.path.join(HERE.parent, "pipeline"))
 
 import evaluate as judge          # noqa: E402

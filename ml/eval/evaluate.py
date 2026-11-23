@@ -49,11 +49,21 @@ Notes
 
 import argparse
 import json
-import math
 import os
 import sys
 import uuid
 from collections import defaultdict
+
+# The evaluator is run both as a script (`python ml/eval/evaluate.py`) and
+# imported by ml/eval/significance.py, so make its own directory importable
+# before pulling in the shared metrics module.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+from metrics import (  # noqa: E402
+    average_precision, fmt_pct, greedy_match, macro_mean, prf, wilson_ci,
+)
 
 # ------------------------------------------------------------------
 # Ground truth
@@ -209,77 +219,36 @@ def greedy_match(gt_boxes, pred_boxes, iou_thresh, pred_scores=None):
 
 
 # ------------------------------------------------------------------
-# Statistics
+# Detection / label statistics
 # ------------------------------------------------------------------
-
-def wilson_ci(successes, total, z=1.96):
-    """95% Wilson score interval for a proportion."""
-    if total == 0:
-        return (None, None, None)
-    p = successes / total
-    denom = 1 + z * z / total
-    center = (p + z * z / (2 * total)) / denom
-    half = z * math.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / denom
-    return (p, max(0.0, center - half), min(1.0, center + half))
+# iou, greedy_match, wilson_ci, fmt_pct, average_precision and prf now live in
+# metrics.py and are imported above; they are re-exported from this module so
+# `from evaluate import average_precision, greedy_match` keeps working for the
+# significance and research scripts.
 
 
-def fmt_pct(x):
-    return "-" if x is None else f"{100 * x:.1f}%"
+def detections_at(rec, conf):
+    """Detections in a cached result at or above ``conf``.
 
-
-def average_precision(scored_flags):
-    """All-point interpolated AP (VOC 2010+ / COCO style).
-
-    scored_flags: list of (confidence, is_true_positive) across the dataset,
-    to be sorted by confidence descending.
+    The pipeline bakes in conf=0.20, so raising the threshold is pure
+    post-filtering and never re-runs the model.
     """
-    if not scored_flags:
-        return None
-    ranked = sorted(scored_flags, key=lambda t: -t[0])
-    n_pos = sum(1 for _, tp in ranked if tp)
-    if n_pos == 0:
-        return None
-
-    tp_cum = fp_cum = 0
-    precisions, recalls = [], []
-    for _, tp in ranked:
-        if tp:
-            tp_cum += 1
-        else:
-            fp_cum += 1
-        precisions.append(tp_cum / (tp_cum + fp_cum))
-        recalls.append(tp_cum / n_pos)
-
-    # monotone precision envelope, integrated over recall
-    ap = 0.0
-    prev_r = 0.0
-    for i in range(len(ranked) - 1, -1, -1):
-        r, p = recalls[i], precisions[i]
-        if r > prev_r:
-            ap += (r - prev_r) * p
-            prev_r = r
-    return ap
+    return [d for d in rec["result"].get("detections", [])
+            if d.get("disease_confidence", 0) >= conf]
 
 
-# ------------------------------------------------------------------
-# Evaluation
-# ------------------------------------------------------------------
+def collect_stats(cache, gt, sweep):
+    """Single pass over the scored images, gathering every raw counter.
 
-def evaluate(cache, gt, thresholds=(IOU_MATCH,), sweep=DEFAULT_SWEEP):
-    """Compute detection, label and quadrant metrics from cached outputs."""
-    # --- raw prediction filtering helpers -------------------------------
-    def detections_at(rec, conf):
-        return [d for d in rec["result"].get("detections", [])
-                if d.get("disease_confidence", 0) >= conf]
-
+    Returns a dict of accumulators (counts, per-class flags, confusion
+    matrices, per-quadrant tallies, sweep tallies) that the ``*_metrics``
+    builders below turn into the report. One pass keeps the evaluator's
+    runtime identical to the original implementation.
+    """
     failed = sorted(name for name, rec in cache.items() if not rec["ok"])
     scored_images = sorted(name for name, rec in cache.items()
                            if rec["ok"] and name in gt)
 
-    # ---------------------------------------------------------------
-    # 1. Detection metrics at the primary operating point (IoU 0.5,
-    #    pipeline's baked-in conf=0.20), per disease class + micro.
-    # ---------------------------------------------------------------
     per_class_flags = defaultdict(list)     # class -> [(conf, is_tp)]
     per_class_counts = defaultdict(lambda: {"tp": 0, "fp": 0, "fn": 0})
     micro = {"tp": 0, "fp": 0, "fn": 0}
@@ -390,24 +359,124 @@ def evaluate(cache, gt, thresholds=(IOU_MATCH,), sweep=DEFAULT_SWEEP):
                 sweep_stats[c]["disease_n"] += 1
                 sweep_stats[c]["disease_ok"] += gts[gi]["disease_id"] == kept[pi]["disease_id"]
 
-    # ---------------------------------------------------------------
-    # 2. Assemble the report
-    # ---------------------------------------------------------------
-    def prf(counts):
-        tp, fp, fn = counts["tp"], counts["fp"], counts["fn"]
-        p, pl, ph = wilson_ci(tp, tp + fp)
-        r, rl, rh = wilson_ci(tp, tp + fn)
-        f1 = (2 * p * r / (p + r)) if (p and r) else (0.0 if (tp + fp + fn) else None)
-        return {"precision": p, "precision_ci": [pl, ph],
-                "recall": r, "recall_ci": [rl, rh], "f1": f1,
-                "tp": tp, "fp": fp, "fn": fn}
+    return {
+        "failed": failed,
+        "scored_images": scored_images,
+        "per_class_flags": per_class_flags,
+        "per_class_counts": per_class_counts,
+        "micro": micro,
+        "label_stats": label_stats,
+        "disease_confusion": disease_confusion,
+        "quadrant_confusion": quadrant_confusion,
+        "per_quadrant": per_quadrant,
+        "ap_flags": ap_flags,
+        "sweep_stats": sweep_stats,
+        "gt_per_class": gt_per_class,
+    }
 
-    results = {
+
+def detection_metrics(stats):
+    """Per-class / micro P-R-F1 plus mAP@0.5, mAP@0.5:0.95, mAP@0.75 and AR."""
+    per_class_counts = stats["per_class_counts"]
+    ap_flags = stats["ap_flags"]
+
+    ap50 = {c: average_precision(ap_flags[IOU_MATCH][c]) for c in DISEASE_NAMES}
+    ap_per_class = {c: {"AP50": ap50[c]} for c in DISEASE_NAMES}
+    mAP50 = macro_mean(ap50.values())
+
+    per_threshold = []
+    for t in IOU_SWEEP:
+        per = [average_precision(ap_flags[t][c]) for c in DISEASE_NAMES]
+        mean = macro_mean(per)
+        if mean is not None:
+            per_threshold.append(mean)
+    mAP50_95 = macro_mean(per_threshold)
+
+    per_class_ap75 = {c: average_precision(ap_flags[0.75][c]) for c in DISEASE_NAMES}
+    for c in DISEASE_NAMES:
+        ap_per_class[c]["AP75"] = per_class_ap75[c]
+    mAP75 = macro_mean(per_class_ap75.values())
+
+    # AR@0.5:0.95 = mean per-class recall across the ten IoU thresholds
+    ar_per_class = {}
+    for c in DISEASE_NAMES:
+        n_gt = stats["gt_per_class"][c]
+        recalls = [sum(1 for _, is_tp in ap_flags[t][c] if is_tp) / n_gt
+                   for t in IOU_SWEEP if n_gt]
+        ar_per_class[c] = macro_mean(recalls) if n_gt else None
+    AR50_95 = macro_mean(ar_per_class.values())
+
+    return {
+        "per_class": {c: prf(per_class_counts[c]) for c in DISEASE_NAMES},
+        "micro": prf(stats["micro"]),
+        "mAP50": mAP50,
+        "mAP50_95": mAP50_95,
+        "ap_per_class": ap_per_class,
+        "mAP75": mAP75,
+        "ar_per_class": ar_per_class,
+        "AR50_95": AR50_95,
+    }
+
+
+def label_metrics(stats):
+    """Disease / tooth / quadrant / joint accuracy and the confusion matrices."""
+    accuracy = {}
+    for key, st in stats["label_stats"].items():
+        accuracy[key] = dict(zip(
+            ("rate", "ci_low", "ci_high", "correct", "total"),
+            (*wilson_ci(st["ok"], st["n"]), st["ok"], st["n"])))
+
+    return {
+        "accuracy": accuracy,
+        "disease_confusion": {g: dict(v) for g, v in stats["disease_confusion"].items()},
+        "quadrant_confusion": {str(g): {str(k): v for k, v in r.items()}
+                               for g, r in stats["quadrant_confusion"].items()},
+        "per_quadrant": {str(q): {k: (*wilson_ci(v[0], v[1]), v[1])
+                                  for k, v in r.items()}
+                         for q, r in stats["per_quadrant"].items()},
+    }
+
+
+def sweep_metrics(stats, sweep):
+    """Precision / recall / F1 and disease accuracy at each threshold in ``sweep``."""
+    out = {}
+    for c in sweep:
+        st = stats["sweep_stats"][c]
+        p, _, _ = wilson_ci(st["tp"], st["tp"] + st["fp"])
+        r, _, _ = wilson_ci(st["tp"], st["tp"] + st["fn"])
+        d, dl, dh = wilson_ci(st["disease_ok"], st["disease_n"])
+        out[str(c)] = {
+            "precision": p, "recall": r, "f1": (2 * p * r / (p + r)) if (p and r) else None,
+            "disease_acc": d, "disease_acc_ci": [dl, dh],
+            "disease_n": st["disease_n"],
+        }
+    return out
+
+
+# ------------------------------------------------------------------
+# Evaluation
+# ------------------------------------------------------------------
+
+def evaluate(cache, gt, sweep=DEFAULT_SWEEP):
+    """Compute detection, label and quadrant metrics from cached predictions.
+
+    Three stages, each independently testable:
+      1. ``collect_stats``   -- one pass over the scored images
+      2. ``*_metrics``       -- turn the accumulators into the report sections
+      3. assemble            -- emit the dict the report renderer expects
+    """
+    stats = collect_stats(cache, gt, sweep)
+    detection = detection_metrics(stats)
+    labels = label_metrics(stats)
+    sweep_results = sweep_metrics(stats, sweep)
+
+    scored_images = stats["scored_images"]
+    return {
         "dataset": {
             "images_total": len(gt),
             "images_scored": len(scored_images),
-            "images_failed": len(failed),
-            "failed_images": failed,
+            "images_failed": len(stats["failed"]),
+            "failed_images": stats["failed"],
             "gt_lesions": sum(len(gt[n]) for n in scored_images),
             "predictions": sum(len(detections_at(cache[n], 0.0)) for n in scored_images),
             "protocol": {
@@ -417,72 +486,20 @@ def evaluate(cache, gt, thresholds=(IOU_MATCH,), sweep=DEFAULT_SWEEP):
                 "ap": "all-point interpolated (COCO-style)",
             },
         },
-        "detection_per_class": {c: prf(per_class_counts[c]) for c in DISEASE_NAMES},
-        "detection_micro": prf(micro),
-        "mAP50": None,
-        "mAP50_95": None,
-        "ap_per_class": {},
-        "label_accuracy": {},
-        "disease_confusion": {g: dict(v) for g, v in disease_confusion.items()},
-        "quadrant_confusion": {str(g): {str(k): v for k, v in r.items()}
-                               for g, r in quadrant_confusion.items()},
-        "per_quadrant": {str(q): {k: (*wilson_ci(v[0], v[1]), v[1])
-                                  for k, v in r.items()}
-                         for q, r in per_quadrant.items()},
-        "threshold_sweep": {},
+        "detection_per_class": detection["per_class"],
+        "detection_micro": detection["micro"],
+        "mAP50": detection["mAP50"],
+        "mAP50_95": detection["mAP50_95"],
+        "ap_per_class": detection["ap_per_class"],
+        "label_accuracy": labels["accuracy"],
+        "disease_confusion": labels["disease_confusion"],
+        "quadrant_confusion": labels["quadrant_confusion"],
+        "per_quadrant": labels["per_quadrant"],
+        "threshold_sweep": sweep_results,
+        "mAP75": detection["mAP75"],
+        "ar_per_class": detection["ar_per_class"],
+        "AR50_95": detection["AR50_95"],
     }
-
-    ap50 = {}
-    for cname in DISEASE_NAMES:
-        ap50[cname] = average_precision(ap_flags[IOU_MATCH][cname])
-    results["ap_per_class"] = {c: {"AP50": ap50[c]} for c in DISEASE_NAMES}
-    scored = [v for v in ap50.values() if v is not None]
-    results["mAP50"] = sum(scored) / len(scored) if scored else None
-
-    aps = []
-    for t in IOU_SWEEP:
-        per = [average_precision(ap_flags[t][c]) for c in DISEASE_NAMES]
-        per = [v for v in per if v is not None]
-        if per:
-            aps.append(sum(per) / len(per))
-    results["mAP50_95"] = sum(aps) / len(aps) if aps else None
-
-    # AP@0.75 and macro AR over the IoU sweep (averaged over the four classes)
-    per_class_ap75 = {c: average_precision(ap_flags[0.75][c]) for c in DISEASE_NAMES}
-    for c in DISEASE_NAMES:
-        results["ap_per_class"][c]["AP75"] = per_class_ap75[c]
-    ap75_scored = [v for v in per_class_ap75.values() if v is not None]
-    results["mAP75"] = sum(ap75_scored) / len(ap75_scored) if ap75_scored else None
-
-    ar_per_class = {}
-    for c in DISEASE_NAMES:
-        n_gt = gt_per_class[c]
-        recalls = []
-        for t in IOU_SWEEP:
-            tp_t = sum(1 for _, is_tp in ap_flags[t][c] if is_tp)
-            if n_gt:
-                recalls.append(tp_t / n_gt)
-        ar_per_class[c] = sum(recalls) / len(recalls) if recalls else None
-    ar_scored = [v for v in ar_per_class.values() if v is not None]
-    results["ar_per_class"] = ar_per_class
-    results["AR50_95"] = sum(ar_scored) / len(ar_scored) if ar_scored else None
-
-    for key, st in label_stats.items():
-        results["label_accuracy"][key] = dict(zip(
-            ("rate", "ci_low", "ci_high", "correct", "total"),
-            (*wilson_ci(st["ok"], st["n"]), st["ok"], st["n"])))
-
-    for c in sweep:
-        st = sweep_stats[c]
-        p, _, _ = wilson_ci(st["tp"], st["tp"] + st["fp"])
-        r, _, _ = wilson_ci(st["tp"], st["tp"] + st["fn"])
-        d, dl, dh = wilson_ci(st["disease_ok"], st["disease_n"])
-        results["threshold_sweep"][str(c)] = {
-            "precision": p, "recall": r, "f1": (2 * p * r / (p + r)) if (p and r) else None,
-            "disease_acc": d, "disease_acc_ci": [dl, dh],
-            "disease_n": st["disease_n"],
-        }
-    return results
 
 
 # ------------------------------------------------------------------
@@ -496,7 +513,7 @@ def render_report(results):
         "",
         "Official DENTEX **validation** split (50 panoramas / 182 lesions), which the "
         "models never saw in training (all `model.train()` runs used `training_data/` "
-        "only; see `MLv2/provenance/*/args.yaml`). Ground truth is the full "
+        "only; see `docs/evidence/mlv2/provenance/*/args.yaml`). Ground truth is the full "
         "quadrant + tooth + disease triple from `validation_triple.json`. "
         "Predictions are the frozen production pipeline "
         "(`pipeline/inference.py`, conf=0.20) served by the ML service.",

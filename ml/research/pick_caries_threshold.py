@@ -19,10 +19,12 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "eval"))
 sys.path.insert(0, str(HERE.parent / "pipeline"))
 
 import rerank_caries as rc  # noqa: E402
 import inference as pipe  # noqa: E402
+from metrics import iou  # noqa: E402
 
 QED = Path("/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
            "training_data/quadrant-enumeration-disease/train_quadrant_enumeration_disease.json")
@@ -50,15 +52,6 @@ def v3_split():
         val.extend(items[:n_val])
         train.extend(items[n_val:])
     return sorted(train), sorted(val), qed
-
-
-def iou(a, b):
-    x1, y1 = max(a[0], b[0]), max(a[1], b[1])
-    x2, y2 = min(a[2], b[2]), min(a[3], b[3])
-    i = max(0, x2 - x1) * max(0, y2 - y1)
-    if i <= 0:
-        return 0.0
-    return i / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - i)
 
 
 def collect(images, gt_boxes, verifier):

@@ -29,9 +29,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from evaluate import (  # noqa: E402
-    DISEASE_NAMES, IOU_MATCH, average_precision, greedy_match, load_ground_truth,
-)
+from evaluate import DISEASE_NAMES, IOU_MATCH, load_ground_truth  # noqa: E402
+from metrics import average_precision, greedy_match  # noqa: E402
 
 DEFAULT_GT = Path("/home/sayfeldin/Projects/dental-model-research"
                   "/data/downloads/validation_triple.json")
