@@ -123,12 +123,21 @@ the compose `backend` binds the same port. See
 
 ```bash
 cd backend && pytest -q                          # 176 tests, no network
+cd ml && pytest -q tests                         # ML tests (torch stubbed, CI-safe)
 cd frontend && npm run typecheck && npm test     # 29 tests (vitest)
 ```
 
-CI runs three jobs (guard, backend, frontend) on pushes to `main`/`develop` and on
-pull requests, plus a Supabase keep-alive workflow. The clinician loop is also exercised
-end-to-end against a local Supabase stack; the run record is in
+Lint and format (also run by CI):
+
+```bash
+pip install -r requirements-dev.txt
+ruff check backend/app backend/tests backend/scripts ml scripts
+black --check backend/app backend/tests backend/scripts ml scripts
+```
+
+CI runs five jobs (guard, lint, backend, ml, frontend) on pushes to `main`/`develop`
+and on pull requests, plus a Supabase keep-alive workflow. The clinician loop is also
+exercised end-to-end against a local Supabase stack; the run record is in
 [`docs/qa/e2e-clinician-flow.md`](docs/qa/e2e-clinician-flow.md).
 
 ## What is and is not validated
