@@ -29,7 +29,9 @@ class PrescriptionService:
 
     async def get_prescription(self, prescription_id: UUID) -> Prescription | None:
         """Retrieve a prescription by ID."""
-        response = self.client.table(self.table).select("*").eq("id", str(prescription_id)).execute()
+        response = (
+            self.client.table(self.table).select("*").eq("id", str(prescription_id)).execute()
+        )
         return Prescription(**response.data[0]) if response.data else None
 
     async def list_prescriptions(
@@ -49,7 +51,9 @@ class PrescriptionService:
         response = query.order("created_at").execute()
         return [Prescription(**p) for p in response.data] if response.data else []
 
-    async def update_prescription(self, prescription_id: UUID, changes: dict[str, Any]) -> Prescription | None:
+    async def update_prescription(
+        self, prescription_id: UUID, changes: dict[str, Any]
+    ) -> Prescription | None:
         """Apply a partial update (JSON-safe values only)."""
         response = (
             self.client.table(self.table)

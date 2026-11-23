@@ -50,7 +50,9 @@ class TreatmentService:
         response = query.order("created_at").execute()
         return [Treatment(**t) for t in response.data] if response.data else []
 
-    async def update_treatment(self, treatment_id: UUID, changes: dict[str, Any]) -> Treatment | None:
+    async def update_treatment(
+        self, treatment_id: UUID, changes: dict[str, Any]
+    ) -> Treatment | None:
         """Apply a partial update (JSON-safe values only)."""
         response = (
             self.client.table(self.table)
@@ -63,7 +65,12 @@ class TreatmentService:
     async def delete_treatments(self, treatment_ids: list[UUID]) -> None:
         """Delete treatments; their prescriptions go with them (ON DELETE CASCADE)."""
         if treatment_ids:
-            self.client.table(self.table).delete().in_("id", [str(t) for t in treatment_ids]).execute()
+            (
+                self.client.table(self.table)
+                .delete()
+                .in_("id", [str(t) for t in treatment_ids])
+                .execute()
+            )
 
 
 # Global service instance
