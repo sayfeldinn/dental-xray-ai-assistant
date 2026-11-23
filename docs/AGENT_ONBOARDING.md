@@ -12,10 +12,10 @@ DentalAI: an **assistive** dental decision-support system (IEEE IC-FTAI). AI pro
 | 4 Recommendation | rules → treatments + drugs | ✅ P3 | `services/recommendation/`, `services/contraindication/` |
 | 5 Prescription decision | accept/modify/reject with safety gates | ✅ P3 | `services/clinical_workflow.py` |
 | 6 Feedback logging | audit ledger → active learning | ✅ P4 | `services/feedback/`, `api/v1/feedback.py` |
-| Frontend | React + Vite + Tailwind | ✅ P5 | `frontend/` (see `docs/PHASE5_STATUS.md`) |
-| Auth & access | Supabase Auth, per-dentist ownership | ✅ P6 | `app/core/auth.py`, `app/services/access.py` (see `docs/PHASE6_STATUS.md`) |
+| Frontend | React + Vite + Tailwind | ✅ P5 | `frontend/` (see `docs/history/PHASE5_STATUS.md`) |
+| Auth & access | Supabase Auth, per-dentist ownership | ✅ P6 | `app/core/auth.py`, `app/services/access.py` (see `docs/history/PHASE6_STATUS.md`) |
 
-Status docs: `PHASE2_STATUS.md` … `PHASE6_STATUS.md`. Architecture: `ARCHITECTURE.md`. Rules: `CLINICAL_GUIDELINES.md` (**§4 rule register, §5 decisions**). DB: `DATABASE_SPEC.md` + `supabase/schema.sql`.
+Status docs: `docs/history/PHASE2_STATUS.md` … `docs/history/PHASE6_STATUS.md`. Architecture: `ARCHITECTURE.md`. Rules: `CLINICAL_GUIDELINES.md` (**§4 rule register, §5 decisions**). DB: `DATABASE_SPEC.md` + `supabase/schema.sql`.
 
 ## Current model (v3)
 The shipped pipeline is **YOLOv8s tooth (32 FDI) + YOLOv8s disease (4 classes) + IoU/centre association**. Missing teeth (ResNet18 + rule fallback) and the 11-class findings detector are **advisory only** and never enter the clinical report. The judge is `dentex_week3/evaluate.py` on the locked-50 DENTEX split; do not promote a model on any other set. Current metrics: `dentex_week3/eval/evaluation_report_v3.md`; weights: `weights-v3` release via `notebooks/fetch_release_weights.sh`.

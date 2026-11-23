@@ -84,12 +84,12 @@ dental-xray-ai-assistant/
 ├── deploy/                     # Cloud Run / Cloudflare scripts
 ├── submission/                 # IC-FTAI 2026 deck, summary, facts, Q&A
 ├── docs/                       # setup, architecture, clinical rules, QA
-├── archive/                    # ml-v1, ml-v2 (historical)
 └── docker-compose.yml
 ```
 
-The active ML service is `dentex_week3/`. `ml/`, `MLv2/` and `archive/` are earlier
-models kept for reference; their weights are not in git.
+The active ML service is `dentex_week3/`. Earlier models are kept for reference
+only: `docs/evidence/mlv2/` (v2 training logs) and `docs/history/` (v1 assets,
+phase notes). Their weights are not in git.
 
 ## Quick start
 

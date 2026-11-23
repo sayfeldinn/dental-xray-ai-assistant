@@ -96,7 +96,6 @@ dental-xray-ai-assistant/
 ├── deploy/                       # Cloud Run / Cloudflare scripts
 ├── submission/                   # IC-FTAI deck, summary, facts, Q&A
 ├── docs/                         # specifications and guides
-├── archive/                      # ml-v1, ml-v2 (historical)
 └── scripts/                      # dev/verification tooling
 ```
 
@@ -203,6 +202,11 @@ CIs; paired comparisons use bootstrap and McNemar.
 
 ## 6. Historical layers
 
-`archive/ml-v1/` (coordinator + random forest) and `archive/ml-v2/` are kept for
-reference and reproducibility. They are not deployed. `ml/` and `MLv2/` contain the
-earlier training assets. The active pipeline and all current metrics are v3.
+Earlier assets are kept for reference only, never deployed:
+
+| Location | Contents |
+| --- | --- |
+| `docs/evidence/mlv2/` | v2 training logs (`args.yaml` + `results.csv`) and the v2 report |
+| `docs/history/` | v1 model card, v1 evaluation, phase notes, the model-switch changelog |
+
+The active pipeline and all current metrics are v3, under `dentex_week3/`.

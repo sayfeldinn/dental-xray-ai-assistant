@@ -29,7 +29,7 @@ Patient with penicillin allergy and warfarin; 9 AI findings from a seed scan.
 Bugs found and fixed during the walkthrough: duplicate React keys for repeated plan alerts; stale acknowledge box while a check was in flight; finding list re-ordering after each review (now sorted by tooth); "Decision: — → modified" noise in the ledger view; missing favicon.
 
 ## Known limitations
-1. ~~No authentication~~: done in Phase 6 (`docs/PHASE6_STATUS.md`).
+1. ~~No authentication~~: done in Phase 6 (`docs/history/PHASE6_STATUS.md`).
 2. **Plan alerts** (e.g. duplicate drug skipped) are shown only right after generation; they are not stored, so a reload hides them.
 3. **Mobile width not verified** in the browser (layout uses responsive grids and scrollable tables).
 4. ~~Patient editing and scan deletion~~: added in Phase 6.

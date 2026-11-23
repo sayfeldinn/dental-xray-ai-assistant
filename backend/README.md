@@ -142,9 +142,9 @@ The API will be available at:
 - `GET /api/v1/feedback/summary?scan_id=` - Counts by stage and correction type
 - `POST /api/v1/feedback/missed-findings` - Report a lesion the AI missed (false negative)
 
-`POST /api/v1/findings/review` now also writes the ledger (false positive / misclassification) and forwards it to the ML service. Behaviour: `docs/PHASE4_STATUS.md`.
+`POST /api/v1/findings/review` now also writes the ledger (false positive / misclassification) and forwards it to the ML service. Behaviour: `docs/history/PHASE4_STATUS.md`.
 
-Full behaviour: `docs/PHASE3_STATUS.md`. Rules: `docs/CLINICAL_GUIDELINES.md` §4-5.
+Full behaviour: `docs/history/PHASE3_STATUS.md`. Rules: `docs/CLINICAL_GUIDELINES.md` §4-5.
 
 ## Testing the API
 
@@ -195,7 +195,7 @@ pytest -q        # 171 tests, <1 s, no network, no .env needed
 - Automatic scan upload and AI analysis
 - Finding review workflow
 
-✅ **Phase 3 (see `docs/PHASE3_STATUS.md`):** recommendation engine, contraindication checker, treatment/prescription endpoints, tests.
+✅ **Phase 3 (see `docs/history/PHASE3_STATUS.md`):** recommendation engine, contraindication checker, treatment/prescription endpoints, tests.
 
 ⬜ **Not Yet Implemented:**
 
@@ -220,7 +220,7 @@ All service methods are `async` for non-blocking I/O, even though Supabase clien
 
 ## Next Steps (Phase 5)
 
-All six loop steps, the UI and authentication are built. Remaining: clinician review of the rule content, clinic-level sharing. See `docs/PHASE6_STATUS.md`.
+All six loop steps, the UI and authentication are built. Remaining: clinician review of the rule content, clinic-level sharing. See `docs/history/PHASE6_STATUS.md`.
 
 ## Troubleshooting
 

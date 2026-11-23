@@ -29,7 +29,7 @@ limitation that must stay visible.
 | 14 | Missing teeth: F1 0.796, P 0.896, R 0.717, AUC 0.931; rule baseline 0.733 | `missing_teeth_model_results.json` | ✅ |
 | 15 | Findings: in-hospital mAP 59.4 / P 57.6 / R 62.7; cross-hospital mAP 11.8 | `findings_test_metrics.json`; `findings_cross_hospital.json` | ✅ |
 | 16 | 26 contraindication rules, source-backed, not clinician-validated | `docs/CLINICAL_GUIDELINES.md`; `FACTS.md` §10 | ✅ / ⚠️ |
-| 17 | Feedback logged; **no retraining run** | `docs/PHASE4_STATUS.md`; `FACTS.md` §11 | ✅ |
+| 17 | Feedback logged; **no retraining run** | `docs/history/PHASE4_STATUS.md`; `FACTS.md` §11 | ✅ |
 | 18 | Tests: **176 backend + 29 frontend**, typecheck clean (2026-11-18) | `pytest -q`; `npm test`; `npm run typecheck` | ✅ |
 | 19 | Local e2e loop passed 2026-11-05; 172/16 counts in that record are historical | `docs/qa/e2e-clinician-flow.md` | ✅ |
 | 20 | No clinic pilot, no reader study, no regulatory clearance | repo search; `FACTS.md` §10/§14 | ✅ / ⚠️ |

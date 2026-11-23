@@ -1,9 +1,10 @@
 # ML Model Guide: dentex_week3 (v3)
 
 > **Current models as of 2026-11-03.** The disease detector is v3, trained on
-> 9,848 unique panoramas (DENTEX + OralXrays). v2 is archived in
-> `archive/ml-v2/`, and the v1 coordinator + random-forest pipeline in
-> `archive/ml-v1/` (tag `ml-v1-baseline`). A Romanian-augmented v4 was trained
+> 9,848 unique panoramas (DENTEX + OralXrays). v2 training logs and report are
+> in `docs/evidence/mlv2/`; the v1 coordinator + random-forest pipeline is
+> recoverable from tag `ml-v1-baseline` (its local `archive/` copy was removed in
+> the 2026-11 cleanup). A Romanian-augmented v4 was trained
 > and rejected on 2026-11-04 (it lost Caries, tooth and joint accuracy on the
 > locked 50); see "Candidate v4" below. `notebooks/README.md` covers training
 > and `dentex_week3/eval/evaluation_report_v3.md` has the full benchmark.

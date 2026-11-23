@@ -51,7 +51,7 @@ Successfully switched the ML inference backend from any previous model to **dent
   - Setup instructions
   - Troubleshooting guide
 
-- **`CHANGELOG_MODEL_SWITCH.md`** (this file)
+- **`docs/history/CHANGELOG_MODEL_SWITCH.md`** (this file)
   - Change log for tracking modifications
 
 #### Scripts

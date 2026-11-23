@@ -1,6 +1,6 @@
 # Shipped DENTEX pipeline — held-out evaluation
 
-Official DENTEX **validation** split (50 panoramas / 182 lesions), which the models never saw in training (all `model.train()` runs used `training_data/` only; see `MLv2/provenance/*/args.yaml`). Ground truth is the full quadrant + tooth + disease triple from `validation_triple.json`. Predictions are the frozen production pipeline (`production/inference_pipeline.py`, conf=0.20) served by the ML service.
+Official DENTEX **validation** split (50 panoramas / 182 lesions), which the models never saw in training (all `model.train()` runs used `training_data/` only; see `docs/evidence/mlv2/provenance/*/args.yaml`). Ground truth is the full quadrant + tooth + disease triple from `validation_triple.json`. Predictions are the frozen production pipeline (`production/inference_pipeline.py`, conf=0.20) served by the ML service.
 
 - images scored: **50/50**
 - ground-truth lesions: **182** · model predictions: **289**

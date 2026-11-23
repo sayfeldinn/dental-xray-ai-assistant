@@ -19,7 +19,7 @@ DENTEX archives with `notebooks/01_data_audit.ipynb` and
 ## Rules
 
 1. Do not commit datasets, weights, or training runs. `.gitignore` already
-   covers `datasets/`, `*.pt`, `runs/`, and `archive/`.
+   covers `datasets/`, `*.pt`, and `runs/`.
 2. Every evaluation must name the exact dataset path it used; see
    `submission/VERIFICATION.md` for the claim-to-source map.
 3. The locked-50 split (official DENTEX validation) is the only promotion

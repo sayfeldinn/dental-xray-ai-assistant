@@ -39,8 +39,9 @@ never used for training or model selection. It is the final judge. A candidate i
 promoted only if it beats the incumbent on **mAP@0.5, Caries AP@0.5, tooth accuracy and
 joint accuracy** (`dentex_week3/evaluate.py`).
 
-The earlier v1 coordinator + random-forest pipeline and the v2 model are archived under
-`archive/`. Do not quote their metrics as current.
+The earlier v1 coordinator + random-forest pipeline is recoverable from tag
+`ml-v1-baseline`; v2 training logs live in `docs/evidence/mlv2/`. Do not quote their
+metrics as current.
 
 ---
 

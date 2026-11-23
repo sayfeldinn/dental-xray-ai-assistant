@@ -8,8 +8,8 @@
 >
 > The `mAP@50` figures quoted in this README (0.995 / >0.98 / 0.922) were measured with
 > `val = train` (the validation folder pointed at the training split), so they are **training-set
-> fit, not generalization**. See `MLv2/Evaluation_Report_v2.md` and `submission/FACTS.md` §4b.
-> Training logs are preserved in `MLv2/provenance/`.
+> fit, not generalization**. See `docs/evidence/mlv2/Evaluation_Report_v2.md` and `submission/FACTS.md` §4b.
+> Training logs are preserved in `docs/evidence/mlv2/provenance/`.
 
 This repository contains an advanced, multi-stage Machine Learning pipeline built to solve the DENTEX challenge. By decoupling spatial anatomical reasoning from disease classification, we effectively eliminate the spatial ambiguity common in panoramic X-ray datasets.
 

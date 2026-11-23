@@ -125,7 +125,7 @@ Status recorded by Lead + QA on 2026-09-27. Evidence and the full verification t
 - [~] DENTEX + Tufts + Roboflow datasets downloaded, merged, and converted to training format
       — **diverged.** DENTEX purged (box granularity), Roboflow unused. Actual set: **Tufts + Loki Silvres**.
       Awaiting Lead decision: accept the substitution or re-plan.
-- [x] First model fine-tuning run started — two runs in `ml/Evaluation_Report.md`; checkpoint
+- [x] First model fine-tuning run started — two runs in `docs/history/ml-v1-evaluation.md`; checkpoint
       frozen as Release `v0.1-dental-yolov8s`. (#16)
 - [~] Patient record schema implemented in Supabase with all contraindication-relevant fields
       — **partial.** Tables + JSONB fields in (#3, #8), but **`weight_kg` is not a column** and age

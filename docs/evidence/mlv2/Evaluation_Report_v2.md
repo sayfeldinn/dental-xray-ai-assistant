@@ -12,7 +12,7 @@ We have replaced the single-model approach with a robust, four-phase multi-stage
 
 > **⚠️ Read this first — these are training-set fit numbers, not generalization results.**
 > The training notebooks validated each model on the *training* folder (`val:` pointed at the
-> train split; see `notebook93943e382e.ipynb` and `MLv2/provenance/*/args.yaml`). The mAP figures
+> train split; see `notebook93943e382e.ipynb` and `docs/evidence/mlv2/provenance/*/args.yaml`). The mAP figures
 > below therefore measure how well each model fit data it was trained on, and **must not** be
 > quoted as test performance. They are retained only as training provenance. The shipped pipeline
 > (`dentex_week3/`) is benchmarked separately on a held-out set — see `submission/FACTS.md` §4.
