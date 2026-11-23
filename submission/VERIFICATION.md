@@ -34,7 +34,7 @@ limitation that must stay visible.
 | 19 | Local e2e loop passed 2026-11-05; 172/16 counts in that record are historical | `docs/qa/e2e-clinician-flow.md` | ✅ |
 | 20 | No clinic pilot, no reader study, no regulatory clearance | repo search; `FACTS.md` §10/§14 | ✅ / ⚠️ |
 | 21 | Code MIT; DENTEX CC BY-NC-SA; weights research/non-commercial | `LICENSE`, `NOTICE`, `MODEL_CARD.md` | ✅ |
-| 22 | Repo public; `weights-v3` public release; tensor-identical weights | release page; verification notes | ✅ |
+| 22 | Repo public; `weights-v3` public release; tensor-identical weights | release page; verification notes | ✅ verified 2026-11-24: the 4 release assets match `ml/weights/weights.sha256` byte-for-byte, and all 355 (tooth/disease/findings) + 122 (missing_teeth) tensors are element-wise equal to the local training outputs, so a fresh clone and the Docker image reproduce the locked-50 numbers |
 | 23 | Team: Alexandria University (CDS); two members — `sayfeldinn` (ML Engineer, research & evaluation lead) and `Seif-shawky` (Full-stack / Platform Engineer) | `FACTS.md` §14 | ✅ |
 | 24 | Title slide (`sayfeldinn`, `Seif-shawky`), summary, `CITATION.cff`, PPTX, DOCX and exported PDFs all use the same two-person roster; no other names | patched text in the binaries (2026-11-18); `CITATION.cff` | ✅ for the roster; numbers in those binaries are still v2 |
 | 25 | UI screenshots show v3 advisory panel, dashed missing boxes, threshold, provenance | current `ScanPage.tsx` / `XrayViewer.tsx` | ⬜ recapture (old assets are v2) |

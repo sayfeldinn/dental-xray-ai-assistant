@@ -92,6 +92,11 @@ diff <(evaluation_report.md after) ml/eval/evaluation_report_v3.md        # iden
 # frozen pipeline on one fixture image
 diff <(pipeline JSON before) <(pipeline JSON after)                       # identical
 
+# weights: the release assets match weights.sha256 and are tensor-identical
+# to the local training outputs (byte-different, all tensors element-wise equal)
+gh release download weights-v3 --pattern '*.pt' --dir /tmp/relcheck
+(cd /tmp/relcheck && sha256sum -c .../ml/weights/weights.sha256)          # OK
+
 pytest -q ml/tests        # 37 passed, 1 xfailed
 pytest -q backend/tests   # 176 passed
 npm run typecheck && npm test   # 29 passed
