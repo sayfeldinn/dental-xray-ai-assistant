@@ -14,8 +14,8 @@ The bootstrap resamples the 50 panoramas (the unit that was actually sampled),
 not individual lesions, so it respects within-image correlation.
 
 Usage:
-    python dentex_week3/paired_significance.py
-    python dentex_week3/paired_significance.py --markdown > out.md
+    python ml/eval/significance.py
+    python ml/eval/significance.py --markdown > out.md
 """
 
 import argparse

@@ -93,7 +93,7 @@ The binary deck/summary are still v2 and must be updated from `DECK_V3_REWRITE.m
 | Step | Action | Expected |
 | ---: | --- | --- |
 | 1 | `npx supabase start` (if not running) | API `127.0.0.1:54321` 200 |
-| 2 | `cd dentex_week3/api && ./start.sh` | `:8001` models loaded |
+| 2 | `cd ml/service && ./start.sh` | `:8001` models loaded |
 | 3 | `cd backend && ./start.sh` | `:8000/health` 200 |
 | 4 | `cd frontend && npm run dev -- --host 0.0.0.0 --port 8080` | `:8080` 200 |
 | 5 | `./scripts/demo_check.sh` | all green |

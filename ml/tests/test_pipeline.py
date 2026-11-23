@@ -1,6 +1,6 @@
 """Geometry and contract tests for the v3 inference pipeline (no real weights)."""
 
-import inference_pipeline as ip
+import inference as ip
 from conftest import tooth
 
 

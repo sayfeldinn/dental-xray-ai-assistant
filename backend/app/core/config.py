@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     SIGNED_URL_TTL_SECONDS: int = 3600
     MAX_UPLOAD_MB: int = 20
     
-    # AI Microservice (dentex_week3)
+    # AI Microservice (ml/)
     ML_SERVICE_URL: str = "http://localhost:8001"
     ML_TIMEOUT_SECONDS: int = 60
     # Cloud Run: the ML service is private, so calls carry a Google identity token for it.

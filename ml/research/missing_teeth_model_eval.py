@@ -81,7 +81,7 @@ def interp_box(te, t):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="/tmp/opencode/kaggle_out_mt/missing_teeth.pt")
-    ap.add_argument("--out", default=str(HERE / "eval" / "missing_teeth_model_results.json"))
+    ap.add_argument("--out", default=str(HERE.parent / "eval" / "missing_teeth_model_results.json"))
     args = ap.parse_args()
 
     _, val94 = tooth_split()

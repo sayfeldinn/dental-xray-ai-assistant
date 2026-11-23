@@ -14,18 +14,18 @@ from typing import List, Optional
 
 # Setup paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-PROD_DIR = os.path.join(BASE_DIR, "production")
+PIPELINE_DIR = os.path.join(BASE_DIR, "pipeline")
 FEEDBACK_DIR = os.path.join(BASE_DIR, "feedback")
 # Gitignored runtime output, so a fresh checkout has no folder and the CSV writes would fail.
 os.makedirs(FEEDBACK_DIR, exist_ok=True)
-sys.path.append(PROD_DIR)
+sys.path.append(PIPELINE_DIR)
 
 try:
-    from inference_pipeline import CONFIG, MODEL_DIR, run_dentex_pipeline, run_findings
+    from inference import CONFIG, MODEL_DIR, run_dentex_pipeline, run_findings
     models_loaded = True
 except Exception as e:
     models_loaded = False
-    print(f"Error loading production pipeline: {e}")
+    print(f"Error loading the inference pipeline: {e}")
 
 # /predict cannot run without these; findings and missing teeth degrade gracefully.
 REQUIRED_WEIGHTS = ("tooth", "disease")

@@ -16,7 +16,7 @@ Student Project Track**. Every contributor must observe these principles:
    - Generative-LLM output is never used for drug selection or dosing.
 3. **Clean boundaries.**
    - **Data layer:** Supabase PostgreSQL + private Supabase Storage (`xray-scans`).
-   - **Inference layer:** standalone FastAPI service (`dentex_week3/api`, port 8001).
+   - **Inference layer:** standalone FastAPI service (`ml/service`, port 8001).
    - **Backend layer:** FastAPI (`backend/`, port 8000) — domain models, clinical rules,
      data adapters, orchestration.
    - **Clinician UI:** React + Vite + Tailwind (`frontend/`, port 5173; 8080 in Docker).
@@ -33,7 +33,7 @@ Student Project Track**. Every contributor must observe these principles:
       │  panoramic radiograph → Supabase Storage (private bucket)
       ▼
 [ 2. AI-assisted detection ]
-      │  dentex_week3 v3: tooth detector + disease detector + association
+      │  ml/ v3: tooth detector + disease detector + association
       │  advisory layers: missing teeth, 11-class findings (never in the report)
       ▼
 [ 3. Dentist finding validation ]
@@ -61,12 +61,14 @@ has been reviewed, so the audit trail always refers to the AI output the dentist
 dental-xray-ai-assistant/
 ├── .env                          # local environment (never committed)
 ├── .env.example                  # sanitized template
-├── dentex_week3/                 # ACTIVE model microservice
-│   ├── api/                      # FastAPI app, start.sh (:8001)
-│   ├── production/               # v3 weights + pipeline_config.json (weights not in git)
+├── ml/                           # ACTIVE model microservice
+│   ├── pipeline/                 # frozen v3 inference pipeline + pipeline_config.json
+│   ├── weights/                  # v3 *.pt checkpoints (not in git)
+│   ├── service/                  # FastAPI app, start.sh (:8001)
 │   ├── eval/                     # locked-50 reports, CIs, significance, external validation
-│   ├── tests/                    # model/pipeline tests
-│   └── evaluate.py               # the judge for every model candidate
+│   │   └── evaluate.py           # the judge for every model candidate
+│   ├── research/                 # one-off studies (caries rerank/threshold, missing teeth)
+│   └── tests/                    # model/pipeline tests
 ├── supabase/
 │   ├── migrations/               # base schema + auth lockdown (applied by `supabase start`)
 │   ├── schema.sql                # full DDL for hosted projects
@@ -80,7 +82,7 @@ dental-xray-ai-assistant/
 │   │   │   ├── contraindication/ # pure safety rules R-01..R-26
 │   │   │   ├── recommendation/   # pure finding → treatment + candidate drugs
 │   │   │   ├── clinical_workflow.py
-│   │   │   ├── ml_client/        # HTTP client for dentex_week3
+│   │   │   ├── ml_client/        # HTTP client for ml/
 │   │   │   └── supabase_client/  # typed data access
 │   │   └── api/v1/               # patients, scans, findings, recommendations,
 │   │                             #   treatments, prescriptions, feedback
@@ -103,7 +105,7 @@ dental-xray-ai-assistant/
 
 ## 4. Layer responsibilities
 
-### 4.1 Inference service (`dentex_week3`, port 8001)
+### 4.1 Inference service (`ml/`, port 8001)
 
 - **Role:** pure computer-vision inference. No database access, no prescriptions.
 - **Input:** JPEG / PNG / WebP panoramic radiograph.
@@ -137,7 +139,7 @@ panoramic
   for training or model selection. A candidate is promoted only if it beats the
   incumbent on mAP@0.5, Caries AP, tooth accuracy and joint accuracy.
 - v3 is the production model. v4 was rejected after losing end-to-end joint accuracy
-  (p = 0.029). Full numbers: `dentex_week3/eval/evaluation_report_v3.md`.
+  (p = 0.029). Full numbers: `ml/eval/evaluation_report_v3.md`.
 
 ### 4.3 Backend (`backend/`, port 8000)
 
@@ -190,11 +192,11 @@ panoramic
 | --- | --- | --- |
 | Backend | `cd backend && pytest -q` | **176 passed** |
 | Frontend | `cd frontend && npm run typecheck && npm test` | **29 passed** |
-| Model | `python dentex_week3/evaluate.py` on locked-50 | v3 frozen |
+| Model | `python ml/eval/evaluate.py` on locked-50 | v3 frozen |
 | E2E | local Supabase + host-network backend | recorded in `docs/qa/e2e-clinician-flow.md` |
 | CI | GitHub Actions: guard, backend, frontend | green on `main` |
 
-The model judge is `dentex_week3/evaluate.py`; ad-hoc scripts are not accepted as
+The model judge is `ml/eval/evaluate.py`; ad-hoc scripts are not accepted as
 promotion evidence. Detection CIs use image-level bootstrap; label accuracy uses Wilson
 CIs; paired comparisons use bootstrap and McNemar.
 
@@ -209,4 +211,4 @@ Earlier assets are kept for reference only, never deployed:
 | `docs/evidence/mlv2/` | v2 training logs (`args.yaml` + `results.csv`) and the v2 report |
 | `docs/history/` | v1 model card, v1 evaluation, phase notes, the model-switch changelog |
 
-The active pipeline and all current metrics are v3, under `dentex_week3/`.
+The active pipeline and all current metrics are v3, under `ml/`.

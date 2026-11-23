@@ -50,10 +50,10 @@ fi
 # Check if ML service is running
 echo "Checking ML service availability..."
 if curl -s http://localhost:8001/ > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ ML service (dentex_week3) is running on port 8001${NC}"
+    echo -e "${GREEN}✓ ML service (ml/) is running on port 8001${NC}"
 else
     echo -e "${YELLOW}⚠ ML service not detected. Start it with:${NC}"
-    echo "  cd ../dentex_week3/api && ./start.sh"
+    echo "  cd ../ml/service && ./start.sh"
 fi
 
 echo ""

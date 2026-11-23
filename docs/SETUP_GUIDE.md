@@ -1,7 +1,7 @@
 # DentalAI Setup Guide
 
 The single entry point for running the complete system: Supabase (database, auth, storage),
-the ML service (`dentex_week3`, port 8001), the backend API (port 8000) and the clinician UI
+the ML service (`ml/`, port 8001), the backend API (port 8000) and the clinician UI
 (port 5173 in development, 8080 with Docker).
 
 ## 1. Supabase project (once)
@@ -43,7 +43,7 @@ Python **3.11 or 3.12** (3.14 breaks `pydantic-core`), Node **20+**.
 ./notebooks/fetch_release_weights.sh
 
 # ML service (own terminal)
-cd dentex_week3/api && ./start.sh                 # http://localhost:8001
+cd ml/service && ./start.sh                 # http://localhost:8001
 
 # Backend (own terminal)
 cd backend && ./start.sh                          # http://localhost:8000/docs
@@ -83,7 +83,7 @@ If a host-network `backend-e2e` container is already using `:8000` (the local Su
 only the other services: `docker compose up -d ml frontend`. The compose `backend` and `backend-e2e`
 both bind `:8000`, so run one or the other.
 
-The weights must be in `dentex_week3/production/` before building; run
+The weights must be in `ml/weights/` before building; run
 `./notebooks/fetch_release_weights.sh` first. Add `http://localhost:8080` to the
 Supabase Site URL / redirect URLs. Dentist feedback queued by the ML service is kept in the `ml-feedback` volume.
 
@@ -108,4 +108,4 @@ curl -i http://localhost:8000/api/v1/patients    # 401 without a token (expected
 | Upload returns 502 "AI analysis failed" | ML service not running on `ML_SERVICE_URL`; the scan is kept: start the service and use **Re-run AI analysis** |
 | X-ray image does not load | Signed URLs expire after `SIGNED_URL_TTL_SECONDS` (default 1 h); reload the page |
 | `Client.__init__() got an unexpected keyword argument 'proxy'` | Old venv: `pip install -r backend/requirements.txt` (pins `gotrue<2.9`) |
-| Testing writes to `dentex_week3/feedback/*.csv` | Expected while the ML service runs (Phase 4 forwarding); `git checkout` that file after test sessions |
+| Testing writes to `ml/feedback/*.csv` | Expected while the ML service runs (Phase 4 forwarding); `git checkout` that file after test sessions |

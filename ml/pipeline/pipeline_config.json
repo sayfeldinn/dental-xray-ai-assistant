@@ -43,7 +43,7 @@
     }
   },
   "evaluation": {
-    "harness": "dentex_week3/evaluate.py",
+    "harness": "ml/eval/evaluate.py",
     "locked_set": "official DENTEX validation, 50 images / 182 lesions",
     "v1_baseline": {
       "mAP50": 0.498,

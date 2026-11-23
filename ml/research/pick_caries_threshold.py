@@ -19,10 +19,10 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE / "production"))
+sys.path.insert(0, str(HERE.parent / "pipeline"))
 
 import rerank_caries as rc  # noqa: E402
-import inference_pipeline as pipe  # noqa: E402
+import inference as pipe  # noqa: E402
 
 QED = Path("/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
            "training_data/quadrant-enumeration-disease/train_quadrant_enumeration_disease.json")
@@ -156,7 +156,7 @@ def main():
         print(f"  gate {t}: Caries AP {ap([C[i] for i in range(len(C)) if m[i]], [T[i] for i in range(len(T)) if m[i]]):.4f} "
               f"(kept {int(m.sum())}/{len(C)})")
     json.dump({"threshold": thr, "f1": f1, "n": len(pairs), "pos": int(pos)},
-              open(HERE / "eval" / "caries_verifier_threshold.json", "w"), indent=2)
+              open(HERE.parent / "eval" / "caries_verifier_threshold.json", "w"), indent=2)
 
 
 if __name__ == "__main__":

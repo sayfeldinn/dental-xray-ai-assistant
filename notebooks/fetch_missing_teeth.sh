@@ -9,5 +9,5 @@ mkdir -p "$STAGE"
 rm -f "$STAGE"/detect_cache.json "$STAGE"/*.kaggle-partial
 ls -lh "$STAGE"
 echo
-echo "install: cp $STAGE/missing_teeth.pt dentex_week3/production/"
+echo "install: cp $STAGE/missing_teeth.pt ml/weights/"
 echo "config : missing_teeth_model=missing_teeth.pt, missing_teeth_gap_threshold=0.40"

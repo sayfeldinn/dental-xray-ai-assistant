@@ -9,7 +9,7 @@ from datetime import datetime
 from uuid import UUID
 from .base import BaseEntity, TimestampedEntity, IdentifiedEntity
 
-# Pathology classes emitted by dentex_week3 (see docs/CLINICAL_GUIDELINES.md §1).
+# Pathology classes emitted by the ML service (see docs/CLINICAL_GUIDELINES.md §1).
 DISEASE_LABELS = ("Caries", "Deep Caries", "Periapical Lesion", "Impacted")
 
 

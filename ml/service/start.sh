@@ -9,18 +9,19 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-MODELS_DIR="../production"
+WEIGHTS_DIR="../weights"
+PIPELINE_DIR="../pipeline"
 REQUIRED_WEIGHTS=(
-  "$MODELS_DIR/tooth_best.pt"
-  "$MODELS_DIR/disease_best.pt"
+  "$WEIGHTS_DIR/tooth_best.pt"
+  "$WEIGHTS_DIR/disease_best.pt"
 )
 OPTIONAL_WEIGHTS=(
-  "$MODELS_DIR/findings_best.pt"
-  "$MODELS_DIR/missing_teeth.pt"
+  "$WEIGHTS_DIR/findings_best.pt"
+  "$WEIGHTS_DIR/missing_teeth.pt"
 )
 REQUIRED_FILES=(
-  "$MODELS_DIR/pipeline_config.json"
-  "$MODELS_DIR/inference_pipeline.py"
+  "$PIPELINE_DIR/pipeline_config.json"
+  "$PIPELINE_DIR/inference.py"
   "app.py"
 )
 
@@ -82,10 +83,10 @@ HOST="${HOST:-0.0.0.0}"
 
 echo
 echo "DENTEX v3 inference API"
-echo "  tooth detector:   $MODELS_DIR/tooth_best.pt"
-echo "  disease detector: $MODELS_DIR/disease_best.pt"
-echo "  findings:         $MODELS_DIR/findings_best.pt (advisory, optional)"
-echo "  missing teeth:    $MODELS_DIR/missing_teeth.pt (advisory, optional)"
+echo "  tooth detector:   $WEIGHTS_DIR/tooth_best.pt"
+echo "  disease detector: $WEIGHTS_DIR/disease_best.pt"
+echo "  findings:         $WEIGHTS_DIR/findings_best.pt (advisory, optional)"
+echo "  missing teeth:    $WEIGHTS_DIR/missing_teeth.pt (advisory, optional)"
 echo "  listening on:     http://${HOST}:${PORT}"
 echo "  docs:             http://127.0.0.1:${PORT}/docs"
 echo

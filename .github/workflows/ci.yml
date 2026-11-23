@@ -94,15 +94,15 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: dentex_week3/requirements-test.txt
+          cache-dependency-path: ml/requirements-test.txt
 
       - name: Install test dependencies (no torch; YOLO is stubbed)
         run: pip install -r requirements-test.txt
-        working-directory: dentex_week3
+        working-directory: ml
 
       - name: Run tests
         run: pytest -q tests
-        working-directory: dentex_week3
+        working-directory: ml
 
   frontend:
     name: Frontend

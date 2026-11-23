@@ -5,7 +5,7 @@ quadrant + tooth + disease ground-truth triple).
 
 Why this exists
 ---------------
-``production/final_evaluation.json`` records disease 97.54% / tooth 76.23% /
+``eval/final_evaluation.json`` records disease 97.54% / tooth 76.23% /
 joint 75.41% on 23 held-out images, but ships without a script or a file
 list, so those numbers cannot be reproduced. This script makes the benchmark
 reproducible and adds the detection-level metrics (precision / recall /
@@ -44,7 +44,7 @@ Notes
   Sweeps below 0.20 require --local mode.
 * Ground-truth id mapping is 1:1 with the pipeline: quadrant ids 0-3 -> 1-4,
   tooth ids 0-7 -> 1-8, disease ids 0-3 (Impacted, Caries, Periapical
-  Lesion, Deep Caries) match ``production/pipeline_config.json``.
+  Lesion, Deep Caries) match ``pipeline/pipeline_config.json``.
 """
 
 import argparse
@@ -130,8 +130,8 @@ def make_http_backend(api_url, timeout=120):
 def make_local_backend():
     """Import and call the frozen pipeline directly (needs torch et al.)."""
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "production"))
-    from inference_pipeline import run_dentex_pipeline  # noqa: WPS433
+                                    os.pardir, "pipeline"))
+    from inference import run_dentex_pipeline  # noqa: WPS433
 
     def run(image_path):
         return run_dentex_pipeline(image_path)
@@ -499,7 +499,7 @@ def render_report(results):
         "only; see `MLv2/provenance/*/args.yaml`). Ground truth is the full "
         "quadrant + tooth + disease triple from `validation_triple.json`. "
         "Predictions are the frozen production pipeline "
-        "(`production/inference_pipeline.py`, conf=0.20) served by the ML service.",
+        "(`pipeline/inference.py`, conf=0.20) served by the ML service.",
         "",
         f"- images scored: **{ds['images_scored']}/{ds['images_total']}**"
         + (f" (failed: {', '.join(ds['failed_images'])})" if ds["failed_images"] else ""),
@@ -584,7 +584,7 @@ def render_report(results):
                    f"{s['disease_n']} |")
 
     out += ["", "---", "",
-            "Regenerate with `python dentex_week3/evaluate.py` (see its docstring). "
+            "Regenerate with `python ml/eval/evaluate.py` (see its docstring). "
             "Confidence intervals are 95% Wilson score intervals."]
     return "\n".join(out) + "\n"
 

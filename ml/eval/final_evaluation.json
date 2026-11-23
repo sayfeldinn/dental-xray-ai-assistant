@@ -53,7 +53,7 @@
       "Deep Caries": 0.5111111111111111
     }
   },
-  "source": "dentex_week3/eval/evaluation_results_v3.json",
+  "source": "ml/eval/evaluation_results_v3.json",
   "protocol": {
     "iou_match": 0.5,
     "disease_conf": 0.2,

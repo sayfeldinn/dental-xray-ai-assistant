@@ -33,7 +33,7 @@ async def upload_and_analyze_scan(
     """
     Upload a panoramic X-ray and optionally analyze it with AI.
 
-    **Steps 1-2 in Clinical Loop**: store the image, run dentex_week3, save every detection as a
+    **Steps 1-2 in Clinical Loop**: store the image, run the ML service, save every detection as a
     *pending* finding. If the AI fails the scan is kept (status `failed`) and the call returns 502.
     """
     await access.patient(patient_id, dentist)

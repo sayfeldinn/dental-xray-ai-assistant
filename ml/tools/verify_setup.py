@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Verification script for dentex_week3 model setup.
+Verification script for the ML model setup.
 Run this to check if all models load correctly.
 
 Usage:
-    cd dentex_week3
+    cd ml
     python3 verify_setup.py
 """
 import os
@@ -18,10 +18,11 @@ def check_directory_structure():
     print("STEP 1: Directory Structure Check")
     print("=" * 60)
     
-    base_dir = Path(__file__).parent
+    base_dir = Path(__file__).parent.parent
     required_dirs = {
-        "api": base_dir / "api",
-        "production": base_dir / "production",
+        "pipeline": base_dir / "pipeline",
+        "service": base_dir / "service",
+        "weights": base_dir / "weights",
         "feedback": base_dir / "feedback",
     }
     
@@ -43,23 +44,23 @@ def check_model_files():
     print("STEP 2: Model Files Check")
     print("=" * 60)
     
-    base_dir = Path(__file__).parent
-    production_dir = base_dir / "production"
-    
+    base_dir = Path(__file__).parent.parent
+    weights_dir = base_dir / "weights"
+    pipeline_dir = base_dir / "pipeline"
+
     required_files = {
-        "Tooth Detector": "tooth_best.pt",
-        "Disease Detector": "disease_best.pt",
-        "Pipeline Config": "pipeline_config.json",
+        "Tooth Detector": weights_dir / "tooth_best.pt",
+        "Disease Detector": weights_dir / "disease_best.pt",
+        "Pipeline Config": pipeline_dir / "pipeline_config.json",
     }
-    
+
     all_ok = True
-    for name, filename in required_files.items():
-        filepath = production_dir / filename
+    for name, filepath in required_files.items():
         if filepath.exists():
             size_mb = filepath.stat().st_size / (1024 * 1024)
-            print(f"✅ {name}: {filename} ({size_mb:.2f} MB)")
+            print(f"✅ {name}: {filepath.name} ({size_mb:.2f} MB)")
         else:
-            print(f"❌ {name}: {filename} NOT FOUND")
+            print(f"❌ {name}: {filepath.name} NOT FOUND")
             all_ok = False
     
     print()
@@ -72,8 +73,8 @@ def check_pipeline_config():
     print("STEP 3: Pipeline Configuration Check")
     print("=" * 60)
     
-    base_dir = Path(__file__).parent
-    config_path = base_dir / "production" / "pipeline_config.json"
+    base_dir = Path(__file__).parent.parent
+    config_path = base_dir / "pipeline" / "pipeline_config.json"
     
     try:
         with open(config_path, 'r') as f:
@@ -129,7 +130,7 @@ def check_python_dependencies():
     
     if not all_ok:
         print("\n💡 Install missing packages:")
-        print("   cd dentex_week3/api")
+        print("   cd ml/service")
         print("   pip install -r requirements.txt")
     
     print()
@@ -142,15 +143,15 @@ def test_model_loading():
     print("STEP 5: Model Loading Test")
     print("=" * 60)
     
-    base_dir = Path(__file__).parent
-    production_dir = base_dir / "production"
+    base_dir = Path(__file__).parent.parent
+    pipeline_dir = base_dir / "pipeline"
     
-    # Add production dir to Python path
-    sys.path.insert(0, str(production_dir))
+    # Make the pipeline package importable
+    sys.path.insert(0, str(pipeline_dir))
     
     try:
         print("Attempting to import inference pipeline...")
-        from inference_pipeline import CONFIG, _model
+        from inference import CONFIG, _model
         print("✅ Inference pipeline imported successfully")
 
         # Models load lazily, so touch both to prove the weights are readable.
@@ -171,9 +172,9 @@ def test_model_loading():
     except Exception as e:
         print(f"❌ Failed to load models: {e}")
         print("\n💡 Troubleshooting:")
-        print("   1. Check that model files exist in production/")
+        print("   1. Check that weights exist in ml/weights/")
         print("   2. Verify pipeline_config.json has correct paths")
-        print("   3. Install dependencies: pip install -r api/requirements.txt")
+        print("   3. Install dependencies: pip install -r service/requirements.txt")
         print()
         return False
 
@@ -181,7 +182,7 @@ def test_model_loading():
 def main():
     """Run all verification checks."""
     print("\n" + "=" * 60)
-    print("DENTEX Week 3 Model Setup Verification")
+    print("DENTEX v3 setup verification")
     print("=" * 60 + "\n")
     
     results = {
@@ -219,9 +220,9 @@ def main():
         print("⚠️  Some checks failed. Please fix the issues above.")
         print("=" * 60)
         print("\nQuick fixes:")
-        print("1. Ensure you're in the dentex_week3 directory")
-        print("2. Verify model files exist in production/")
-        print("3. Install dependencies: cd api && pip install -r requirements.txt")
+        print("1. Run this from the ml/ directory")
+        print("2. Verify weights exist in ml/weights/")
+        print("3. Install dependencies: cd service && pip install -r requirements.txt")
         print("4. Check docs/ML_MODEL_SWITCH_GUIDE.md for details")
     
     print()

@@ -45,7 +45,7 @@ domain-shift drop that we report rather than hide.
 v3 improves on v2 on recall (+9.9 pp), end-to-end tooth (+7.7 pp) and joint (+8.8 pp),
 all statistically significant. A v4 candidate was **rejected** because it lost 5.5 pp
 of end-to-end joint accuracy (p = 0.029). Full report:
-[`dentex_week3/eval/evaluation_report_v3.md`](dentex_week3/eval/evaluation_report_v3.md).
+[`ml/eval/evaluation_report_v3.md`](ml/eval/evaluation_report_v3.md).
 
 ## Locked stack
 
@@ -58,7 +58,7 @@ Do not swap these without team sign-off.
 | Frontend | **React + Vite + Tailwind** | `frontend/`, port 5173 (8080 in Docker) |
 | Detection | **Ultralytics YOLOv8s** | tooth + disease + advisory findings |
 | Missing teeth | **ResNet18 classifier + rule fallback** | advisory only |
-| Model service | **FastAPI** (`dentex_week3/api`) | port 8001 |
+| Model service | **FastAPI** (`ml/service`) | port 8001 |
 
 **No drug-interaction API.** The RxNav DDI endpoint returns 404 and has been retired.
 Contraindications come from a hand-curated, cited table maintained with the dentist,
@@ -74,11 +74,14 @@ dental-xray-ai-assistant/
 │   └── tests/                  # 176 pytest tests (no network)
 ├── frontend/                   # React clinician UI (review, treatment, feedback)
 │   └── src/features/           # patients, scan-review, treatment-plan, feedback-log
-├── dentex_week3/               # ACTIVE model service
-│   ├── api/                    # FastAPI inference API (:8001) + start.sh
-│   ├── production/             # v3 weights + pipeline_config.json (weights not in git)
+├── ml/                         # ACTIVE model service
+│   ├── pipeline/               # frozen v3 inference pipeline + config
+│   ├── weights/                # v3 *.pt checkpoints (not in git)
+│   ├── service/                # FastAPI inference API (:8001) + start.sh
 │   ├── eval/                   # locked-50 reports, CIs, significance, external validation
-│   └── evaluate.py             # the judge — do not replace with ad-hoc scripts
+│   │   └── evaluate.py         # the judge — do not replace with ad-hoc scripts
+│   ├── research/               # one-off studies (caries, missing teeth)
+│   └── tests/                  # model/pipeline tests
 ├── notebooks/                  # training/eval notebooks + weight fetch scripts
 ├── supabase/                   # migrations, schema, seed
 ├── deploy/                     # Cloud Run / Cloudflare scripts
@@ -87,7 +90,7 @@ dental-xray-ai-assistant/
 └── docker-compose.yml
 ```
 
-The active ML service is `dentex_week3/`. Earlier models are kept for reference
+The active ML service is `ml/`. Earlier models are kept for reference
 only: `docs/evidence/mlv2/` (v2 training logs) and `docs/history/` (v1 assets,
 phase notes). Their weights are not in git.
 
@@ -106,7 +109,7 @@ npx supabase start
 cp .env.example .env    # fill in Supabase URL/keys; never commit .env
 
 # 4. Services (run each in its own terminal)
-cd dentex_week3/api && ./start.sh            # ML   :8001
+cd ml/service && ./start.sh            # ML   :8001
 cd backend && ./start.sh                     # API  :8000  (docs at /docs)
 cd frontend && npm install && npm run dev    # UI   :5173
 ```
@@ -160,7 +163,7 @@ care outside a supervised research setting.
 - [`docs/CLINICAL_GUIDELINES.md`](docs/CLINICAL_GUIDELINES.md) — 26 rules and sources
 - [`docs/qa/README.md`](docs/qa/README.md) — QA artifacts and demo run records
 - [`docs/qa/conference-demo-script.md`](docs/qa/conference-demo-script.md) — 2–3 minute local demo runbook
-- [`dentex_week3/eval/evaluation_report_v3.md`](dentex_week3/eval/evaluation_report_v3.md) — authoritative v3 metrics
+- [`ml/eval/evaluation_report_v3.md`](ml/eval/evaluation_report_v3.md) — authoritative v3 metrics
 - [`MODEL_CARD.md`](MODEL_CARD.md) — intended use, limitations, ethics
 - [`submission/FACTS.md`](submission/FACTS.md) — conference source of truth
 - [`submission/QA_Prep.md`](submission/QA_Prep.md) — judge Q&A

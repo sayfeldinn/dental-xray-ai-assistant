@@ -1,7 +1,7 @@
-"""Shared fixtures for the dentex_week3 unit tests.
+"""Shared fixtures for the ML unit tests.
 
 The tests never load real weights: ``ultralytics`` is replaced with a stub
-before ``inference_pipeline`` is imported, and each test installs fake
+before ``inference`` is imported, and each test installs fake
 detectors that return the boxes it needs. They run in CI without torch.
 """
 
@@ -13,8 +13,8 @@ import numpy as np
 import pytest
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, os.path.join(ROOT, "production"))
-sys.path.insert(0, os.path.join(ROOT, "api"))
+sys.path.insert(0, os.path.join(ROOT, "pipeline"))
+sys.path.insert(0, os.path.join(ROOT, "service"))
 
 if "ultralytics" not in sys.modules:
     stub = types.ModuleType("ultralytics")
@@ -26,7 +26,7 @@ if "ultralytics" not in sys.modules:
     stub.YOLO = _UnusedYOLO
     sys.modules["ultralytics"] = stub
 
-import inference_pipeline as ip  # noqa: E402
+import inference as ip  # noqa: E402
 
 
 class _Scalar:

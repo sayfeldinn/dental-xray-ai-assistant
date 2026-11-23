@@ -7,7 +7,7 @@ Clean FastAPI backend for IEEE IC-FTAI dental decision-support system.
 This backend implements the 6-step clinical loop:
 
 1. **Scan Ingestion** → Upload panoramic X-ray to Supabase Storage
-2. **AI Detection** → Call dentex_week3 microservice for analysis
+2. **AI Detection** → Call ml/ microservice for analysis
 3. **Dentist Validation** → Review and confirm/reject/modify findings
 4. **Recommendation Engine** → Rule-based treatment + drug proposals (Phase 3 ✅)
 5. **Dentist Confirmation** → Accept/modify/reject prescriptions behind contraindication gates (Phase 3 ✅)
@@ -51,7 +51,7 @@ backend/
 - Python 3.11 or 3.12 (**not 3.14**; `start.sh` enforces this)
 - Virtual environment tool (venv, conda, etc.)
 - Supabase project configured (Phase 1 complete)
-- dentex_week3 ML service running on port 8001
+- ml/ ML service running on port 8001
 
 ### 2. Setup
 
@@ -214,7 +214,7 @@ All service methods are `async` for non-blocking I/O, even though Supabase clien
 - Every `/api/v1` call needs `Authorization: Bearer <Supabase access token>`; data is scoped to the signed-in dentist (`app/services/access.py`)
 
 ### ML Service Communication
-- `DentexClient` wraps all HTTP communication with dentex_week3
+- `DentexClient` wraps all HTTP communication with ml/
 - Timeout configured via settings (default: 60s)
 - Automatic parsing of ML output to Finding records
 
@@ -225,7 +225,7 @@ All six loop steps, the UI and authentication are built. Remaining: clinician re
 ## Troubleshooting
 
 ### "Connection refused" on ML service
-- Ensure dentex_week3 is running: `cd dentex_week3/api && ./start.sh`
+- Ensure ml/ is running: `cd ml/service && ./start.sh`
 - Check ML_SERVICE_URL in `.env`
 
 ### "Table not found" errors
@@ -239,6 +239,6 @@ All six loop steps, the UI and authentication are built. Remaining: clinician re
 ---
 
 **Backend Port**: 8000  
-**ML Service Port**: 8001 (dentex_week3)  
+**ML Service Port**: 8001 (ml/)  
 **Database**: Supabase PostgreSQL  
 **Storage**: Supabase Storage (xray-scans bucket)

@@ -1,4 +1,4 @@
-# ML Model Guide: dentex_week3 (v3)
+# ML Model Guide: ml/ (v3)
 
 > **Current models as of 2026-11-03.** The disease detector is v3, trained on
 > 9,848 unique panoramas (DENTEX + OralXrays). v2 training logs and report are
@@ -7,7 +7,7 @@
 > the 2026-11 cleanup). A Romanian-augmented v4 was trained
 > and rejected on 2026-11-04 (it lost Caries, tooth and joint accuracy on the
 > locked 50); see "Candidate v4" below. `notebooks/README.md` covers training
-> and `dentex_week3/eval/evaluation_report_v3.md` has the full benchmark.
+> and `ml/eval/evaluation_report_v3.md` has the full benchmark.
 
 ## Overview
 
@@ -90,7 +90,7 @@ ML_DEFAULT_CONFIDENCE=0.2
 The ML service runs on **8001** so it does not collide with the backend:
 
 ```bash
-cd dentex_week3/api
+cd ml/service
 uvicorn app:app --host 0.0.0.0 --port 8001 --reload
 ```
 
@@ -164,10 +164,10 @@ to omit it from `/predict`.
 
 ```bash
 # 1. weights
-ls -lh dentex_week3/production/*.pt      # tooth, disease, findings
+ls -lh ml/weights/*.pt      # tooth, disease, findings
 
 # 2. dependencies
-cd dentex_week3/api
+cd ml/service
 pip install -r requirements.txt
 
 # 3. verify everything
@@ -252,7 +252,7 @@ while the label stays the same. The training notebook disables `fliplr`,
 ## Performance
 
 Locked official DENTEX validation set (50 panoramas / 182 lesions), scored with
-`dentex_week3/evaluate.py`:
+`ml/eval/evaluate.py`:
 
 | Metric | v1 | v2 | v3 |
 |---|---|---|---|
@@ -278,10 +278,10 @@ remains the weakest clinically important class.
 
 ### How much of this is noise?
 
-`dentex_week3/paired_significance.py` re-analyses the same two prediction files
+`ml/eval/significance.py` re-analyses the same two prediction files
 with paired statistics (McNemar exact test per lesion, plus a bootstrap that
 resamples the 50 panoramas). Results in
-`dentex_week3/eval/paired_significance.md`. Summary:
+`ml/eval/paired_significance.md`. Summary:
 
 | metric | delta | 95% CI | verdict |
 |---|---|---|---|
@@ -294,7 +294,7 @@ resamples the 50 panoramas). Results in
 
 #### v2 vs v3
 
-`dentex_week3/eval/paired_significance_v2_v3.md`:
+`ml/eval/paired_significance_v2_v3.md`:
 
 | metric | delta | 95% CI | verdict |
 |---|---|---|---|
@@ -399,7 +399,7 @@ meaningful end-to-end joint falls. The code is wired but **off by default**
 
     ./notebooks/fetch_caries_verifier.sh
     DENTEX_CARIES_VERIFIER=/tmp/opencode/kaggle_out_verifier/caries_verifier.pt:gate:0.7 \
-      python dentex_week3/evaluate.py --local --images-dir ... --gt ...
+      python ml/eval/evaluate.py --local --images-dir ... --gt ...
 
 `mode: "scale"` (confidence `*= p^alpha`) is also supported but does not change
 AP, because it preserves the confidence ordering.
@@ -421,7 +421,7 @@ classifier's own validation AUC is 0.93.
 
 - Train: `notebooks/14_train_missing_teeth.ipynb` (detector-localized interior
   slot crops FDI 2-7, labeled by enumeration GT; 540/94 split).
-- Eval: `dentex_week3/missing_teeth_model_eval.py` (rule vs classifier).
+- Eval: `ml/research/missing_teeth_model_eval.py` (rule vs classifier).
 - Config: `missing_teeth_model`, `missing_teeth_conf = 0.30`,
   `missing_teeth_gap_threshold = 0.40`. Without the model the pipeline falls
   back to the plain rule.
@@ -458,7 +458,7 @@ raise on the first `/predict` instead.
 ### "No module named 'ultralytics'"
 
 ```bash
-pip install -r dentex_week3/api/requirements.txt
+pip install -r ml/service/requirements.txt
 ```
 
 ### Port already in use

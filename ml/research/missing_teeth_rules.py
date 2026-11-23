@@ -15,9 +15,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE / "production"))
+sys.path.insert(0, str(HERE.parent / "pipeline"))
 
-import inference_pipeline as pipe  # noqa: E402
+import inference as pipe  # noqa: E402
 
 QE = Path("/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
           "training_data/quadrant_enumeration/train_quadrant_enumeration.json")
@@ -158,7 +158,7 @@ def main():
                           "f1": f1, "tp": tp, "fp": fp, "fn": fn})
             print(f"  {rule:9s} conf {conf:.2f}: P {p:.3f} R {r:.3f} F1 {f1:.3f} (tp {tp} fp {fp} fn {fn})")
 
-    out = HERE / "eval" / "missing_teeth_rules.json"
+    out = HERE.parent / "eval" / "missing_teeth_rules.json"
     out.write_text(json.dumps({"best": best[1], "best_f1": best[0], "table": table}, indent=2))
     print("wrote", out)
 

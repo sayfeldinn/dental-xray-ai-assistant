@@ -27,4 +27,4 @@ fi
 echo
 echo "next: run notebooks/11_evaluate_v4.ipynb against"
 echo "      $STAGE/pathology_v4/pathology_v4_best.pt"
-echo "      (weights are NOT installed into $REPO/dentex_week3/production)"
+echo "      (weights are NOT installed into $REPO/ml/weights)"

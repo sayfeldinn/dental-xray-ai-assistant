@@ -331,7 +331,7 @@ detection; human-in-the-loop.
   replicates) and McNemar for v2/v3/v4 comparisons.
 - Promotion rule: must beat incumbent on mAP@0.5, Caries AP, tooth accuracy and joint
   accuracy. v3 promoted 2026-11-03; v4 rejected 2026-11-04.
-- The judge is `dentex_week3/evaluate.py`; no ad-hoc script is accepted.
+- The judge is `ml/eval/evaluate.py`; no ad-hoc script is accepted.
 
 ### B2 — Per-class detection and confusion
 

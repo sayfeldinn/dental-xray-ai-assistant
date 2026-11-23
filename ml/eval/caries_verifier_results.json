@@ -58,7 +58,7 @@
   "reason": "beats v3 on mAP@0.5, Caries AP and joint (conditioned) but not on tooth accuracy (91.1% vs 91.7%) and significantly reduces end-to-end tooth/joint and recall; it is a precision/recall operating-point knob, not a free improvement",
   "code": {
     "train": "notebooks/13_train_caries_verifier.ipynb",
-    "threshold": "dentex_week3/pick_caries_threshold.py",
-    "integration": "production/inference_pipeline.py apply_caries_verifier (config caries_verifier, disabled by default)"
+    "threshold": "ml/research/pick_caries_threshold.py",
+    "integration": "pipeline/inference.py apply_caries_verifier (config caries_verifier, disabled by default)"
   }
 }

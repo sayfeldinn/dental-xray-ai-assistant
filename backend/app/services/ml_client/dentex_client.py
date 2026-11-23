@@ -1,6 +1,6 @@
 """
 DentalAI - Dentex Week 3 ML Client
-HTTP client for communicating with the dentex_week3 AI microservice.
+HTTP client for communicating with the ML inference microservice.
 """
 
 import time
@@ -27,7 +27,7 @@ async def fetch_identity_token(audience: str) -> str:
 
 
 class DentexClient:
-    """Client for dentex_week3 AI inference microservice."""
+    """Client for the ML inference microservice."""
     
     def __init__(
         self,
@@ -90,7 +90,7 @@ class DentexClient:
         confidence_threshold: float = None
     ) -> Dict[str, Any]:
         """
-        Send panoramic X-ray to dentex_week3 for analysis.
+        Send panoramic X-ray to the ML service for analysis.
         
         Args:
             image_bytes: Raw image bytes (JPEG/PNG/WebP)
@@ -132,7 +132,7 @@ class DentexClient:
         patient_id: str
     ) -> List[Dict[str, Any]]:
         """
-        Parse dentex_week3 output into Finding records.
+        Parse ML-service output into Finding records.
         
         Args:
             ml_output: Raw ML service response

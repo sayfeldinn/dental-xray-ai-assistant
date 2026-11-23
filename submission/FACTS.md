@@ -37,7 +37,7 @@ in the repository. If a number is not here, do not put it on a slide.
 **Locked-50:** the official DENTEX validation split — **50 images, 182 lesions** — was
 never used for training or model selection. It is the final judge. A candidate is
 promoted only if it beats the incumbent on **mAP@0.5, Caries AP@0.5, tooth accuracy and
-joint accuracy** (`dentex_week3/evaluate.py`).
+joint accuracy** (`ml/eval/evaluate.py`).
 
 The earlier v1 coordinator + random-forest pipeline is recoverable from tag
 `ml-v1-baseline`; v2 training logs live in `docs/evidence/mlv2/`. Do not quote their
@@ -232,7 +232,7 @@ dentist has not reviewed the rules in a recorded session. Do not claim either.
 | --- | --- | --- |
 | Backend | `cd backend && python3 -m pytest -q` | **176 passed** |
 | Frontend | `cd frontend && npm run typecheck && npm test` | **29 passed** (7 files); typecheck clean |
-| Model | `python dentex_week3/evaluate.py` | v3 frozen on locked-50 |
+| Model | `python ml/eval/evaluate.py` | v3 frozen on locked-50 |
 | E2E | local Supabase + host-network backend | passed 2026-11-05; see `docs/qa/e2e-clinician-flow.md` |
 | CI | GitHub Actions: guard, backend, frontend | green on `main` |
 
@@ -296,14 +296,14 @@ the same block goes on the title slide and in `CITATION.cff`.
 
 | Claim | Source |
 | --- | --- |
-| Locked-50 detection, per-class, label accuracy, threshold sweep | `dentex_week3/eval/evaluation_report_v3.md` |
-| Machine-readable locked-50 summary | `dentex_week3/production/final_evaluation.json` |
-| v2→v3 significance, McNemar | `dentex_week3/eval/paired_significance_v2_v3.md` |
-| v4 rejection | `dentex_week3/eval/paired_significance_v3_v4.md` |
-| External Romanian set | `dentex_week3/eval/disease_cross_hospital.json` |
-| Missing teeth | `dentex_week3/eval/missing_teeth_model_results.json` |
-| Findings | `dentex_week3/eval/findings_test_metrics.json`, `findings_cross_hospital.json` |
-| Architecture, thresholds, training provenance | `dentex_week3/production/pipeline_config.json` |
+| Locked-50 detection, per-class, label accuracy, threshold sweep | `ml/eval/evaluation_report_v3.md` |
+| Machine-readable locked-50 summary | `ml/weights/final_evaluation.json` |
+| v2→v3 significance, McNemar | `ml/eval/paired_significance_v2_v3.md` |
+| v4 rejection | `ml/eval/paired_significance_v3_v4.md` |
+| External Romanian set | `ml/eval/disease_cross_hospital.json` |
+| Missing teeth | `ml/eval/missing_teeth_model_results.json` |
+| Findings | `ml/eval/findings_test_metrics.json`, `findings_cross_hospital.json` |
+| Architecture, thresholds, training provenance | `ml/pipeline/pipeline_config.json` |
 | Clinical rules | `docs/CLINICAL_GUIDELINES.md` (R-01…R-26) |
 | Tests/e2e | `backend/tests/`, `frontend/src/**/*.test.*`, `docs/qa/e2e-clinician-flow.md` |
 | License/data terms | `LICENSE`, `NOTICE`, `MODEL_CARD.md` |

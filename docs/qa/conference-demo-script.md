@@ -16,7 +16,7 @@ Cloudflare Pages UI was unreachable (522/523) at writing; do not promise it.
 npx supabase start                       # API 127.0.0.1:54321
 
 # terminal 2 — ML
-cd dentex_week3/api && ./start.sh        # ML :8001
+cd ml/service && ./start.sh        # ML :8001
 
 # terminal 3 — backend
 cd backend && ./start.sh                 # API :8000

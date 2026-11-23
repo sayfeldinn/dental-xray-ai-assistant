@@ -1,4 +1,4 @@
-"""DENTEX v2 inference pipeline — tooth detector + disease detector.
+"""DENTEX v3 inference pipeline — tooth detector + disease detector.
 
 Replaces the v1 design (quadrant coordinator -> disease detector -> random
 forest on lesion-box geometry). Here every tooth is localised and classified
@@ -25,10 +25,11 @@ from PIL import Image
 from ultralytics import YOLO
 
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+WEIGHTS_DIR = os.path.join(os.path.dirname(PACKAGE_DIR), "weights")
 
 # Evaluation can point at candidate weights without touching the shipped ones:
 #   DENTEX_MODEL_DIR=/tmp/v3_weights python ...
-MODEL_DIR = os.environ.get("DENTEX_MODEL_DIR", PACKAGE_DIR)
+MODEL_DIR = os.environ.get("DENTEX_MODEL_DIR", WEIGHTS_DIR)
 
 with open(os.path.join(PACKAGE_DIR, "pipeline_config.json")) as fh:
     CONFIG = json.load(fh)

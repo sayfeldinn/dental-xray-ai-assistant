@@ -8,7 +8,7 @@ working tree and are referenced by path.
 | Dataset | Path | Used by |
 | --- | --- | --- |
 | DENTEX YOLO export (4.9 GB) | `~/Projects/dental-model-research/data/dentex_yolo` | `notebooks/03`, `04`, `06` |
-| DENTEX raw + validation triple | `~/Projects/dental-model-research/data/raw/dentex` | `dentex_week3/evaluate.py` |
+| DENTEX raw + validation triple | `~/Projects/dental-model-research/data/raw/dentex` | `ml/eval/evaluate.py` |
 | Romanian external set | `~/Projects/dental-model-research/data/raw/romania` | `notebooks/12` |
 
 The YOLO export was moved out of the repository during the 2026-11 cleanup

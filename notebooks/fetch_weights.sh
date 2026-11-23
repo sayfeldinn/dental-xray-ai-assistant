@@ -14,10 +14,10 @@ echo "==> downloading tooth run"
 echo "==> downloading disease run"
 "$KAGGLE_BIN" kernels output sayfeldin/dentalai-disease-detector -p "$STAGE/disease"
 
-install -m 644 "$STAGE/tooth/tooth_best.pt" "$REPO/dentex_week3/production/tooth_best.pt"
-install -m 644 "$STAGE/disease/disease_best.pt" "$REPO/dentex_week3/production/disease_best.pt"
-cp "$STAGE/tooth/tooth_metrics.json" "$REPO/dentex_week3/eval/tooth_metrics.json" 2>/dev/null || true
-cp "$STAGE/disease/disease_metrics.json" "$REPO/dentex_week3/eval/disease_metrics.json" 2>/dev/null || true
+install -m 644 "$STAGE/tooth/tooth_best.pt" "$REPO/ml/weights/tooth_best.pt"
+install -m 644 "$STAGE/disease/disease_best.pt" "$REPO/ml/weights/disease_best.pt"
+cp "$STAGE/tooth/tooth_metrics.json" "$REPO/ml/eval/tooth_metrics.json" 2>/dev/null || true
+cp "$STAGE/disease/disease_metrics.json" "$REPO/ml/eval/disease_metrics.json" 2>/dev/null || true
 
 echo "==> installed:"
-ls -lh "$REPO/dentex_week3/production"/*.pt
+ls -lh "$REPO/ml/weights"/*.pt

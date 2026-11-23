@@ -119,4 +119,4 @@ The rule engine is deterministic and cited; no LLM is used for drug selection or
 - Code: MIT (`LICENSE`).
 - Weights and DENTEX-derived data: research/non-commercial; DENTEX is CC BY-NC-SA 4.0
   (`NOTICE`).
-- Full evaluation: `dentex_week3/eval/evaluation_report_v3.md`.
+- Full evaluation: `ml/eval/evaluation_report_v3.md`.

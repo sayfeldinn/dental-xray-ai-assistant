@@ -40,8 +40,8 @@ offline learning queue. It never writes to the database and never prescribes.
 ./start.sh          # creates/uses venv, checks weights, starts uvicorn on :8001
 ```
 
-The script requires `../production/tooth_best.pt` and
-`../production/disease_best.pt`; it warns (but still starts) if
+The script requires `../weights/tooth_best.pt` and
+`../weights/disease_best.pt`; it warns (but still starts) if
 `findings_best.pt` or `missing_teeth.pt` is absent. Fetch the public v3 release
 from the repository root:
 
@@ -55,7 +55,7 @@ Then open `http://localhost:8001/docs`. The backend calls this service through
 ## Notes
 
 - The judge for model changes is `../evaluate.py` (repo root:
-  `dentex_week3/evaluate.py`) on locked-50; this API wrapper is not a model.
+  `ml/eval/evaluate.py`) on locked-50; this API wrapper is not a model.
 - `findings` and `missing_teeth` are advisory only. Do not merge them into the
   report or the treatment engine.
 - The service is stateless apart from the feedback CSV files; restarting it does not

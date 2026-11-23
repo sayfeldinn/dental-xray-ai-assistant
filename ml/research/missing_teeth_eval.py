@@ -22,10 +22,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE / "production"))
+sys.path.insert(0, str(HERE.parent / "pipeline"))
 
 import numpy as np  # noqa: E402
-import inference_pipeline as pipe  # noqa: E402
+import inference as pipe  # noqa: E402
 
 DENTEX = Path("/home/sayfeldin/Projects/dental-model-research/data/raw/dentex")
 QE = DENTEX / "training_data/quadrant_enumeration/train_quadrant_enumeration.json"
@@ -101,7 +101,7 @@ def score(gt, pred):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(HERE / "eval" / "missing_teeth_results.json"))
+    ap.add_argument("--out", default=str(HERE.parent / "eval" / "missing_teeth_results.json"))
     args = ap.parse_args()
 
     train, val94 = tooth_split()

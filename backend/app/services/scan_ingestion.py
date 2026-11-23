@@ -1,6 +1,6 @@
 """
 DentalAI - Scan ingestion (Steps 1-2)
-Upload a radiograph to private storage, run the dentex_week3 pipeline through DentexClient, and
+Upload a radiograph to private storage, run the ML pipeline through DentexClient, and
 store each detection as a *pending* finding. Also re-runs analysis on a stored scan.
 """
 

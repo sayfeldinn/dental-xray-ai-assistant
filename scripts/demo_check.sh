@@ -24,10 +24,10 @@ echo "========================"
 echo
 echo "Weights"
 for f in tooth_best.pt disease_best.pt; do
-  if [ -f "dentex_week3/production/$f" ]; then ok "dentex_week3/production/$f"; else bad "missing dentex_week3/production/$f"; fi
+  if [ -f "ml/weights/$f" ]; then ok "ml/weights/$f"; else bad "missing ml/weights/$f"; fi
 done
 for f in findings_best.pt missing_teeth.pt; do
-  if [ -f "dentex_week3/production/$f" ]; then ok "dentex_week3/production/$f (advisory)"; else info "optional advisory weight missing: dentex_week3/production/$f"; fi
+  if [ -f "ml/weights/$f" ]; then ok "ml/weights/$f (advisory)"; else info "optional advisory weight missing: ml/weights/$f"; fi
 done
 
 echo
