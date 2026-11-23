@@ -14,11 +14,11 @@ intervals on every proportion.
 
 Validity
 --------
-The 50 images come from the official DENTEX *validation* split. The training
-notebook (``MLv2/notebook93943e382e.ipynb``) trained every model exclusively
-on ``training_data/``; ``validation_data/`` is only used for inference after
-training, and the per-model ``provenance/*/args.yaml`` logs confirm the data
-roots. The validation split is therefore untouched by training.
+The 50 images come from the official DENTEX *validation* split. Every model was
+trained exclusively on ``training_data/``; ``validation_data/`` is only used for
+inference after training, and the per-model ``args.yaml`` logs under
+``docs/evidence/mlv2/provenance/`` confirm the data roots. The validation split
+is therefore untouched by training.
 
 Usage
 -----
