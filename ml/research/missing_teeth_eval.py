@@ -12,6 +12,7 @@ tooth detector's own held-out 94-image split (seed 42), which is leak-free.
 The official locked 50 carries only the 182 diseased teeth, not the full
 enumeration, so it cannot supply missing-teeth ground truth.
 """
+
 import argparse
 import json
 import os
@@ -24,7 +25,6 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "pipeline"))
 
-import numpy as np  # noqa: E402
 import inference as pipe  # noqa: E402
 
 DENTEX = Path("/home/sayfeldin/Projects/dental-model-research/data/raw/dentex")
@@ -36,7 +36,9 @@ def present_from_coco(coco):
     imgs = {i["id"]: i for i in coco["images"]}
     present = defaultdict(set)
     for a in coco["annotations"]:
-        present[imgs[a["image_id"]]["file_name"]].add((a["category_id_1"] + 1, a["category_id_2"] + 1))
+        present[imgs[a["image_id"]]["file_name"]].add(
+            (a["category_id_1"] + 1, a["category_id_2"] + 1)
+        )
     return present
 
 
@@ -75,14 +77,21 @@ def interior_missing(present, max_tooth=7):
 
 def detect_with_conf(image_path, conf):
     arr = pipe.load_image_array(str(image_path))
-    res = pipe._model("tooth").predict(source=arr, imgsz=pipe.TOOTH_IMGSZ, conf=conf, verbose=False)[0]
+    res = pipe._model("tooth").predict(
+        source=arr, imgsz=pipe.TOOTH_IMGSZ, conf=conf, verbose=False
+    )[0]
     teeth = []
     if res.boxes is not None:
         for box in res.boxes:
             idx = int(box.cls[0].item())
-            teeth.append({"quadrant": idx // 8 + 1, "tooth_id": idx % 8 + 1,
-                          "tooth_confidence": float(box.conf[0].item()),
-                          "box": [float(v) for v in box.xyxy[0].cpu().numpy()]})
+            teeth.append(
+                {
+                    "quadrant": idx // 8 + 1,
+                    "tooth_id": idx % 8 + 1,
+                    "tooth_confidence": float(box.conf[0].item()),
+                    "box": [float(v) for v in box.xyxy[0].cpu().numpy()],
+                }
+            )
     return pipe._dedup_teeth(teeth)
 
 
@@ -92,11 +101,17 @@ def score(gt, pred):
     fn = sum(len(gt[k] - pred.get(k, set())) for k in gt)
     prec = tp / max(1, tp + fp)
     rec = tp / max(1, tp + fn)
-    return {"tp": tp, "fp": fp, "fn": fn, "precision": prec, "recall": rec,
-            "f1": 2 * prec * rec / max(1e-9, prec + rec),
-            "exact_match": sum(1 for k in gt if gt[k] == pred.get(k, set())),
-            "n_images": len(gt),
-            "gt_total": sum(len(v) for v in gt.values())}
+    return {
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "precision": prec,
+        "recall": rec,
+        "f1": 2 * prec * rec / max(1e-9, prec + rec),
+        "exact_match": sum(1 for k in gt if gt[k] == pred.get(k, set())),
+        "n_images": len(gt),
+        "gt_total": sum(len(v) for v in gt.values()),
+    }
 
 
 def main():
@@ -109,14 +124,18 @@ def main():
     qe = json.load(open(QE))
     present = present_from_coco(qe)
     gt = {n: interior_missing(present[n]) for n in val94}
-    print(f"held-out {len(val94)} images | interior missing teeth GT total "
-          f"{sum(len(v) for v in gt.values())} | images with any {sum(1 for v in gt.values() if v)}")
+    print(
+        f"held-out {len(val94)} images | interior missing teeth GT total "
+        f"{sum(len(v) for v in gt.values())} | images with any {sum(1 for v in gt.values() if v)}"
+    )
 
     # one low-confidence pass, then threshold in post-processing
     raw = {}
     for i, n in enumerate(val94, 1):
-        raw[n] = [(t["quadrant"], t["tooth_id"], t["tooth_confidence"])
-                  for t in detect_with_conf(QE_IMG / n, 0.01)]
+        raw[n] = [
+            (t["quadrant"], t["tooth_id"], t["tooth_confidence"])
+            for t in detect_with_conf(QE_IMG / n, 0.01)
+        ]
         if i % 20 == 0:
             print(f"  {i}/{len(val94)}", flush=True)
 
@@ -126,14 +145,19 @@ def main():
         s = {"tooth_conf": conf}
         s.update(score(gt, pred))
         sweep.append(s)
-        print(f"conf {conf:.2f}: P {s['precision']:.3f} R {s['recall']:.3f} "
-              f"F1 {s['f1']:.3f} exact {s['exact_match']}/{s['n_images']} "
-              f"(tp {s['tp']} fp {s['fp']} fn {s['fn']})")
+        print(
+            f"conf {conf:.2f}: P {s['precision']:.3f} R {s['recall']:.3f} "
+            f"F1 {s['f1']:.3f} exact {s['exact_match']}/{s['n_images']} "
+            f"(tp {s['tp']} fp {s['fp']} fn {s['fn']})"
+        )
 
     best = max(sweep, key=lambda s: s["f1"])
-    out = {"split": "tooth detector held-out 94 (DENTEX enumeration)",
-           "definition": "interior FDI gap, third molars excluded",
-           "best": best, "sweep": sweep}
+    out = {
+        "split": "tooth detector held-out 94 (DENTEX enumeration)",
+        "definition": "interior FDI gap, third molars excluded",
+        "best": best,
+        "sweep": sweep,
+    }
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     Path(args.out).write_text(json.dumps(out, indent=2))
     print("best:", best)

@@ -3,11 +3,12 @@ DentalAI - Finding Domain Models
 Individual tooth pathology detections with dentist validation.
 """
 
-from pydantic import Field, model_validator
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
-from .base import BaseEntity, TimestampedEntity, IdentifiedEntity
+
+from pydantic import Field, model_validator
+
+from .base import BaseEntity, IdentifiedEntity, TimestampedEntity
 
 # Pathology classes emitted by the ML service (see docs/CLINICAL_GUIDELINES.md §1).
 DISEASE_LABELS = ("Caries", "Deep Caries", "Periapical Lesion", "Impacted")
@@ -15,23 +16,25 @@ DISEASE_LABELS = ("Caries", "Deep Caries", "Periapical Lesion", "Impacted")
 
 class FindingBase(BaseEntity):
     """Core finding fields."""
-    
+
     scan_id: UUID
     patient_id: UUID
     quadrant: int = Field(..., ge=1, le=4, description="Quadrant 1-4")
     tooth_id: int = Field(..., ge=1, le=8, description="Tooth position 1-8")
     tooth_fdi: str = Field(..., max_length=10, description="FDI notation e.g. '18', '27'")
-    disease: str = Field(..., max_length=50, description="Caries, Deep Caries, Periapical Lesion, Impacted")
+    disease: str = Field(
+        ..., max_length=50, description="Caries, Deep Caries, Periapical Lesion, Impacted"
+    )
     disease_confidence: float = Field(..., ge=0.0, le=1.0)
-    tooth_confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
-    association_confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
-    box: List[float] = Field(..., description="Bounding box [x1, y1, x2, y2]")
+    tooth_confidence: float | None = Field(None, ge=0.0, le=1.0)
+    association_confidence: float | None = Field(None, ge=0.0, le=1.0)
+    box: list[float] = Field(..., description="Bounding box [x1, y1, x2, y2]")
 
 
 class FindingCreate(FindingBase):
     """Schema for creating a new finding."""
-    
-    dentist_id: Optional[UUID] = None
+
+    dentist_id: UUID | None = None
 
 
 class FindingUpdate(BaseEntity):
@@ -44,18 +47,18 @@ class FindingUpdate(BaseEntity):
     review to be changed without any audit trail.
     """
 
-    dentist_notes: Optional[str] = None
+    dentist_notes: str | None = None
 
 
 class Finding(FindingBase, IdentifiedEntity, TimestampedEntity):
     """Complete finding record from database."""
-    
-    dentist_id: Optional[UUID] = None
+
+    dentist_id: UUID | None = None
     review_status: str = Field(default="pending")
-    confirmed_disease: Optional[str] = None
-    dentist_notes: Optional[str] = None
-    reviewed_at: Optional[datetime] = None
-    reviewed_by: Optional[UUID] = None
+    confirmed_disease: str | None = None
+    dentist_notes: str | None = None
+    reviewed_at: datetime | None = None
+    reviewed_by: UUID | None = None
 
     @property
     def effective_disease(self) -> str:
@@ -65,19 +68,19 @@ class Finding(FindingBase, IdentifiedEntity, TimestampedEntity):
 
 class FindingListResponse(BaseEntity):
     """List of findings for a scan."""
-    
-    findings: List[Finding]
+
+    findings: list[Finding]
     total: int
 
 
 class FindingReviewRequest(BaseEntity):
     """Request to review a finding."""
-    
+
     finding_id: UUID
     review_status: str = Field(..., pattern="^(confirmed|rejected|modified)$")
-    confirmed_disease: Optional[str] = None
-    dentist_notes: Optional[str] = None
-    dentist_id: Optional[UUID] = None
+    confirmed_disease: str | None = None
+    dentist_notes: str | None = None
+    dentist_id: UUID | None = None
 
     @model_validator(mode="after")
     def _check_disease_labels(self) -> "FindingReviewRequest":

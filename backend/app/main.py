@@ -7,9 +7,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.v1 import api_router
 from app.core.config import settings
 from app.domain.errors import ConflictError, NotFoundError, RuleViolationError, UpstreamError
-from app.api.v1 import api_router
 
 # Create FastAPI application
 app = FastAPI(
@@ -18,7 +18,7 @@ app = FastAPI(
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 # Configure CORS
@@ -41,7 +41,7 @@ async def root():
         "version": "2.0.0",
         "status": "healthy",
         "environment": settings.ENVIRONMENT,
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
@@ -55,7 +55,7 @@ async def health_check():
         "service": settings.APP_NAME,
         "environment": settings.ENVIRONMENT,
         "supabase_configured": bool(settings.SUPABASE_URL),
-        "ml_service_url": settings.ML_SERVICE_URL
+        "ml_service_url": settings.ML_SERVICE_URL,
     }
 
 
@@ -66,6 +66,7 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 def _domain_error_handler(status_code: int):
     async def handler(request: Request, exc: Exception):
         return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+
     return handler
 
 
@@ -84,17 +85,17 @@ async def global_exception_handler(request, exc):
         status_code=500,
         content={
             "detail": "Internal server error",
-            "message": str(exc) if settings.DEBUG else "An error occurred"
-        }
+            "message": str(exc) if settings.DEBUG else "An error occurred",
+        },
     )
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "app.main:app",
         host=settings.BACKEND_HOST,
         port=settings.BACKEND_PORT,
-        reload=settings.DEBUG
+        reload=settings.DEBUG,
     )

@@ -3,8 +3,9 @@ DentalAI - Treatment Service
 Database operations for treatments (Step 4/5).
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
+
 from app.core.supabase_client import supabase_admin
 from app.domain.treatment import Treatment, TreatmentCreate
 
@@ -26,17 +27,17 @@ class TreatmentService:
 
         return Treatment(**response.data[0])
 
-    async def get_treatment(self, treatment_id: UUID) -> Optional[Treatment]:
+    async def get_treatment(self, treatment_id: UUID) -> Treatment | None:
         """Retrieve a treatment by ID."""
         response = self.client.table(self.table).select("*").eq("id", str(treatment_id)).execute()
         return Treatment(**response.data[0]) if response.data else None
 
     async def list_treatments(
         self,
-        scan_id: Optional[UUID] = None,
-        patient_id: Optional[UUID] = None,
-        status: Optional[str] = None,
-    ) -> List[Treatment]:
+        scan_id: UUID | None = None,
+        patient_id: UUID | None = None,
+        status: str | None = None,
+    ) -> list[Treatment]:
         """List treatments filtered by scan and/or patient and/or status, oldest first."""
         query = self.client.table(self.table).select("*")
         if scan_id:
@@ -49,7 +50,7 @@ class TreatmentService:
         response = query.order("created_at").execute()
         return [Treatment(**t) for t in response.data] if response.data else []
 
-    async def update_treatment(self, treatment_id: UUID, changes: Dict[str, Any]) -> Optional[Treatment]:
+    async def update_treatment(self, treatment_id: UUID, changes: dict[str, Any]) -> Treatment | None:
         """Apply a partial update (JSON-safe values only)."""
         response = (
             self.client.table(self.table)
@@ -59,7 +60,7 @@ class TreatmentService:
         )
         return Treatment(**response.data[0]) if response.data else None
 
-    async def delete_treatments(self, treatment_ids: List[UUID]) -> None:
+    async def delete_treatments(self, treatment_ids: list[UUID]) -> None:
         """Delete treatments; their prescriptions go with them (ON DELETE CASCADE)."""
         if treatment_ids:
             self.client.table(self.table).delete().in_("id", [str(t) for t in treatment_ids]).execute()

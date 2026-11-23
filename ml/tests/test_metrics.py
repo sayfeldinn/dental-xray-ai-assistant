@@ -12,7 +12,13 @@ EVAL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 sys.path.insert(0, EVAL_DIR)
 
 from metrics import (  # noqa: E402
-    average_precision, fmt_pct, greedy_match, iou, macro_mean, prf, wilson_ci,
+    average_precision,
+    fmt_pct,
+    greedy_match,
+    iou,
+    macro_mean,
+    prf,
+    wilson_ci,
 )
 
 
@@ -44,7 +50,7 @@ def test_wilson_ci_bounds_and_center():
     p, lo, hi = wilson_ci(7, 10)
     assert p == pytest.approx(0.7)
     assert lo < p < hi
-    assert 0.0 <= lo and hi <= 1.0
+    assert lo >= 0.0 and hi <= 1.0
 
 
 def test_wilson_ci_empty():
@@ -65,8 +71,11 @@ def test_average_precision_known_defect_is_precision():
     assert average_precision(flags) == pytest.approx(0.5)  # = precision, not AP
 
 
-@pytest.mark.xfail(strict=True, reason="average_precision uses matched positives as the "
-                                       "recall denominator instead of the GT count")
+@pytest.mark.xfail(
+    strict=True,
+    reason="average_precision uses matched positives as the "
+    "recall denominator instead of the GT count",
+)
 def test_average_precision_perfect_ranking():
     # Two positives ranked above two negatives -> AP must be 1.0.
     flags = [(0.9, True), (0.8, True), (0.2, False), (0.1, False)]

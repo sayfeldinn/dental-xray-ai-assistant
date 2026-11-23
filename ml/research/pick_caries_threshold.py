@@ -6,15 +6,14 @@ The gate drops Caries / Deep Caries detections whose tooth-crop verifier
 probability is below the threshold. Threshold is chosen to maximize F1 on the
 detector's own caries detections in the held-out split.
 """
+
 import json
-import os
 import random
 import sys
 from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
-import torch
 from PIL import Image
 
 HERE = Path(__file__).resolve().parent
@@ -22,12 +21,14 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "eval"))
 sys.path.insert(0, str(HERE.parent / "pipeline"))
 
-import rerank_caries as rc  # noqa: E402
 import inference as pipe  # noqa: E402
+import rerank_caries as rc  # noqa: E402
 from metrics import iou  # noqa: E402
 
-QED = Path("/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
-           "training_data/quadrant-enumeration-disease/train_quadrant_enumeration_disease.json")
+QED = Path(
+    "/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
+    "training_data/quadrant-enumeration-disease/train_quadrant_enumeration_disease.json"
+)
 VAL_IMG = QED.parent / "xrays"
 
 TARGET_IDS = (1,)  # Caries GT
@@ -83,7 +84,7 @@ def best_threshold(pairs):
     pos = T.sum()
     best = (0.0, -1.0)
     for thr in np.arange(0.05, 1.0, 0.05):
-        m = P >= thr
+        m = thr <= P
         if not m.any():
             continue
         tp = T[m].sum()
@@ -116,9 +117,11 @@ def main():
     for t in (0.5, 0.7, 0.8, 0.9):
         P = np.array([x[0] for x in pairs])
         T = np.array([x[2] for x in pairs])
-        m = P >= t
+        m = t <= P
         if m.any():
-            print(f"  thr {t}: kept {m.sum()} prec {T[m].mean():.3f} rec {T[m].sum()/max(1,pos):.3f}")
+            print(
+                f"  thr {t}: kept {m.sum()} prec {T[m].mean():.3f} rec {T[m].sum()/max(1,pos):.3f}"
+            )
 
     # AP on the held-out val: baseline (rank by conf) vs gate (drop p<thr, rank by conf)
     def ap(conf, tp):
@@ -146,10 +149,15 @@ def main():
     print(f"\nheld-out val Caries AP baseline (rank by conf): {ap(C, T):.4f}")
     for t in (0.5, 0.7, 0.8, 0.9):
         m = Pb >= t
-        print(f"  gate {t}: Caries AP {ap([C[i] for i in range(len(C)) if m[i]], [T[i] for i in range(len(T)) if m[i]]):.4f} "
-              f"(kept {int(m.sum())}/{len(C)})")
-    json.dump({"threshold": thr, "f1": f1, "n": len(pairs), "pos": int(pos)},
-              open(HERE.parent / "eval" / "caries_verifier_threshold.json", "w"), indent=2)
+        print(
+            f"  gate {t}: Caries AP {ap([C[i] for i in range(len(C)) if m[i]], [T[i] for i in range(len(T)) if m[i]]):.4f} "
+            f"(kept {int(m.sum())}/{len(C)})"
+        )
+    json.dump(
+        {"threshold": thr, "f1": f1, "n": len(pairs), "pos": int(pos)},
+        open(HERE.parent / "eval" / "caries_verifier_threshold.json", "w"),
+        indent=2,
+    )
 
 
 if __name__ == "__main__":

@@ -5,15 +5,20 @@ Rows are written automatically by finding reviews and treatment/prescription dec
 the only direct write is reporting a lesion the AI missed.
 """
 
-from fastapi import APIRouter, Depends, Query
-from typing import Optional
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, Query
+
 from app.api.deps import AuthenticatedDentist, get_access, get_current_dentist, get_workflow
-from app.services.access import AccessService
 from app.domain.feedback import (
-    CorrectionType, FeedbackListResponse, FeedbackLog, FeedbackStage, FeedbackSummary, MissedFindingReport,
+    CorrectionType,
+    FeedbackListResponse,
+    FeedbackLog,
+    FeedbackStage,
+    FeedbackSummary,
+    MissedFindingReport,
 )
+from app.services.access import AccessService
 from app.services.clinical_workflow import ClinicalWorkflowService
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
@@ -22,15 +27,17 @@ router = APIRouter(prefix="/feedback", tags=["feedback"])
 @router.get("", response_model=FeedbackListResponse)
 async def list_feedback(
     scan_id: UUID = Query(..., description="Scan whose ledger to read"),
-    stage: Optional[FeedbackStage] = Query(None),
-    correction_type: Optional[CorrectionType] = Query(None),
+    stage: FeedbackStage | None = Query(None),
+    correction_type: CorrectionType | None = Query(None),
     workflow: ClinicalWorkflowService = Depends(get_workflow),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
 ):
     """One scan's corrections ledger, newest first."""
     await access.scan(scan_id, dentist)
-    return await workflow.list_feedback(scan_id=scan_id, stage=stage, correction_type=correction_type)
+    return await workflow.list_feedback(
+        scan_id=scan_id, stage=stage, correction_type=correction_type
+    )
 
 
 @router.get("/summary", response_model=FeedbackSummary)
@@ -47,7 +54,8 @@ async def feedback_summary(
 
 @router.post("/missed-findings", response_model=FeedbackLog, status_code=201)
 async def report_missed_finding(
-    report: MissedFindingReport, workflow: ClinicalWorkflowService = Depends(get_workflow),
+    report: MissedFindingReport,
+    workflow: ClinicalWorkflowService = Depends(get_workflow),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
 ):

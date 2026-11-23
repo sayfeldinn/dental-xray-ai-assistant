@@ -62,7 +62,12 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 from metrics import (  # noqa: E402
-    average_precision, fmt_pct, greedy_match, macro_mean, prf, wilson_ci,
+    average_precision,
+    fmt_pct,
+    greedy_match,
+    macro_mean,
+    prf,
+    wilson_ci,
 )
 
 # ------------------------------------------------------------------
@@ -70,7 +75,7 @@ from metrics import (  # noqa: E402
 # ------------------------------------------------------------------
 
 DISEASE_NAMES = ["Impacted", "Caries", "Periapical Lesion", "Deep Caries"]
-IOU_MATCH = 0.5           # operating point for precision/recall + label metrics
+IOU_MATCH = 0.5  # operating point for precision/recall + label metrics
 IOU_SWEEP = [round(0.5 + 0.05 * i, 2) for i in range(10)]  # for mAP50-95
 DEFAULT_SWEEP = [0.20, 0.25, 0.30, 0.40, 0.50]
 
@@ -95,13 +100,15 @@ def load_ground_truth(path):
     for ann in data["annotations"]:
         img = images[ann["image_id"]]
         x, y, w, h = ann["bbox"]
-        per_image[img["file_name"]].append({
-            "bbox": [x, y, x + w, y + h],
-            "quadrant": ann["category_id_1"] + 1,
-            "tooth": ann["category_id_2"] + 1,
-            "disease_id": ann["category_id_3"],
-            "disease": DISEASE_NAMES[ann["category_id_3"]],
-        })
+        per_image[img["file_name"]].append(
+            {
+                "bbox": [x, y, x + w, y + h],
+                "quadrant": ann["category_id_1"] + 1,
+                "tooth": ann["category_id_2"] + 1,
+                "disease_id": ann["category_id_3"],
+                "disease": DISEASE_NAMES[ann["category_id_3"]],
+            }
+        )
     return dict(per_image)
 
 
@@ -109,10 +116,11 @@ def load_ground_truth(path):
 # Inference backends
 # ------------------------------------------------------------------
 
+
 def make_http_backend(api_url, timeout=120):
     """POST each image to a running ML service (the shipped /predict route)."""
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     def run(image_path):
         boundary = uuid.uuid4().hex
@@ -120,10 +128,14 @@ def make_http_backend(api_url, timeout=120):
             payload = fh.read()
         name = os.path.basename(image_path)
         body = (
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="file"; filename="{name}"\r\n'
-            f"Content-Type: application/octet-stream\r\n\r\n"
-        ).encode() + payload + f"\r\n--{boundary}--\r\n".encode()
+            (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="file"; filename="{name}"\r\n'
+                f"Content-Type: application/octet-stream\r\n\r\n"
+            ).encode()
+            + payload
+            + f"\r\n--{boundary}--\r\n".encode()
+        )
 
         req = urllib.request.Request(
             api_url,
@@ -139,8 +151,9 @@ def make_http_backend(api_url, timeout=120):
 
 def make_local_backend():
     """Import and call the frozen pipeline directly (needs torch et al.)."""
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    os.pardir, "pipeline"))
+    sys.path.insert(
+        0, os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "pipeline")
+    )
     from inference import run_dentex_pipeline  # noqa: WPS433
 
     def run(image_path):
@@ -182,6 +195,7 @@ def get_predictions(images_dir, gt, api_url, local, cache_path, limit=None):
 # ------------------------------------------------------------------
 # Geometry + matching
 # ------------------------------------------------------------------
+
 
 def iou(a, b):
     ax1, ay1, ax2, ay2 = a
@@ -233,8 +247,9 @@ def detections_at(rec, conf):
     The pipeline bakes in conf=0.20, so raising the threshold is pure
     post-filtering and never re-runs the model.
     """
-    return [d for d in rec["result"].get("detections", [])
-            if d.get("disease_confidence", 0) >= conf]
+    return [
+        d for d in rec["result"].get("detections", []) if d.get("disease_confidence", 0) >= conf
+    ]
 
 
 def collect_stats(cache, gt, sweep):
@@ -246,16 +261,19 @@ def collect_stats(cache, gt, sweep):
     runtime identical to the original implementation.
     """
     failed = sorted(name for name, rec in cache.items() if not rec["ok"])
-    scored_images = sorted(name for name, rec in cache.items()
-                           if rec["ok"] and name in gt)
+    scored_images = sorted(name for name, rec in cache.items() if rec["ok"] and name in gt)
 
-    per_class_flags = defaultdict(list)     # class -> [(conf, is_tp)]
+    per_class_flags = defaultdict(list)  # class -> [(conf, is_tp)]
     per_class_counts = defaultdict(lambda: {"tp": 0, "fp": 0, "fn": 0})
     micro = {"tp": 0, "fp": 0, "fn": 0}
 
     # label + quadrant metrics use class-agnostic matching (any label)
-    label_stats = {"disease": {"ok": 0, "n": 0}, "tooth": {"ok": 0, "n": 0},
-                   "quadrant": {"ok": 0, "n": 0}, "joint": {"ok": 0, "n": 0}}
+    label_stats = {
+        "disease": {"ok": 0, "n": 0},
+        "tooth": {"ok": 0, "n": 0},
+        "quadrant": {"ok": 0, "n": 0},
+        "joint": {"ok": 0, "n": 0},
+    }
     disease_confusion = defaultdict(lambda: defaultdict(int))
     quadrant_confusion = defaultdict(lambda: defaultdict(int))
     per_quadrant = defaultdict(lambda: {"tooth": [0, 0], "joint": [0, 0]})
@@ -264,8 +282,7 @@ def collect_stats(cache, gt, sweep):
     ap_flags = {t: defaultdict(list) for t in IOU_SWEEP}
 
     # threshold sweep (raise above the pipeline's conf=0.20)
-    sweep_stats = {c: {"tp": 0, "fp": 0, "fn": 0, "disease_ok": 0, "disease_n": 0}
-                   for c in sweep}
+    sweep_stats = {c: {"tp": 0, "fp": 0, "fn": 0, "disease_ok": 0, "disease_n": 0} for c in sweep}
 
     gt_per_class = defaultdict(int)
     for name in scored_images:
@@ -283,8 +300,9 @@ def collect_stats(cache, gt, sweep):
         for cid, cname in enumerate(DISEASE_NAMES):
             g_idx = [i for i, g in enumerate(gts) if g["disease_id"] == cid]
             p_idx = [i for i, p in enumerate(preds) if p["disease_id"] == cid]
-            matches = greedy_match([gt_boxes[i] for i in g_idx],
-                                   [pred_boxes[i] for i in p_idx], IOU_MATCH)
+            matches = greedy_match(
+                [gt_boxes[i] for i in g_idx], [pred_boxes[i] for i in p_idx], IOU_MATCH
+            )
             tp, fp = len(matches), len(p_idx) - len(matches)
             fn = len(g_idx) - len(matches)
             per_class_counts[cname]["tp"] += tp
@@ -304,8 +322,9 @@ def collect_stats(cache, gt, sweep):
             for cid, cname in enumerate(DISEASE_NAMES):
                 g_idx = [i for i, g in enumerate(gts) if g["disease_id"] == cid]
                 p_idx = [i for i, p in enumerate(preds) if p["disease_id"] == cid]
-                matches = greedy_match([gt_boxes[i] for i in g_idx],
-                                       [pred_boxes[i] for i in p_idx], t)
+                matches = greedy_match(
+                    [gt_boxes[i] for i in g_idx], [pred_boxes[i] for i in p_idx], t
+                )
                 matched_p = {pi for _, pi in matches}
                 for gi, pi in matches:
                     ap_flags[t][cname].append((preds[p_idx[pi]]["disease_confidence"], True))
@@ -327,14 +346,14 @@ def collect_stats(cache, gt, sweep):
             label_stats["disease"]["ok"] += d_ok
             label_stats["tooth"]["ok"] += t_ok
             label_stats["quadrant"]["ok"] += q_ok
-            label_stats["joint"]["ok"] += (d_ok and t_ok)
+            label_stats["joint"]["ok"] += d_ok and t_ok
             disease_confusion[g["disease"]][p["disease"]] += 1
             quadrant_confusion[g["quadrant"]][p["quadrant"]] += 1
             bucket = per_quadrant[g["quadrant"]]
             bucket["tooth"][1] += 1
             bucket["tooth"][0] += t_ok
             bucket["joint"][1] += 1
-            bucket["joint"][0] += (d_ok and t_ok)
+            bucket["joint"][0] += d_ok and t_ok
 
         # --- threshold sweep (conf above 0.20 = pure filtering) ---------
         for c in sweep:
@@ -346,8 +365,7 @@ def collect_stats(cache, gt, sweep):
             for cid in range(len(DISEASE_NAMES)):
                 g_idx = [i for i, g in enumerate(gts) if g["disease_id"] == cid]
                 p_idx = [i for i, d in enumerate(kept) if d["disease_id"] == cid]
-                m = greedy_match([gt_boxes[i] for i in g_idx],
-                                 [kp[i] for i in p_idx], IOU_MATCH)
+                m = greedy_match([gt_boxes[i] for i in g_idx], [kp[i] for i in p_idx], IOU_MATCH)
                 tp += len(m)
                 fp += len(p_idx) - len(m)
                 matched_g |= {g_idx[gi] for gi, _ in m}
@@ -401,8 +419,9 @@ def detection_metrics(stats):
     ar_per_class = {}
     for c in DISEASE_NAMES:
         n_gt = stats["gt_per_class"][c]
-        recalls = [sum(1 for _, is_tp in ap_flags[t][c] if is_tp) / n_gt
-                   for t in IOU_SWEEP if n_gt]
+        recalls = [
+            sum(1 for _, is_tp in ap_flags[t][c] if is_tp) / n_gt for t in IOU_SWEEP if n_gt
+        ]
         ar_per_class[c] = macro_mean(recalls) if n_gt else None
     AR50_95 = macro_mean(ar_per_class.values())
 
@@ -422,18 +441,24 @@ def label_metrics(stats):
     """Disease / tooth / quadrant / joint accuracy and the confusion matrices."""
     accuracy = {}
     for key, st in stats["label_stats"].items():
-        accuracy[key] = dict(zip(
-            ("rate", "ci_low", "ci_high", "correct", "total"),
-            (*wilson_ci(st["ok"], st["n"]), st["ok"], st["n"])))
+        accuracy[key] = dict(
+            zip(
+                ("rate", "ci_low", "ci_high", "correct", "total"),
+                (*wilson_ci(st["ok"], st["n"]), st["ok"], st["n"]),
+            )
+        )
 
     return {
         "accuracy": accuracy,
         "disease_confusion": {g: dict(v) for g, v in stats["disease_confusion"].items()},
-        "quadrant_confusion": {str(g): {str(k): v for k, v in r.items()}
-                               for g, r in stats["quadrant_confusion"].items()},
-        "per_quadrant": {str(q): {k: (*wilson_ci(v[0], v[1]), v[1])
-                                  for k, v in r.items()}
-                         for q, r in stats["per_quadrant"].items()},
+        "quadrant_confusion": {
+            str(g): {str(k): v for k, v in r.items()}
+            for g, r in stats["quadrant_confusion"].items()
+        },
+        "per_quadrant": {
+            str(q): {k: (*wilson_ci(v[0], v[1]), v[1]) for k, v in r.items()}
+            for q, r in stats["per_quadrant"].items()
+        },
     }
 
 
@@ -446,8 +471,11 @@ def sweep_metrics(stats, sweep):
         r, _, _ = wilson_ci(st["tp"], st["tp"] + st["fn"])
         d, dl, dh = wilson_ci(st["disease_ok"], st["disease_n"])
         out[str(c)] = {
-            "precision": p, "recall": r, "f1": (2 * p * r / (p + r)) if (p and r) else None,
-            "disease_acc": d, "disease_acc_ci": [dl, dh],
+            "precision": p,
+            "recall": r,
+            "f1": (2 * p * r / (p + r)) if (p and r) else None,
+            "disease_acc": d,
+            "disease_acc_ci": [dl, dh],
             "disease_n": st["disease_n"],
         }
     return out
@@ -456,6 +484,7 @@ def sweep_metrics(stats, sweep):
 # ------------------------------------------------------------------
 # Evaluation
 # ------------------------------------------------------------------
+
 
 def evaluate(cache, gt, sweep=DEFAULT_SWEEP):
     """Compute detection, label and quadrant metrics from cached predictions.
@@ -506,6 +535,7 @@ def evaluate(cache, gt, sweep=DEFAULT_SWEEP):
 # Report rendering
 # ------------------------------------------------------------------
 
+
 def render_report(results):
     ds = results["dataset"]
     out = [
@@ -532,11 +562,15 @@ def render_report(results):
         d = results["detection_per_class"][cname]
         gt_n, pred_n = d["tp"] + d["fn"], d["tp"] + d["fp"]
         p_ci = f"{fmt_pct(d['precision'])} [{fmt_pct(d['precision_ci'][0])}, {fmt_pct(d['precision_ci'][1])}]"
-        r_ci = f"{fmt_pct(d['recall'])} [{fmt_pct(d['recall_ci'][0])}, {fmt_pct(d['recall_ci'][1])}]"
+        r_ci = (
+            f"{fmt_pct(d['recall'])} [{fmt_pct(d['recall_ci'][0])}, {fmt_pct(d['recall_ci'][1])}]"
+        )
         ap = results["ap_per_class"][cname]["AP50"]
         ap75 = results["ap_per_class"][cname]["AP75"]
-        out.append(f"| {cname} | {gt_n} | {pred_n} | {p_ci} | {r_ci} | "
-                   f"{fmt_pct(d['f1'])} | {fmt_pct(ap)} | {fmt_pct(ap75)} |")
+        out.append(
+            f"| {cname} | {gt_n} | {pred_n} | {p_ci} | {r_ci} | "
+            f"{fmt_pct(d['f1'])} | {fmt_pct(ap)} | {fmt_pct(ap75)} |"
+        )
     m = results["detection_micro"]
     out += [
         f"| **micro avg** | {m['tp'] + m['fn']} | {m['tp'] + m['fp']} | "
@@ -559,69 +593,113 @@ def render_report(results):
         "| metric | rate (95% CI) | correct / total |",
         "|---|---|---|",
     ]
-    for key, title in (("disease", "disease label"),
-                       ("tooth", "tooth number"),
-                       ("quadrant", "quadrant"),
-                       ("joint", "disease **and** tooth")):
+    for key, title in (
+        ("disease", "disease label"),
+        ("tooth", "tooth number"),
+        ("quadrant", "quadrant"),
+        ("joint", "disease **and** tooth"),
+    ):
         la = results["label_accuracy"][key]
-        out.append(f"| {title} | **{fmt_pct(la['rate'])}** "
-                   f"[{fmt_pct(la['ci_low'])}, {fmt_pct(la['ci_high'])}] | "
-                   f"{la['correct']} / {la['total']} |")
+        out.append(
+            f"| {title} | **{fmt_pct(la['rate'])}** "
+            f"[{fmt_pct(la['ci_low'])}, {fmt_pct(la['ci_high'])}] | "
+            f"{la['correct']} / {la['total']} |"
+        )
 
-    out += ["", "### Disease confusion matrix (rows = ground truth, cols = prediction)", "",
-            "| GT \\ pred | " + " | ".join(DISEASE_NAMES) + " |", "|---|" + "---|" * len(DISEASE_NAMES)]
+    out += [
+        "",
+        "### Disease confusion matrix (rows = ground truth, cols = prediction)",
+        "",
+        "| GT \\ pred | " + " | ".join(DISEASE_NAMES) + " |",
+        "|---|" + "---|" * len(DISEASE_NAMES),
+    ]
     for g in DISEASE_NAMES:
         row = results["disease_confusion"].get(g, {})
         out.append(f"| **{g}** | " + " | ".join(str(row.get(p, 0)) for p in DISEASE_NAMES) + " |")
 
-    out += ["", "## 3. Tooth accuracy per quadrant", "",
-            "| quadrant | tooth acc (95% CI) | joint (95% CI) | n |", "|---|---|---|---|"]
+    out += [
+        "",
+        "## 3. Tooth accuracy per quadrant",
+        "",
+        "| quadrant | tooth acc (95% CI) | joint (95% CI) | n |",
+        "|---|---|---|---|",
+    ]
     for q in ("1", "2", "3", "4"):
         r = results["per_quadrant"].get(q, {})
         if not r:
             continue
         t, j = r["tooth"], r["joint"]
-        out.append(f"| Q{q} | {fmt_pct(t[0])} [{fmt_pct(t[1])}, {fmt_pct(t[2])}] | "
-                   f"{fmt_pct(j[0])} [{fmt_pct(j[1])}, {fmt_pct(j[2])}] | {t[3]} |")
+        out.append(
+            f"| Q{q} | {fmt_pct(t[0])} [{fmt_pct(t[1])}, {fmt_pct(t[2])}] | "
+            f"{fmt_pct(j[0])} [{fmt_pct(j[1])}, {fmt_pct(j[2])}] | {t[3]} |"
+        )
 
-    out += ["", "## 4. Confidence-threshold sweep (disease detector)", "",
-            "The pipeline bakes in conf=0.20; higher thresholds can be applied by "
-            "filtering returned detections (identical to raising the threshold). "
-            "Values below 0.20 are unreachable without re-running the model.",
-            "",
-            "| threshold | precision | recall | F1 | disease acc on matches (95% CI) | n |",
-            "|---|---|---|---|---|---|"]
+    out += [
+        "",
+        "## 4. Confidence-threshold sweep (disease detector)",
+        "",
+        "The pipeline bakes in conf=0.20; higher thresholds can be applied by "
+        "filtering returned detections (identical to raising the threshold). "
+        "Values below 0.20 are unreachable without re-running the model.",
+        "",
+        "| threshold | precision | recall | F1 | disease acc on matches (95% CI) | n |",
+        "|---|---|---|---|---|---|",
+    ]
     for c in DEFAULT_SWEEP:
         s = results["threshold_sweep"].get(str(c))
         if not s:
             continue
         ci = s["disease_acc_ci"]
-        out.append(f"| {c:.2f} | {fmt_pct(s['precision'])} | {fmt_pct(s['recall'])} | "
-                   f"{fmt_pct(s['f1'])} | {fmt_pct(s['disease_acc'])} [{fmt_pct(ci[0])}, {fmt_pct(ci[1])}] | "
-                   f"{s['disease_n']} |")
+        out.append(
+            f"| {c:.2f} | {fmt_pct(s['precision'])} | {fmt_pct(s['recall'])} | "
+            f"{fmt_pct(s['f1'])} | {fmt_pct(s['disease_acc'])} [{fmt_pct(ci[0])}, {fmt_pct(ci[1])}] | "
+            f"{s['disease_n']} |"
+        )
 
-    out += ["", "---", "",
-            "Regenerate with `python ml/eval/evaluate.py` (see its docstring). "
-            "Confidence intervals are 95% Wilson score intervals."]
+    out += [
+        "",
+        "---",
+        "",
+        "Regenerate with `python ml/eval/evaluate.py` (see its docstring). "
+        "Confidence intervals are 95% Wilson score intervals.",
+    ]
     return "\n".join(out) + "\n"
 
 
 # ------------------------------------------------------------------
 
+
 def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--images-dir", required=True,
-                    help="Directory with the DENTEX validation panoramas (val_*.png)")
-    ap.add_argument("--gt", required=True,
-                    help="validation_triple.json (COCO-style quadrant+tooth+disease GT)")
-    ap.add_argument("--api", default="http://localhost:8001/predict",
-                    help="Running ML service /predict endpoint (default: %(default)s)")
-    ap.add_argument("--local", action="store_true",
-                    help="Run the frozen pipeline in-process instead of via the ML service")
-    ap.add_argument("--out-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "eval"))
-    ap.add_argument("--limit", type=int, default=None, help="Only evaluate the first N images (smoke test)")
-    ap.add_argument("--fresh", action="store_true", help="Ignore the prediction cache and re-run inference")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--images-dir",
+        required=True,
+        help="Directory with the DENTEX validation panoramas (val_*.png)",
+    )
+    ap.add_argument(
+        "--gt", required=True, help="validation_triple.json (COCO-style quadrant+tooth+disease GT)"
+    )
+    ap.add_argument(
+        "--api",
+        default="http://localhost:8001/predict",
+        help="Running ML service /predict endpoint (default: %(default)s)",
+    )
+    ap.add_argument(
+        "--local",
+        action="store_true",
+        help="Run the frozen pipeline in-process instead of via the ML service",
+    )
+    ap.add_argument(
+        "--out-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "eval")
+    )
+    ap.add_argument(
+        "--limit", type=int, default=None, help="Only evaluate the first N images (smoke test)"
+    )
+    ap.add_argument(
+        "--fresh", action="store_true", help="Ignore the prediction cache and re-run inference"
+    )
     args = ap.parse_args()
 
     gt = load_ground_truth(args.gt)
@@ -633,8 +711,10 @@ def main():
     if args.fresh and os.path.exists(cache_path):
         os.remove(cache_path)
 
-    print(f"Evaluating on {len(gt)} images ({sum(len(v) for v in gt.values())} lesions) "
-          f"via {'local pipeline' if args.local else args.api}")
+    print(
+        f"Evaluating on {len(gt)} images ({sum(len(v) for v in gt.values())} lesions) "
+        f"via {'local pipeline' if args.local else args.api}"
+    )
     cache = get_predictions(args.images_dir, gt, args.api, args.local, cache_path, args.limit)
 
     results = evaluate(cache, gt)

@@ -6,7 +6,7 @@ Only departures are logged because the table's correction_type has no 'accepted'
 carries no correction. No database, HTTP or clock access here.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID
 
 from app.domain.feedback import FeedbackLogCreate, MissedFindingReport
@@ -14,21 +14,24 @@ from app.domain.finding import Finding
 from app.domain.prescription import Prescription
 from app.domain.treatment import Treatment
 
-NO_DETECTION = "None"   # original_disease sent to the ML service for a lesion the model missed
+NO_DETECTION = "None"  # original_disease sent to the ML service for a lesion the model missed
 
 
 def finding_feedback(
     before: Finding,
     review_status: str,
-    confirmed_disease: Optional[str],
-    notes: Optional[str],
-    dentist_id: Optional[UUID],
-) -> Optional[FeedbackLogCreate]:
+    confirmed_disease: str | None,
+    notes: str | None,
+    dentist_id: UUID | None,
+) -> FeedbackLogCreate | None:
     """Step 3: rejecting a detection is a false positive; relabelling it is a misclassification."""
     if review_status == "rejected":
         correction, corrected = "false_positive", {"disease": None, "review_status": "rejected"}
     elif review_status == "modified" and confirmed_disease and confirmed_disease != before.disease:
-        correction, corrected = "misclassification", {"disease": confirmed_disease, "review_status": "modified"}
+        correction, corrected = "misclassification", {
+            "disease": confirmed_disease,
+            "review_status": "modified",
+        }
     else:
         return None
     return FeedbackLogCreate(
@@ -62,10 +65,13 @@ def missed_finding_feedback(report: MissedFindingReport) -> FeedbackLogCreate:
 
 
 def treatment_feedback(
-    before: Treatment, after: Treatment, dentist_id: Optional[UUID]
-) -> Optional[FeedbackLogCreate]:
+    before: Treatment, after: Treatment, dentist_id: UUID | None
+) -> FeedbackLogCreate | None:
     """Step 5: a cancelled treatment, or one whose category or description the dentist changed."""
-    changed = (before.treatment_category, before.description) != (after.treatment_category, after.description)
+    changed = (before.treatment_category, before.description) != (
+        after.treatment_category,
+        after.description,
+    )
     if after.status != "cancelled" and not changed:
         return None
     return FeedbackLogCreate(
@@ -80,15 +86,19 @@ def treatment_feedback(
 
 
 def prescription_feedback(
-    before: Prescription, after: Prescription, scan_id: UUID, dentist_id: Optional[UUID]
-) -> Optional[FeedbackLogCreate]:
+    before: Prescription, after: Prescription, scan_id: UUID, dentist_id: UUID | None
+) -> FeedbackLogCreate | None:
     """
     Step 5: rejecting a drug, swapping it, or accepting it over a contraindication is a drug_override;
     changing only dose, frequency or duration is dosage_adjusted. Accepting unchanged (even with warnings
     acknowledged) is not a correction.
     """
     drug_changed = after.drug_name != before.drug_name
-    regimen_changed = (before.dosage, before.frequency, before.duration) != (after.dosage, after.frequency, after.duration)
+    regimen_changed = (before.dosage, before.frequency, before.duration) != (
+        after.dosage,
+        after.frequency,
+        after.duration,
+    )
     if after.dentist_status == "rejected" or drug_changed or after.dentist_override_reason:
         correction = "drug_override"
     elif regimen_changed:
@@ -100,14 +110,17 @@ def prescription_feedback(
         stage="prescription_dosing",
         correction_type=correction,
         ai_original_data=_prescription_snapshot(before),
-        dentist_corrected_data={**_prescription_snapshot(after), "decision": after.dentist_status,
-                                "override_reason": after.dentist_override_reason},
+        dentist_corrected_data={
+            **_prescription_snapshot(after),
+            "decision": after.dentist_status,
+            "override_reason": after.dentist_override_reason,
+        },
         notes=after.dentist_override_reason,
         dentist_id=dentist_id,
     )
 
 
-def ml_finding_feedback(log: FeedbackLogCreate) -> Optional[Dict[str, Any]]:
+def ml_finding_feedback(log: FeedbackLogCreate) -> dict[str, Any] | None:
     """
     Arguments for DentexClient.submit_feedback, or None when the row is not a detection correction.
     The ML service's CSV queue is keyed by image_id, which the backend sends as the scan id.
@@ -127,13 +140,20 @@ def ml_finding_feedback(log: FeedbackLogCreate) -> Optional[Dict[str, Any]]:
     }
 
 
-def _treatment_snapshot(t: Treatment) -> Dict[str, Any]:
-    return {"treatment_category": t.treatment_category, "description": t.description, "status": t.status}
-
-
-def _prescription_snapshot(p: Prescription) -> Dict[str, Any]:
+def _treatment_snapshot(t: Treatment) -> dict[str, Any]:
     return {
-        "drug_name": p.drug_name, "dosage": p.dosage, "frequency": p.frequency, "duration": p.duration,
+        "treatment_category": t.treatment_category,
+        "description": t.description,
+        "status": t.status,
+    }
+
+
+def _prescription_snapshot(p: Prescription) -> dict[str, Any]:
+    return {
+        "drug_name": p.drug_name,
+        "dosage": p.dosage,
+        "frequency": p.frequency,
+        "duration": p.duration,
         "contraindication_status": p.contraindication_status,
         "rule_ids": [w.rule_id for w in p.contraindication_warnings],
     }

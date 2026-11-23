@@ -47,6 +47,7 @@ def _model(key):
         _MODELS[key] = YOLO(os.path.join(MODEL_DIR, CONFIG[f"{key}_model"]))
     return _MODELS[key]
 
+
 DISEASE_MAP = {int(k): v for k, v in CONFIG["disease_map"].items()}
 
 TOOTH_IMGSZ = CONFIG.get("tooth_imgsz", 1024)
@@ -63,6 +64,7 @@ FINDINGS_MAP = {int(k): v for k, v in CONFIG.get("findings_map", {}).items()}
 # ----------------------------------------------------------------------
 # Image handling
 # ----------------------------------------------------------------------
+
 
 def load_image_array(image):
     if isinstance(image, str):
@@ -81,6 +83,7 @@ def load_image_array(image):
 # ----------------------------------------------------------------------
 # Geometry
 # ----------------------------------------------------------------------
+
 
 def _iou(a, b):
     ax1, ay1, ax2, ay2 = a
@@ -108,6 +111,7 @@ def _contains(box, point):
 # Stage 1 — teeth
 # ----------------------------------------------------------------------
 
+
 def _dedup_teeth(teeth, iou_thresh=TOOTH_NMS_IOU):
     """Drop overlapping tooth boxes of different classes.
 
@@ -128,8 +132,9 @@ def detect_teeth(image):
 
     Model class index -> FDI: index = (quadrant - 1) * 8 + (tooth - 1).
     """
-    result = _model("tooth").predict(source=image, imgsz=TOOTH_IMGSZ,
-                                 conf=TOOTH_CONF, verbose=False)[0]
+    result = _model("tooth").predict(
+        source=image, imgsz=TOOTH_IMGSZ, conf=TOOTH_CONF, verbose=False
+    )[0]
     if result.boxes is None:
         return []
 
@@ -138,14 +143,16 @@ def detect_teeth(image):
         idx = int(box.cls[0].item())
         x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
         quadrant, tooth = idx // 8 + 1, idx % 8 + 1
-        teeth.append({
-            "quadrant": quadrant,
-            "tooth_id": tooth,
-            "tooth": f"Tooth_{tooth}",
-            "tooth_fdi": f"{quadrant}{tooth}",
-            "tooth_confidence": float(box.conf[0].item()),
-            "box": [x1, y1, x2, y2],
-        })
+        teeth.append(
+            {
+                "quadrant": quadrant,
+                "tooth_id": tooth,
+                "tooth": f"Tooth_{tooth}",
+                "tooth_fdi": f"{quadrant}{tooth}",
+                "tooth_confidence": float(box.conf[0].item()),
+                "box": [x1, y1, x2, y2],
+            }
+        )
     return _dedup_teeth(teeth)
 
 
@@ -153,9 +160,11 @@ def detect_teeth(image):
 # Stage 2 — lesions
 # ----------------------------------------------------------------------
 
+
 def detect_diseases(image, conf=DISEASE_CONF):
-    result = _model("disease").predict(source=image, imgsz=DISEASE_IMGSZ,
-                                   conf=conf, verbose=False)[0]
+    result = _model("disease").predict(
+        source=image, imgsz=DISEASE_IMGSZ, conf=conf, verbose=False
+    )[0]
     if result.boxes is None:
         return []
 
@@ -163,12 +172,14 @@ def detect_diseases(image, conf=DISEASE_CONF):
     for box in result.boxes:
         disease_id = int(box.cls[0].item())
         x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
-        lesions.append({
-            "disease_id": disease_id,
-            "disease": DISEASE_MAP.get(disease_id, f"Unknown_{disease_id}"),
-            "disease_confidence": float(box.conf[0].item()),
-            "box": [x1, y1, x2, y2],
-        })
+        lesions.append(
+            {
+                "disease_id": disease_id,
+                "disease": DISEASE_MAP.get(disease_id, f"Unknown_{disease_id}"),
+                "disease_confidence": float(box.conf[0].item()),
+                "box": [x1, y1, x2, y2],
+            }
+        )
     return lesions
 
 
@@ -202,7 +213,6 @@ def _load_verifier(cfg):
     if "model" in _VERIFIER:
         return _VERIFIER["model"]
     import torch
-
     from torchvision import models
 
     path = cfg["model"]
@@ -228,7 +238,7 @@ def _crop_tooth(image, tb, size=VERIFIER_SIZE, pad=VERIFIER_PAD):
     x2, y2 = min(image.shape[1], x2), min(image.shape[0], y2)
     if x2 - x1 < 8 or y2 - y1 < 8:
         return None
-    im = _Image.fromarray(image[int(y1):int(y2), int(x1):int(x2)])
+    im = _Image.fromarray(image[int(y1) : int(y2), int(x1) : int(x2)])
     return im.resize((size, size), _Image.BILINEAR)
 
 
@@ -253,11 +263,16 @@ def apply_caries_verifier(lesions, teeth, image):
         if _iou(lbox, best["box"]) <= 0.0:
             containing = [t for t in teeth if _contains(t["box"], center)]
             if containing:
-                best = min(containing, key=lambda t: (t["box"][2] - t["box"][0]) *
-                           (t["box"][3] - t["box"][1]))
+                best = min(
+                    containing,
+                    key=lambda t: (t["box"][2] - t["box"][0]) * (t["box"][3] - t["box"][1]),
+                )
             else:
-                best = min(teeth, key=lambda t: (_center(t["box"])[0] - center[0]) ** 2 +
-                           (_center(t["box"])[1] - center[1]) ** 2)
+                best = min(
+                    teeth,
+                    key=lambda t: (_center(t["box"])[0] - center[0]) ** 2
+                    + (_center(t["box"])[1] - center[1]) ** 2,
+                )
         crops.append(_crop_tooth(image, best["box"]))
 
     valid = [(l, c) for l, c in zip(targets, crops) if c is not None]
@@ -281,23 +296,26 @@ def apply_caries_verifier(lesions, teeth, image):
 
     if mode == "gate":
         # drop caries detections the verifier thinks are caries-free
-        drop = {id(l) for (l, _), p in zip(valid, probs)
-                if p < threshold and l["disease"] in CARIES_TARGETS}
+        drop = {
+            id(l)
+            for (l, _), p in zip(valid, probs)
+            if p < threshold and l["disease"] in CARIES_TARGETS
+        }
         kept = [l for l in lesions if id(l) not in drop]
         for (l, _), p in zip(valid, probs):
             l["caries_verifier_p"] = float(p)
         return kept
 
     for (lesion, _), p in zip(valid, probs):
-        lesion["disease_confidence"] = float(lesion["disease_confidence"] * p ** alpha)
+        lesion["disease_confidence"] = float(lesion["disease_confidence"] * p**alpha)
         lesion["caries_verifier_p"] = float(p)
     return lesions
-
 
 
 # ----------------------------------------------------------------------
 # Optional stage — restorations / missing teeth (advisory)
 # ----------------------------------------------------------------------
+
 
 def detect_findings(image):
     """Return restoration and dentition findings from the DentalOPG model.
@@ -309,8 +327,9 @@ def detect_findings(image):
     """
     if not CONFIG.get("findings_model"):
         return []
-    result = _model("findings").predict(source=image, imgsz=FINDINGS_IMGSZ,
-                                        conf=FINDINGS_CONF, verbose=False)[0]
+    result = _model("findings").predict(
+        source=image, imgsz=FINDINGS_IMGSZ, conf=FINDINGS_CONF, verbose=False
+    )[0]
     if result.boxes is None:
         return []
 
@@ -318,18 +337,21 @@ def detect_findings(image):
     for box in result.boxes:
         idx = int(box.cls[0].item())
         x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].cpu().numpy())
-        findings.append({
-            "finding_id": idx,
-            "finding": FINDINGS_MAP.get(idx, f"Unknown_{idx}"),
-            "confidence": float(box.conf[0].item()),
-            "box": [x1, y1, x2, y2],
-        })
+        findings.append(
+            {
+                "finding_id": idx,
+                "finding": FINDINGS_MAP.get(idx, f"Unknown_{idx}"),
+                "confidence": float(box.conf[0].item()),
+                "box": [x1, y1, x2, y2],
+            }
+        )
     return findings
 
 
 # ----------------------------------------------------------------------
 # Stage 3 — association
 # ----------------------------------------------------------------------
+
 
 def associate(lesions, teeth):
     """Assign every lesion to a tooth.
@@ -350,24 +372,31 @@ def associate(lesions, teeth):
         if _iou(lbox, best["box"]) <= 0.0:
             containing = [t for t in teeth if _contains(t["box"], center)]
             if containing:
-                best = min(containing, key=lambda t: (t["box"][2] - t["box"][0]) *
-                                                      (t["box"][3] - t["box"][1]))
+                best = min(
+                    containing,
+                    key=lambda t: (t["box"][2] - t["box"][0]) * (t["box"][3] - t["box"][1]),
+                )
             else:
-                best = min(teeth, key=lambda t: (_center(t["box"])[0] - center[0]) ** 2 +
-                                                 (_center(t["box"])[1] - center[1]) ** 2)
+                best = min(
+                    teeth,
+                    key=lambda t: (_center(t["box"])[0] - center[0]) ** 2
+                    + (_center(t["box"])[1] - center[1]) ** 2,
+                )
 
-        output.append({
-            "quadrant": best["quadrant"],
-            "tooth_id": best["tooth_id"],
-            "tooth": best["tooth"],
-            "tooth_fdi": best["tooth_fdi"],
-            "tooth_confidence": best["tooth_confidence"],
-            "disease": lesion["disease"],
-            "disease_id": lesion["disease_id"],
-            "disease_confidence": lesion["disease_confidence"],
-            "association_confidence": lesion["disease_confidence"] * best["tooth_confidence"],
-            "box": lbox,
-        })
+        output.append(
+            {
+                "quadrant": best["quadrant"],
+                "tooth_id": best["tooth_id"],
+                "tooth": best["tooth"],
+                "tooth_fdi": best["tooth_fdi"],
+                "tooth_confidence": best["tooth_confidence"],
+                "disease": lesion["disease"],
+                "disease_id": lesion["disease_id"],
+                "disease_confidence": lesion["disease_confidence"],
+                "association_confidence": lesion["disease_confidence"] * best["tooth_confidence"],
+                "box": lbox,
+            }
+        )
     return output
 
 
@@ -386,7 +415,6 @@ def _missing_teeth_model():
         return None
     try:
         import torch
-
         from torchvision import models as _tv
 
         path = MISSING_TEETH_MODEL
@@ -452,14 +480,19 @@ def derive_missing_teeth(teeth, image=None, conf=MISSING_TEETH_CONF):
             lower = [x for x in boxes if x < t]
             higher = [x for x in boxes if x > t]
             nl, nh = max(lower), min(higher)
-            candidates.append({
-                "quadrant": q, "tooth_id": t, "tooth": f"Tooth_{t}",
-                "tooth_fdi": f"{q}{t}",
-                "confidence": round(min(by_q[q][nl]["tooth_confidence"],
-                                         by_q[q][nh]["tooth_confidence"]), 4),
-                "bounded_by": [f"{q}{nl}", f"{q}{nh}"],
-                "_box": box,
-            })
+            candidates.append(
+                {
+                    "quadrant": q,
+                    "tooth_id": t,
+                    "tooth": f"Tooth_{t}",
+                    "tooth_fdi": f"{q}{t}",
+                    "confidence": round(
+                        min(by_q[q][nl]["tooth_confidence"], by_q[q][nh]["tooth_confidence"]), 4
+                    ),
+                    "bounded_by": [f"{q}{nl}", f"{q}{nh}"],
+                    "_box": box,
+                }
+            )
 
     mv = _missing_teeth_model()
     if mv is not None and image is not None and candidates:
@@ -473,8 +506,15 @@ def derive_missing_teeth(teeth, image=None, conf=MISSING_TEETH_CONF):
             crops.append(crop)
         valid = [(c, crop) for c, crop in zip(candidates, crops) if crop is not None]
         if valid:
-            tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(
-                ckpt.get("mean", (0.485, 0.456, 0.406)), ckpt.get("std", (0.229, 0.224, 0.225)))])
+            tf = transforms.Compose(
+                [
+                    transforms.ToTensor(),
+                    transforms.Normalize(
+                        ckpt.get("mean", (0.485, 0.456, 0.406)),
+                        ckpt.get("std", (0.229, 0.224, 0.225)),
+                    ),
+                ]
+            )
             batch = torch.stack([tf(crop) for _, crop in valid])
             with torch.no_grad():
                 probs = torch.softmax(model(batch), 1)[:, 1].tolist()
@@ -501,14 +541,12 @@ def derive_quadrants(teeth):
     for tooth in teeth:
         q = tooth["quadrant"]
         if q not in by_q:
-            by_q[q] = {"quadrant": q, "confidence": 0.0,
-                       "box": list(tooth["box"])}
+            by_q[q] = {"quadrant": q, "confidence": 0.0, "box": list(tooth["box"])}
             by_q[q]["confidence"] = tooth["tooth_confidence"]
         else:
             b = by_q[q]["box"]
             t = tooth["box"]
-            by_q[q]["box"] = [min(b[0], t[0]), min(b[1], t[1]),
-                              max(b[2], t[2]), max(b[3], t[3])]
+            by_q[q]["box"] = [min(b[0], t[0]), min(b[1], t[1]), max(b[2], t[2]), max(b[3], t[3])]
             by_q[q]["confidence"] = min(by_q[q]["confidence"], tooth["tooth_confidence"])
     return [by_q[q] for q in sorted(by_q)]
 
@@ -516,6 +554,7 @@ def derive_quadrants(teeth):
 # ----------------------------------------------------------------------
 # Public entry point
 # ----------------------------------------------------------------------
+
 
 def run_dentex_pipeline(image, save_json=None, confidence_threshold=None):
     image = load_image_array(image)

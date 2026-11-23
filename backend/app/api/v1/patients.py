@@ -4,13 +4,12 @@ CRUD for the signed-in dentist's patients. Other dentists' patients answer 404.
 """
 
 import logging
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import AuthenticatedDentist, get_access, get_current_dentist
-from app.domain.patient import Patient, PatientCreate, PatientUpdate, PatientListResponse
+from app.domain.patient import Patient, PatientCreate, PatientListResponse, PatientUpdate
 from app.services.access import AccessService
 from app.services.supabase_client import patient_service, scan_service
 
@@ -20,13 +19,15 @@ router = APIRouter(prefix="/patients", tags=["patients"])
 
 
 @router.post("", response_model=Patient, status_code=201)
-async def create_patient(patient_data: PatientCreate, dentist: AuthenticatedDentist = Depends(get_current_dentist)):
+async def create_patient(
+    patient_data: PatientCreate, dentist: AuthenticatedDentist = Depends(get_current_dentist)
+):
     """
     Create a new patient record owned by the signed-in dentist.
 
     **Step 1 in Clinical Loop**: Patient registration before scan ingestion.
     """
-    patient_data.dentist_id = dentist.id   # never trust an owner sent by the client
+    patient_data.dentist_id = dentist.id  # never trust an owner sent by the client
     try:
         return await patient_service.create_patient(patient_data)
     except Exception:
@@ -47,14 +48,15 @@ async def get_patient(
 
 @router.get("", response_model=PatientListResponse)
 async def list_patients(
-    search: Optional[str] = Query(None, description="Search in patient names"),
+    search: str | None = Query(None, description="Search in patient names"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Results per page"),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
 ):
     """List your patients, with optional name search and pagination."""
     patients, total = await patient_service.list_patients(
-        dentist_id=dentist.id, search=search, page=page, page_size=page_size)
+        dentist_id=dentist.id, search=search, page=page, page_size=page_size
+    )
     return PatientListResponse(patients=patients, total=total, page=page, page_size=page_size)
 
 
@@ -94,4 +96,4 @@ async def delete_patient(
     await scan_service.remove_images([s.storage_path for s in scans if s.storage_path])
     if not await patient_service.delete_patient(patient_id):
         raise HTTPException(status_code=404, detail="Patient not found")
-    return None
+    return

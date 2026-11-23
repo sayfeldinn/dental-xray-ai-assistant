@@ -3,12 +3,12 @@ DentalAI - Finding API Endpoints
 Tooth pathology findings review and validation (Step 3).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.api.deps import AuthenticatedDentist, get_access, get_current_dentist, get_workflow
-from app.domain.finding import Finding, FindingUpdate, FindingListResponse, FindingReviewRequest
+from app.domain.finding import Finding, FindingListResponse, FindingReviewRequest, FindingUpdate
 from app.services.access import AccessService
 from app.services.clinical_workflow import ClinicalWorkflowService
 from app.services.supabase_client import finding_service
@@ -28,9 +28,9 @@ async def get_finding(
 
 @router.get("", response_model=FindingListResponse)
 async def list_findings(
-    patient_id: Optional[UUID] = Query(None, description="Filter by patient"),
-    scan_id: Optional[UUID] = Query(None, description="Filter by scan"),
-    review_status: Optional[str] = Query(None, description="Filter by review status"),
+    patient_id: UUID | None = Query(None, description="Filter by patient"),
+    scan_id: UUID | None = Query(None, description="Filter by scan"),
+    review_status: str | None = Query(None, description="Filter by review status"),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
 ):
@@ -40,9 +40,13 @@ async def list_findings(
         findings = await finding_service.list_findings_by_scan(scan_id)
     elif patient_id:
         await access.patient(patient_id, dentist)
-        findings = await finding_service.list_findings_by_patient(patient_id=patient_id, review_status=review_status)
+        findings = await finding_service.list_findings_by_patient(
+            patient_id=patient_id, review_status=review_status
+        )
     else:
-        raise HTTPException(status_code=400, detail="Either patient_id or scan_id must be provided")
+        raise HTTPException(
+            status_code=400, detail="Either patient_id or scan_id must be provided"
+        )
     return FindingListResponse(findings=findings, total=len(findings))
 
 

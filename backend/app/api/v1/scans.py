@@ -4,16 +4,16 @@ Panoramic X-ray upload, AI analysis, and management. Images live in a private bu
 returned as short-lived signed URLs.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
-from typing import Optional
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+
 from app.api.deps import AuthenticatedDentist, get_access, get_current_dentist, get_ingestion
-from app.domain.scan import Scan, ScanUpdate, ScanListResponse, ScanAnalysisResponse
 from app.domain.finding import FindingListResponse
+from app.domain.scan import Scan, ScanAnalysisResponse, ScanListResponse, ScanUpdate
 from app.services.access import AccessService
 from app.services.scan_ingestion import ScanIngestionService
-from app.services.supabase_client import scan_service, finding_service
+from app.services.supabase_client import finding_service, scan_service
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -23,9 +23,11 @@ async def upload_and_analyze_scan(
     file: UploadFile = File(..., description="Panoramic X-ray image (JPEG/PNG/WebP)"),
     patient_id: UUID = Form(..., description="Patient UUID"),
     scan_type: str = Form("panoramic", description="Type of scan"),
-    notes: Optional[str] = Form(None, description="Additional notes"),
+    notes: str | None = Form(None, description="Additional notes"),
     auto_analyze: bool = Form(True, description="Automatically run AI analysis"),
-    confidence_threshold: float = Form(0.20, ge=0.0, le=1.0, description="Detection confidence threshold"),
+    confidence_threshold: float = Form(
+        0.20, ge=0.0, le=1.0, description="Detection confidence threshold"
+    ),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
     ingestion: ScanIngestionService = Depends(get_ingestion),
@@ -38,9 +40,16 @@ async def upload_and_analyze_scan(
     """
     await access.patient(patient_id, dentist)
     return await ingestion.upload(
-        patient_id=patient_id, dentist_id=dentist.id, file_bytes=await file.read(), filename=file.filename,
-        content_type=file.content_type, scan_type=scan_type, notes=notes, auto_analyze=auto_analyze,
-        confidence=confidence_threshold)
+        patient_id=patient_id,
+        dentist_id=dentist.id,
+        file_bytes=await file.read(),
+        filename=file.filename,
+        content_type=file.content_type,
+        scan_type=scan_type,
+        notes=notes,
+        auto_analyze=auto_analyze,
+        confidence=confidence_threshold,
+    )
 
 
 @router.get("/{scan_id}", response_model=Scan)
@@ -56,7 +65,7 @@ async def get_scan(
 @router.get("", response_model=ScanListResponse)
 async def list_scans(
     patient_id: UUID = Query(..., description="Patient whose scans to list"),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status: str | None = Query(None, description="Filter by status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Results per page"),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
@@ -64,8 +73,15 @@ async def list_scans(
 ):
     """List one patient's scans, newest first."""
     await access.patient(patient_id, dentist)
-    scans, total = await scan_service.list_scans(patient_id=patient_id, status=status, page=page, page_size=page_size)
-    return ScanListResponse(scans=[scan_service.signed_url(s) for s in scans], total=total, page=page, page_size=page_size)
+    scans, total = await scan_service.list_scans(
+        patient_id=patient_id, status=status, page=page, page_size=page_size
+    )
+    return ScanListResponse(
+        scans=[scan_service.signed_url(s) for s in scans],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.put("/{scan_id}", response_model=Scan)
@@ -102,7 +118,9 @@ async def get_scan_findings(
 @router.post("/{scan_id}/reanalyze", response_model=ScanAnalysisResponse)
 async def reanalyze_scan(
     scan_id: UUID,
-    confidence_threshold: float = Query(0.20, ge=0.0, le=1.0, description="Detection confidence threshold"),
+    confidence_threshold: float = Query(
+        0.20, ge=0.0, le=1.0, description="Detection confidence threshold"
+    ),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
     ingestion: ScanIngestionService = Depends(get_ingestion),
@@ -128,4 +146,4 @@ async def delete_scan(
     await access.scan(scan_id, dentist)
     if not await scan_service.delete_scan(scan_id):
         raise HTTPException(status_code=404, detail="Scan not found")
-    return None
+    return

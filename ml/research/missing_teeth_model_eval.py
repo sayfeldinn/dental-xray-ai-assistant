@@ -8,10 +8,10 @@ Classifier: same candidate slots, but each crop is scored; a detected tooth
 that looks like a gap is demoted (recall) and a candidate gap is kept only if
 it looks like a gap (precision).
 """
+
 import argparse
 import json
 import random
-import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -23,8 +23,10 @@ from torchvision import models
 
 HERE = Path(__file__).resolve().parent
 
-QE = Path("/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
-          "training_data/quadrant_enumeration/train_quadrant_enumeration.json")
+QE = Path(
+    "/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
+    "training_data/quadrant_enumeration/train_quadrant_enumeration.json"
+)
 IMG = QE.parent / "xrays"
 CACHE = Path("/tmp/opencode/tooth_raw94.json")
 INTERIOR = range(2, 8)
@@ -44,9 +46,11 @@ def tooth_split():
     rng = random.Random(42)
     train, val = [], []
     for key in sorted(groups, key=str):
-        m = sorted(groups[key]); rng.shuffle(m)
+        m = sorted(groups[key])
+        rng.shuffle(m)
         k = max(1, round(len(m) * 0.15)) if len(m) > 1 else 0
-        val.extend(m[:k]); train.extend(m[k:])
+        val.extend(m[:k])
+        train.extend(m[k:])
     return sorted(train), sorted(val)
 
 
@@ -81,7 +85,9 @@ def interp_box(te, t):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="/tmp/opencode/kaggle_out_mt/missing_teeth.pt")
-    ap.add_argument("--out", default=str(HERE.parent / "eval" / "missing_teeth_model_results.json"))
+    ap.add_argument(
+        "--out", default=str(HERE.parent / "eval" / "missing_teeth_model_results.json")
+    )
     args = ap.parse_args()
 
     _, val94 = tooth_split()
@@ -131,17 +137,28 @@ def main():
         tp = fp = fn = 0
         for n in val94:
             g, p = gt_missing(n), pred_fn(n)
-            tp += len(g & p); fp += len(p - g); fn += len(g - p)
-        pr = tp / max(1, tp + fp); rc = tp / max(1, tp + fn)
-        return {"tp": tp, "fp": fp, "fn": fn, "precision": pr, "recall": rc,
-                "f1": 2 * pr * rc / max(1e-9, pr + rc)}
+            tp += len(g & p)
+            fp += len(p - g)
+            fn += len(g - p)
+        pr = tp / max(1, tp + fp)
+        rc = tp / max(1, tp + fn)
+        return {
+            "tp": tp,
+            "fp": fp,
+            "fn": fn,
+            "precision": pr,
+            "recall": rc,
+            "f1": 2 * pr * rc / max(1e-9, pr + rc),
+        }
 
     results = {"model_val_auc": ckpt.get("val_auc"), "baselines": {}, "classifier": []}
     for conf in (0.20, 0.25, 0.30, 0.40):
         s = score(lambda n, c=conf: derive(n, c))
         results["baselines"][f"derivation_conf_{conf}"] = s
-        print(f"derivation conf {conf}: P {s['precision']:.3f} R {s['recall']:.3f} "
-              f"F1 {s['f1']:.3f} (tp {s['tp']} fp {s['fp']} fn {s['fn']})")
+        print(
+            f"derivation conf {conf}: P {s['precision']:.3f} R {s['recall']:.3f} "
+            f"F1 {s['f1']:.3f} (tp {s['tp']} fp {s['fp']} fn {s['fn']})"
+        )
 
     pre_by_conf = {}
     for conf in (0.30,):
@@ -168,18 +185,26 @@ def main():
 
         for t_gap in (0.3, 0.4, 0.5, 0.6, 0.7):
             for t_tooth in (1.1, 0.9, 0.8, 0.7):
+
                 def pred(n, tg=t_gap, tt=t_tooth):
                     det, gaps = pre[n]
-                    return ({k for k, p in gaps.items() if p >= tg} |
-                            {k for k, p in det.items() if p >= tt})
+                    return {k for k, p in gaps.items() if p >= tg} | {
+                        k for k, p in det.items() if p >= tt
+                    }
+
                 s = score(pred)
                 s.update({"conf": conf, "t_gap": t_gap, "t_tooth": t_tooth})
                 results["classifier"].append(s)
 
     best = max(results["classifier"], key=lambda s: s["f1"])
     results["best"] = best
-    print("\nBEST classifier:", {k: best[k] for k in
-          ("conf", "t_gap", "t_tooth", "precision", "recall", "f1", "tp", "fp", "fn")})
+    print(
+        "\nBEST classifier:",
+        {
+            k: best[k]
+            for k in ("conf", "t_gap", "t_tooth", "precision", "recall", "f1", "tp", "fp", "fn")
+        },
+    )
 
     # split-half threshold selection: pick t_gap on one half, score the other
     pre = pre_by_conf[0.30]
@@ -193,16 +218,23 @@ def main():
             det, gaps = pre[n]
             p = {k for k, v in gaps.items() if v >= t_gap}
             g = gt_missing(n)
-            tp += len(g & p); fp += len(p - g); fn += len(g - p)
-        pr = tp / max(1, tp + fp); rc = tp / max(1, tp + fn)
+            tp += len(g & p)
+            fp += len(p - g)
+            fn += len(g - p)
+        pr = tp / max(1, tp + fp)
+        rc = tp / max(1, tp + fn)
         return 2 * pr * rc / max(1e-9, pr + rc)
 
     grid = (0.3, 0.4, 0.5, 0.6, 0.7)
     tg_a = max(grid, key=lambda t: score_on(A, t))
     tg_b = max(grid, key=lambda t: score_on(B, t))
-    cross = {"A->B": score_on(B, tg_a), "B->A": score_on(A, tg_b),
-             "tg_selected_on_A": tg_a, "tg_selected_on_B": tg_b,
-             "mean": (score_on(B, tg_a) + score_on(A, tg_b)) / 2}
+    cross = {
+        "A->B": score_on(B, tg_a),
+        "B->A": score_on(A, tg_b),
+        "tg_selected_on_A": tg_a,
+        "tg_selected_on_B": tg_b,
+        "mean": (score_on(B, tg_a) + score_on(A, tg_b)) / 2,
+    }
     results["split_half"] = cross
     print("split-half threshold check:", cross)
 

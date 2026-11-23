@@ -7,7 +7,8 @@ with the service-role key; there is no anon-key (RLS-respecting) code path, so o
 provided.
 """
 
-from supabase import create_client, Client
+from supabase import Client, create_client
+
 from .config import settings
 
 

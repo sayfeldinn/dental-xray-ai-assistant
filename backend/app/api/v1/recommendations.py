@@ -3,13 +3,13 @@ DentalAI - Recommendation API Endpoints
 Step 4 of the clinical loop: condition-specific treatment and drug proposals.
 """
 
-from fastapi import APIRouter, Depends
-from typing import Optional
 from uuid import UUID
 
+from fastapi import APIRouter, Depends
+
 from app.api.deps import AuthenticatedDentist, get_access, get_current_dentist, get_workflow
-from app.services.access import AccessService
 from app.domain.recommendation import RecommendationRequest, RecommendationResponse
+from app.services.access import AccessService
 from app.services.clinical_workflow import ClinicalWorkflowService
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 @router.post("/scans/{scan_id}", response_model=RecommendationResponse, status_code=201)
 async def generate_recommendations(
     scan_id: UUID,
-    request: Optional[RecommendationRequest] = None,
+    request: RecommendationRequest | None = None,
     workflow: ClinicalWorkflowService = Depends(get_workflow),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),

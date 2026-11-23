@@ -3,16 +3,20 @@ DentalAI - Prescription API Endpoints
 Safety checks and the dentist's prescription decision (Step 5).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.api.deps import AuthenticatedDentist, get_access, get_current_dentist, get_workflow
-from app.services.access import AccessService
 from app.domain.prescription import (
-    Prescription, PrescriptionCheckRequest, PrescriptionDecisionRequest,
-    PrescriptionListResponse, PrescriptionManualCreate, SafetyCheckResult,
+    Prescription,
+    PrescriptionCheckRequest,
+    PrescriptionDecisionRequest,
+    PrescriptionListResponse,
+    PrescriptionManualCreate,
+    SafetyCheckResult,
 )
+from app.services.access import AccessService
 from app.services.clinical_workflow import ClinicalWorkflowService
 
 router = APIRouter(prefix="/prescriptions", tags=["prescriptions"])
@@ -20,7 +24,8 @@ router = APIRouter(prefix="/prescriptions", tags=["prescriptions"])
 
 @router.post("", response_model=Prescription, status_code=201)
 async def create_prescription(
-    request: PrescriptionManualCreate, workflow: ClinicalWorkflowService = Depends(get_workflow),
+    request: PrescriptionManualCreate,
+    workflow: ClinicalWorkflowService = Depends(get_workflow),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
 ):
@@ -37,21 +42,25 @@ async def create_prescription(
 
 @router.get("", response_model=PrescriptionListResponse)
 async def list_prescriptions(
-    treatment_id: Optional[UUID] = Query(None, description="Filter by treatment"),
-    patient_id: Optional[UUID] = Query(None, description="Filter by patient"),
+    treatment_id: UUID | None = Query(None, description="Filter by treatment"),
+    patient_id: UUID | None = Query(None, description="Filter by patient"),
     workflow: ClinicalWorkflowService = Depends(get_workflow),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
 ):
     """List prescriptions for a treatment or a patient."""
     if not treatment_id and not patient_id:
-        raise HTTPException(status_code=400, detail="Either patient_id or treatment_id must be provided")
+        raise HTTPException(
+            status_code=400, detail="Either patient_id or treatment_id must be provided"
+        )
     if treatment_id:
         await access.treatment(treatment_id, dentist)
     if patient_id:
         await access.patient(patient_id, dentist)
 
-    prescriptions = await workflow.list_prescriptions(treatment_id=treatment_id, patient_id=patient_id)
+    prescriptions = await workflow.list_prescriptions(
+        treatment_id=treatment_id, patient_id=patient_id
+    )
     return PrescriptionListResponse(prescriptions=prescriptions, total=len(prescriptions))
 
 

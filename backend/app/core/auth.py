@@ -7,7 +7,6 @@ stamped with and what every read is scoped to (see app/services/access.py).
 """
 
 from functools import lru_cache
-from typing import Optional
 from uuid import UUID
 
 import jwt
@@ -22,8 +21,8 @@ _bearer = HTTPBearer(auto_error=False)
 
 class AuthenticatedDentist(BaseModel):
     id: UUID
-    email: Optional[str] = None
-    full_name: Optional[str] = None
+    email: str | None = None
+    full_name: str | None = None
 
 
 class InvalidToken(Exception):
@@ -36,7 +35,9 @@ class TokenVerifier:
     def __init__(self, issuer: str, jwt_secret: str = ""):
         self.issuer = issuer
         self.jwt_secret = jwt_secret
-        self._jwks = jwt.PyJWKClient(f"{issuer}/.well-known/jwks.json", cache_keys=True, lifespan=3600)
+        self._jwks = jwt.PyJWKClient(
+            f"{issuer}/.well-known/jwks.json", cache_keys=True, lifespan=3600
+        )
 
     def verify(self, token: str) -> AuthenticatedDentist:
         try:
@@ -47,8 +48,13 @@ class TokenVerifier:
                 key = self.jwt_secret
             else:
                 key = self._jwks.get_signing_key_from_jwt(token).key
-            claims = jwt.decode(token, key, algorithms=["ES256", "RS256", "HS256"],
-                                audience="authenticated", issuer=self.issuer)
+            claims = jwt.decode(
+                token,
+                key,
+                algorithms=["ES256", "RS256", "HS256"],
+                audience="authenticated",
+                issuer=self.issuer,
+            )
         except InvalidToken:
             raise
         except jwt.PyJWTError as exc:
@@ -56,7 +62,9 @@ class TokenVerifier:
         if claims.get("role") != "authenticated" or not claims.get("sub"):
             raise InvalidToken("Not an authenticated user token")
         meta = claims.get("user_metadata") or {}
-        return AuthenticatedDentist(id=claims["sub"], email=claims.get("email"), full_name=meta.get("full_name"))
+        return AuthenticatedDentist(
+            id=claims["sub"], email=claims.get("email"), full_name=meta.get("full_name")
+        )
 
 
 @lru_cache
@@ -65,14 +73,21 @@ def get_token_verifier() -> TokenVerifier:
 
 
 def get_current_dentist(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     verifier: TokenVerifier = Depends(get_token_verifier),
 ) -> AuthenticatedDentist:
     """FastAPI dependency (sync, so the first JWKS fetch runs in the threadpool). 401 when missing or invalid."""
     if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign in required", headers={"WWW-Authenticate": "Bearer"})
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Sign in required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         return verifier.verify(credentials.credentials)
     except InvalidToken:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired or invalid; sign in again",
-                            headers={"WWW-Authenticate": "Bearer"})
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Session expired or invalid; sign in again",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

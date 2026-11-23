@@ -32,13 +32,13 @@ sys.path.insert(0, str(HERE))
 from evaluate import DISEASE_NAMES, IOU_MATCH, load_ground_truth  # noqa: E402
 from metrics import average_precision, greedy_match  # noqa: E402
 
-DEFAULT_GT = Path("/home/sayfeldin/Projects/dental-model-research"
-                  "/data/downloads/validation_triple.json")
+DEFAULT_GT = Path(
+    "/home/sayfeldin/Projects/dental-model-research" "/data/downloads/validation_triple.json"
+)
 
 
 def load_cache(path):
-    return {rec["image"]: rec
-            for rec in map(json.loads, Path(path).read_text().splitlines())}
+    return {rec["image"]: rec for rec in map(json.loads, Path(path).read_text().splitlines())}
 
 
 def per_image_stats(gt, cache):
@@ -56,14 +56,18 @@ def per_image_stats(gt, cache):
         for cid, cname in enumerate(DISEASE_NAMES):
             g_idx = [i for i, g in enumerate(gts) if g["disease_id"] == cid]
             p_idx = [i for i, p in enumerate(preds) if p["disease_id"] == cid]
-            matches = greedy_match([gt_boxes[i] for i in g_idx],
-                                   [pred_boxes[i] for i in p_idx], IOU_MATCH)
+            matches = greedy_match(
+                [gt_boxes[i] for i in g_idx], [pred_boxes[i] for i in p_idx], IOU_MATCH
+            )
             matched = {pi for _, pi in matches}
             for gi_local, _ in matches:
                 det_ok[g_idx[gi_local]] = True
             flags = [(preds[p_idx[pi]]["disease_confidence"], True) for _, pi in matches]
-            flags += [(preds[p_idx[pi]]["disease_confidence"], False)
-                      for pi in range(len(p_idx)) if pi not in matched]
+            flags += [
+                (preds[p_idx[pi]]["disease_confidence"], False)
+                for pi in range(len(p_idx))
+                if pi not in matched
+            ]
             cls_flags[cname] = flags
 
         # tooth/joint use any-label matches, like the harness's label accuracy
@@ -75,8 +79,13 @@ def per_image_stats(gt, cache):
             tooth_ok[gi] = g["tooth"] == p["tooth_id"]
             joint_ok[gi] = tooth_ok[gi] and g["disease_id"] == p["disease_id"]
 
-        stats[name] = {"cls_flags": cls_flags, "n_gt": len(gts),
-                       "det_ok": det_ok, "tooth_ok": tooth_ok, "joint_ok": joint_ok}
+        stats[name] = {
+            "cls_flags": cls_flags,
+            "n_gt": len(gts),
+            "det_ok": det_ok,
+            "tooth_ok": tooth_ok,
+            "joint_ok": joint_ok,
+        }
     return stats
 
 
@@ -119,7 +128,7 @@ def mcnemar(a, b):
     if n == 0:
         return b01, b10, 1.0
     k = min(b01, b10)
-    p = 2 * sum(comb(n, i) for i in range(k + 1)) / (2 ** n)
+    p = 2 * sum(comb(n, i) for i in range(k + 1)) / (2**n)
     return b01, b10, min(1.0, p)
 
 
@@ -135,9 +144,11 @@ def bootstrap(s1, s2, names, n_boot=2000, seed=42):
     out = {}
     for k, vals in deltas.items():
         vals.sort()
-        out[k] = (vals[int(0.025 * len(vals))],
-                  vals[int(0.975 * len(vals)) - 1],
-                  sum(1 for v in vals if v > 0) / len(vals))
+        out[k] = (
+            vals[int(0.025 * len(vals))],
+            vals[int(0.975 * len(vals)) - 1],
+            sum(1 for v in vals if v > 0) / len(vals),
+        )
     return out
 
 
@@ -157,9 +168,13 @@ def per_class_bootstrap(f1, f2, names, n_boot=2000, seed=42):
             if a is not None and b is not None:
                 d.append(b - a)
         d.sort()
-        out[c] = (base1, base2, d[int(0.025 * len(d))],
-                  d[int(0.975 * len(d)) - 1],
-                  sum(1 for v in d if v > 0) / len(d))
+        out[c] = (
+            base1,
+            base2,
+            d[int(0.025 * len(d))],
+            d[int(0.975 * len(d)) - 1],
+            sum(1 for v in d if v > 0) / len(d),
+        )
     return out
 
 
@@ -184,7 +199,9 @@ def main():
     per_class = per_class_bootstrap(
         {n: s1[n]["cls_flags"] for n in names},
         {n: s2[n]["cls_flags"] for n in names},
-        names, args.boot)
+        names,
+        args.boot,
+    )
 
     labels = {
         "mAP50": "mAP@0.5",
@@ -201,36 +218,50 @@ def main():
 
     if args.markdown:
         print(f"## Paired significance: {args.label1} vs {args.label2}\n")
-        print(f"| metric | {args.label1} | {args.label2} | delta | 95% CI (paired bootstrap) | P({args.label2} > {args.label1}) |")
+        print(
+            f"| metric | {args.label1} | {args.label2} | delta | 95% CI (paired bootstrap) | P({args.label2} > {args.label1}) |"
+        )
         print("|---|---|---|---|---|---|")
         for k, label in labels.items():
             lo, hi, share = boot[k]
-            print(f"| {label} | {a1[k]:.1%} | {a2[k]:.1%} | {a2[k] - a1[k]:+.1%} "
-                  f"| [{lo:+.1%}, {hi:+.1%}] | {share:.3f} |")
+            print(
+                f"| {label} | {a1[k]:.1%} | {a2[k]:.1%} | {a2[k] - a1[k]:+.1%} "
+                f"| [{lo:+.1%}, {hi:+.1%}] | {share:.3f} |"
+            )
         print("\n### McNemar exact test (per-lesion, paired)\n")
-        print(f"| metric | {args.label2}-only correct | {args.label1}-only correct | p (two-sided) |")
+        print(
+            f"| metric | {args.label2}-only correct | {args.label1}-only correct | p (two-sided) |"
+        )
         print("|---|---|---|---|")
         for label, b01, b10, p in tests:
             print(f"| {label} | {b01} | {b10} | {p:.2e} |")
         print("\n### Per-class AP@0.5\n")
-        print(f"| class | {args.label1} | {args.label2} | delta | 95% CI | P({args.label2} > {args.label1}) |")
+        print(
+            f"| class | {args.label1} | {args.label2} | delta | 95% CI | P({args.label2} > {args.label1}) |"
+        )
         print("|---|---|---|---|---|---|")
         for c, (b1, b2, lo, hi, share) in per_class.items():
-            print(f"| {c} | {b1:.1%} | {b2:.1%} | {b2 - b1:+.1%} "
-                  f"| [{lo:+.1%}, {hi:+.1%}] | {share:.3f} |")
+            print(
+                f"| {c} | {b1:.1%} | {b2:.1%} | {b2 - b1:+.1%} "
+                f"| [{lo:+.1%}, {hi:+.1%}] | {share:.3f} |"
+            )
         print(f"\nBootstrap: {args.boot} replicates, images resampled with replacement.")
         return
 
     print(f"images: {len(names)}  lesions: {sum(s['n_gt'] for s in s1.values())}")
     for k, label in labels.items():
         lo, hi, share = boot[k]
-        print(f"{label:20s} {a1[k]:6.1%} -> {a2[k]:6.1%}  "
-              f"delta {a2[k] - a1[k]:+6.1%}  95% CI [{lo:+.1%}, {hi:+.1%}]  P={share:.3f}")
+        print(
+            f"{label:20s} {a1[k]:6.1%} -> {a2[k]:6.1%}  "
+            f"delta {a2[k] - a1[k]:+6.1%}  95% CI [{lo:+.1%}, {hi:+.1%}]  P={share:.3f}"
+        )
     for label, b01, b10, p in tests:
         print(f"McNemar {label:10s} v2-only {b01:3d}  v1-only {b10:3d}  p={p:.2e}")
     for c, (b1, b2, lo, hi, share) in per_class.items():
-        print(f"{c:20s} {b1:6.1%} -> {b2:6.1%}  "
-              f"delta {b2 - b1:+6.1%}  95% CI [{lo:+.1%}, {hi:+.1%}]  P={share:.3f}")
+        print(
+            f"{c:20s} {b1:6.1%} -> {b2:6.1%}  "
+            f"delta {b2 - b1:+6.1%}  95% CI [{lo:+.1%}, {hi:+.1%}]  P={share:.3f}"
+        )
 
 
 if __name__ == "__main__":

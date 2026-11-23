@@ -4,8 +4,8 @@ Database operations for the append-only clinical_feedback_logs ledger (Step 6).
 Rows are inserted and read, never updated or deleted by the application.
 """
 
-from typing import List, Optional
 from uuid import UUID
+
 from app.core.supabase_client import supabase_admin
 from app.domain.feedback import FeedbackLog, FeedbackLogCreate
 
@@ -26,10 +26,10 @@ class FeedbackService:
 
     async def list_logs(
         self,
-        scan_id: Optional[UUID] = None,
-        stage: Optional[str] = None,
-        correction_type: Optional[str] = None,
-    ) -> List[FeedbackLog]:
+        scan_id: UUID | None = None,
+        stage: str | None = None,
+        correction_type: str | None = None,
+    ) -> list[FeedbackLog]:
         """List ledger rows, newest first."""
         query = self.client.table(self.table).select("*")
         if scan_id:

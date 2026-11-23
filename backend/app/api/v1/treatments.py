@@ -3,15 +3,19 @@ DentalAI - Treatment API Endpoints
 Review and decide proposed treatments (Step 5).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.api.deps import AuthenticatedDentist, get_access, get_current_dentist, get_workflow
-from app.services.access import AccessService
 from app.domain.treatment import (
-    Treatment, TreatmentDecisionRequest, TreatmentListResponse, TreatmentManualCreate, TreatmentWithPrescriptions,
+    Treatment,
+    TreatmentDecisionRequest,
+    TreatmentListResponse,
+    TreatmentManualCreate,
+    TreatmentWithPrescriptions,
 )
+from app.services.access import AccessService
 from app.services.clinical_workflow import ClinicalWorkflowService
 
 router = APIRouter(prefix="/treatments", tags=["treatments"])
@@ -19,7 +23,8 @@ router = APIRouter(prefix="/treatments", tags=["treatments"])
 
 @router.post("", response_model=Treatment, status_code=201)
 async def create_treatment(
-    request: TreatmentManualCreate, workflow: ClinicalWorkflowService = Depends(get_workflow),
+    request: TreatmentManualCreate,
+    workflow: ClinicalWorkflowService = Depends(get_workflow),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
 ):
@@ -36,23 +41,28 @@ async def create_treatment(
 
 @router.get("", response_model=TreatmentListResponse)
 async def list_treatments(
-    scan_id: Optional[UUID] = Query(None, description="Filter by scan"),
-    patient_id: Optional[UUID] = Query(None, description="Filter by patient"),
-    status: Optional[str] = Query(
-        None, pattern="^(proposed|confirmed|modified|in_progress|completed|cancelled)$"),
+    scan_id: UUID | None = Query(None, description="Filter by scan"),
+    patient_id: UUID | None = Query(None, description="Filter by patient"),
+    status: str | None = Query(
+        None, pattern="^(proposed|confirmed|modified|in_progress|completed|cancelled)$"
+    ),
     workflow: ClinicalWorkflowService = Depends(get_workflow),
     dentist: AuthenticatedDentist = Depends(get_current_dentist),
     access: AccessService = Depends(get_access),
 ):
     """List treatments with their candidate prescriptions."""
     if not scan_id and not patient_id:
-        raise HTTPException(status_code=400, detail="Either patient_id or scan_id must be provided")
+        raise HTTPException(
+            status_code=400, detail="Either patient_id or scan_id must be provided"
+        )
     if scan_id:
         await access.scan(scan_id, dentist)
     if patient_id:
         await access.patient(patient_id, dentist)
 
-    treatments = await workflow.list_treatments(scan_id=scan_id, patient_id=patient_id, status=status)
+    treatments = await workflow.list_treatments(
+        scan_id=scan_id, patient_id=patient_id, status=status
+    )
     return TreatmentListResponse(treatments=treatments, total=len(treatments))
 
 

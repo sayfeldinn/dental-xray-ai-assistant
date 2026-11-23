@@ -1,7 +1,7 @@
 """Aggregate ledger rows into the counts the UI and the retraining queue read."""
 
 from collections import Counter
-from typing import Iterable
+from collections.abc import Iterable
 
 from app.domain.feedback import FeedbackLog, FeedbackSummary
 

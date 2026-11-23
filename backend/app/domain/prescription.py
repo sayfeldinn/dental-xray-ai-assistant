@@ -3,11 +3,13 @@ DentalAI - Prescription Domain Models
 Candidate drugs, safety-check results, and the dentist's Step 5 decision.
 """
 
-from pydantic import Field, model_validator
-from typing import Optional, List, Literal
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
-from .base import BaseEntity, TimestampedEntity, IdentifiedEntity
+
+from pydantic import Field, model_validator
+
+from .base import BaseEntity, IdentifiedEntity, TimestampedEntity
 
 Severity = Literal["info", "warning", "contraindicated"]
 ContraindicationStatus = Literal["clear", "warning", "contraindicated"]
@@ -24,11 +26,15 @@ class SafetyWarning(BaseEntity):
     """One structured finding from the contraindication checker (stored as JSONB)."""
 
     code: str = Field(..., description="Stable machine-readable code, e.g. ALLERGY_PENICILLIN")
-    rule_id: str = Field(..., description="Rule register ID from docs/CLINICAL_GUIDELINES.md, e.g. R-01")
+    rule_id: str = Field(
+        ..., description="Rule register ID from docs/CLINICAL_GUIDELINES.md, e.g. R-01"
+    )
     severity: Severity
     drug: str
     message: str
-    source: str = Field(..., description="Published source behind the rule, or the project-decision marker")
+    source: str = Field(
+        ..., description="Published source behind the rule, or the project-decision marker"
+    )
 
 
 class SafetyCheckResult(BaseEntity):
@@ -37,7 +43,7 @@ class SafetyCheckResult(BaseEntity):
     drug_name: str
     indication_type: IndicationType
     status: ContraindicationStatus
-    warnings: List[SafetyWarning] = Field(default_factory=list)
+    warnings: list[SafetyWarning] = Field(default_factory=list)
     disclaimer: str = PENDING_VALIDATION_NOTICE
 
 
@@ -46,38 +52,38 @@ class PrescriptionBase(BaseEntity):
 
     treatment_id: UUID
     patient_id: UUID
-    finding_id: Optional[UUID] = None
+    finding_id: UUID | None = None
     drug_name: str = Field(..., max_length=100)
     dosage: str = Field(..., max_length=100)
     frequency: str = Field(..., max_length=100)
     duration: str = Field(..., max_length=100)
     indication_type: IndicationType
-    instructions: Optional[str] = None
+    instructions: str | None = None
 
 
 class PrescriptionCreate(PrescriptionBase):
     """Schema for persisting an engine proposal."""
 
-    dentist_id: Optional[UUID] = None
+    dentist_id: UUID | None = None
     contraindication_status: ContraindicationStatus = "clear"
-    contraindication_warnings: List[SafetyWarning] = Field(default_factory=list)
+    contraindication_warnings: list[SafetyWarning] = Field(default_factory=list)
 
 
 class Prescription(PrescriptionBase, IdentifiedEntity, TimestampedEntity):
     """Complete prescription record from database."""
 
-    dentist_id: Optional[UUID] = None
+    dentist_id: UUID | None = None
     contraindication_status: ContraindicationStatus = "clear"
-    contraindication_warnings: List[SafetyWarning] = Field(default_factory=list)
+    contraindication_warnings: list[SafetyWarning] = Field(default_factory=list)
     dentist_status: DentistStatus = "proposed"
-    dentist_override_reason: Optional[str] = None
-    prescribed_at: Optional[datetime] = None
+    dentist_override_reason: str | None = None
+    prescribed_at: datetime | None = None
 
 
 class PrescriptionListResponse(BaseEntity):
     """List of prescriptions."""
 
-    prescriptions: List[Prescription]
+    prescriptions: list[Prescription]
     total: int
     disclaimer: str = PENDING_VALIDATION_NOTICE
 
@@ -88,8 +94,10 @@ class PrescriptionCheckRequest(BaseEntity):
     patient_id: UUID
     drug_name: str
     indication_type: IndicationType
-    dosage: Optional[str] = None
-    frequency: Optional[str] = Field(None, description="Enables the daily-dose check, e.g. 'every 6 hours'")
+    dosage: str | None = None
+    frequency: str | None = Field(
+        None, description="Enables the daily-dose check, e.g. 'every 6 hours'"
+    )
 
 
 class PrescriptionManualCreate(BaseEntity):
@@ -101,26 +109,26 @@ class PrescriptionManualCreate(BaseEntity):
     frequency: str = Field(..., max_length=100)
     duration: str = Field(..., max_length=100)
     indication_type: IndicationType
-    instructions: Optional[str] = None
-    dentist_id: Optional[UUID] = None
+    instructions: str | None = None
+    dentist_id: UUID | None = None
 
 
 class PrescriptionDecisionRequest(BaseEntity):
     """Step 5: the dentist accepts, modifies, or rejects a proposed prescription."""
 
     decision: Literal["accepted", "modified", "rejected"]
-    drug_name: Optional[str] = Field(None, max_length=100)
-    dosage: Optional[str] = Field(None, max_length=100)
-    frequency: Optional[str] = Field(None, max_length=100)
-    duration: Optional[str] = Field(None, max_length=100)
-    instructions: Optional[str] = None
+    drug_name: str | None = Field(None, max_length=100)
+    dosage: str | None = Field(None, max_length=100)
+    frequency: str | None = Field(None, max_length=100)
+    duration: str | None = Field(None, max_length=100)
+    instructions: str | None = None
     acknowledge_warnings: bool = Field(
         False, description="Required to accept a prescription whose status is 'warning'"
     )
-    override_reason: Optional[str] = Field(
+    override_reason: str | None = Field(
         None, description="Required to accept a prescription whose status is 'contraindicated'"
     )
-    dentist_id: Optional[UUID] = None
+    dentist_id: UUID | None = None
 
     @model_validator(mode="after")
     def _check_modification(self) -> "PrescriptionDecisionRequest":

@@ -111,9 +111,16 @@ def prf(counts):
     p, pl, ph = wilson_ci(tp, tp + fp)
     r, rl, rh = wilson_ci(tp, tp + fn)
     f1 = (2 * p * r / (p + r)) if (p and r) else (0.0 if (tp + fp + fn) else None)
-    return {"precision": p, "precision_ci": [pl, ph],
-            "recall": r, "recall_ci": [rl, rh], "f1": f1,
-            "tp": tp, "fp": fp, "fn": fn}
+    return {
+        "precision": p,
+        "precision_ci": [pl, ph],
+        "recall": r,
+        "recall_ci": [rl, rh],
+        "f1": f1,
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+    }
 
 
 def macro_mean(values):
@@ -123,6 +130,11 @@ def macro_mean(values):
 
 
 __all__ = [
-    "iou", "greedy_match", "wilson_ci", "fmt_pct", "average_precision",
-    "prf", "macro_mean",
+    "iou",
+    "greedy_match",
+    "wilson_ci",
+    "fmt_pct",
+    "average_precision",
+    "prf",
+    "macro_mean",
 ]

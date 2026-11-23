@@ -7,17 +7,18 @@ Usage:
     cd ml
     python3 verify_setup.py
 """
-import os
-import sys
+
 import json
+import sys
 from pathlib import Path
+
 
 def check_directory_structure():
     """Verify directory structure is correct."""
     print("=" * 60)
     print("STEP 1: Directory Structure Check")
     print("=" * 60)
-    
+
     base_dir = Path(__file__).parent.parent
     required_dirs = {
         "pipeline": base_dir / "pipeline",
@@ -25,7 +26,7 @@ def check_directory_structure():
         "weights": base_dir / "weights",
         "feedback": base_dir / "feedback",
     }
-    
+
     all_ok = True
     for name, path in required_dirs.items():
         if path.exists():
@@ -33,7 +34,7 @@ def check_directory_structure():
         else:
             print(f"❌ {name}/ directory NOT FOUND")
             all_ok = False
-    
+
     print()
     return all_ok
 
@@ -43,7 +44,7 @@ def check_model_files():
     print("=" * 60)
     print("STEP 2: Model Files Check")
     print("=" * 60)
-    
+
     base_dir = Path(__file__).parent.parent
     weights_dir = base_dir / "weights"
     pipeline_dir = base_dir / "pipeline"
@@ -62,7 +63,7 @@ def check_model_files():
         else:
             print(f"❌ {name}: {filepath.name} NOT FOUND")
             all_ok = False
-    
+
     print()
     return all_ok
 
@@ -72,16 +73,16 @@ def check_pipeline_config():
     print("=" * 60)
     print("STEP 3: Pipeline Configuration Check")
     print("=" * 60)
-    
+
     base_dir = Path(__file__).parent.parent
     config_path = base_dir / "pipeline" / "pipeline_config.json"
-    
+
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config = json.load(f)
-        
+
         print("✅ Config file loaded successfully")
-        
+
         # Check model paths are relative (not absolute Windows/Unix paths)
         for key in ("tooth_model", "disease_model"):
             value = config.get(key, "")
@@ -95,10 +96,10 @@ def check_pipeline_config():
 
         print(f"\n📊 Architecture: {config.get('architecture', 'unknown')}")
         print(f"   Association: {config.get('association', 'unknown')}")
-        
+
         print()
         return True
-        
+
     except Exception as e:
         print(f"❌ Failed to load config: {e}")
         print()
@@ -110,7 +111,7 @@ def check_python_dependencies():
     print("=" * 60)
     print("STEP 4: Python Dependencies Check")
     print("=" * 60)
-    
+
     required_packages = {
         "fastapi": "FastAPI",
         "uvicorn": "Uvicorn",
@@ -118,7 +119,7 @@ def check_python_dependencies():
         "PIL": "Pillow (PIL)",
         "numpy": "NumPy",
     }
-    
+
     all_ok = True
     for package, name in required_packages.items():
         try:
@@ -127,12 +128,12 @@ def check_python_dependencies():
         except ImportError:
             print(f"❌ {name} is NOT installed")
             all_ok = False
-    
+
     if not all_ok:
         print("\n💡 Install missing packages:")
         print("   cd ml/service")
         print("   pip install -r requirements.txt")
-    
+
     print()
     return all_ok
 
@@ -142,16 +143,17 @@ def test_model_loading():
     print("=" * 60)
     print("STEP 5: Model Loading Test")
     print("=" * 60)
-    
+
     base_dir = Path(__file__).parent.parent
     pipeline_dir = base_dir / "pipeline"
-    
+
     # Make the pipeline package importable
     sys.path.insert(0, str(pipeline_dir))
-    
+
     try:
         print("Attempting to import inference pipeline...")
         from inference import CONFIG, _model
+
         print("✅ Inference pipeline imported successfully")
 
         # Models load lazily, so touch both to prove the weights are readable.
@@ -159,16 +161,16 @@ def test_model_loading():
         print(f"✅ Tooth detector loaded ({CONFIG['tooth_model']})")
         _model("disease")
         print(f"✅ Disease detector loaded ({CONFIG['disease_model']})")
-        
+
         # Check disease map
         disease_map = CONFIG.get("disease_map", {})
         print(f"\n📋 Supported Diseases: {len(disease_map)}")
         for did, dname in disease_map.items():
             print(f"   {did}: {dname}")
-        
+
         print()
         return True
-        
+
     except Exception as e:
         print(f"❌ Failed to load models: {e}")
         print("\n💡 Troubleshooting:")
@@ -184,7 +186,7 @@ def main():
     print("\n" + "=" * 60)
     print("DENTEX v3 setup verification")
     print("=" * 60 + "\n")
-    
+
     results = {
         "Directory Structure": check_directory_structure(),
         "Model Files": check_model_files(),
@@ -192,17 +194,17 @@ def main():
         "Python Dependencies": check_python_dependencies(),
         "Model Loading": test_model_loading(),
     }
-    
+
     print("=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    
+
     for check, passed in results.items():
         status = "✅ PASS" if passed else "❌ FAIL"
         print(f"{status} - {check}")
-    
+
     all_passed = all(results.values())
-    
+
     print("\n" + "=" * 60)
     if all_passed:
         print("🎉 All checks passed! Your setup is ready.")
@@ -224,7 +226,7 @@ def main():
         print("2. Verify weights exist in ml/weights/")
         print("3. Install dependencies: cd service && pip install -r requirements.txt")
         print("4. Check docs/ML_MODEL_SWITCH_GUIDE.md for details")
-    
+
     print()
     return 0 if all_passed else 1
 
@@ -238,5 +240,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n❌ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

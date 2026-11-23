@@ -3,7 +3,6 @@
 import importlib
 
 import httpx
-
 from app.services.ml_client.dentex_client import DentexClient
 
 # The package re-exports an *instance* named dentex_client, which shadows the module name.
@@ -18,7 +17,9 @@ def _recorder():
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
         if request.url.path == "/predict":
-            return httpx.Response(200, json={"detections": [], "image_width": 10, "image_height": 5})
+            return httpx.Response(
+                200, json={"detections": [], "image_width": 10, "image_height": 5}
+            )
         return httpx.Response(200, json={"status": "ok"})
 
     return seen, httpx.MockTransport(handler)
@@ -37,7 +38,9 @@ def _fetcher(tokens):
 async def test_no_authorization_header_when_auth_is_off():
     seen, transport = _recorder()
     calls, fetch = _fetcher(["unused"])
-    client = DentexClient(base_url="http://ml:8001", auth=False, token_fetcher=fetch, transport=transport)
+    client = DentexClient(
+        base_url="http://ml:8001", auth=False, token_fetcher=fetch, transport=transport
+    )
     await client.analyze_scan(b"img", "x.png", 0.2)
     assert "authorization" not in seen[0].headers
     assert calls == []
@@ -51,7 +54,7 @@ async def test_every_call_carries_an_identity_token_for_the_ml_service():
     await client.analyze_scan(b"img", "x.png", 0.2)
     await client.submit_feedback("scan", 3, 6, "Caries", False, "Deep Caries")
     assert [r.headers["authorization"] for r in seen] == ["Bearer tok-1"] * 3
-    assert calls == [ML_URL]            # audience = the service URL, fetched once and reused
+    assert calls == [ML_URL]  # audience = the service URL, fetched once and reused
 
 
 async def test_the_token_is_refreshed_after_it_expires(monkeypatch):
@@ -74,8 +77,11 @@ async def test_metadata_request_asks_for_the_right_audience(monkeypatch):
         return httpx.Response(200, text="id-token\n")
 
     real = httpx.AsyncClient
-    monkeypatch.setattr(module.httpx, "AsyncClient",
-                        lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setattr(
+        module.httpx,
+        "AsyncClient",
+        lambda **kw: real(transport=httpx.MockTransport(handler), **kw),
+    )
     assert await module.fetch_identity_token(ML_URL) == "id-token"
     assert seen[0].headers["metadata-flavor"] == "Google"
     assert seen[0].url.params["audience"] == ML_URL
