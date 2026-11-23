@@ -19,10 +19,10 @@ class PatientService:
     async def create_patient(self, patient_data: PatientCreate) -> Patient:
         """
         Create a new patient record.
-        
+
         Args:
             patient_data: Patient creation schema
-        
+
         Returns:
             Created patient
         """
@@ -38,10 +38,10 @@ class PatientService:
     async def get_patient(self, patient_id: UUID) -> Patient | None:
         """
         Retrieve a patient by ID.
-        
+
         Args:
             patient_id: Patient UUID
-        
+
         Returns:
             Patient if found, None otherwise
         """
@@ -60,13 +60,13 @@ class PatientService:
     ) -> tuple[list[Patient], int]:
         """
         List patients with optional filtering and pagination.
-        
+
         Args:
             dentist_id: Filter by dentist
             search: Search in name fields
             page: Page number (1-indexed)
             page_size: Results per page
-        
+
         Returns:
             Tuple of (patients list, total count)
         """
@@ -101,11 +101,11 @@ class PatientService:
     ) -> Patient | None:
         """
         Update patient record.
-        
+
         Args:
             patient_id: Patient UUID
             patient_data: Fields to update
-        
+
         Returns:
             Updated patient if found, None otherwise
         """
@@ -129,10 +129,10 @@ class PatientService:
     async def delete_patient(self, patient_id: UUID) -> bool:
         """
         Delete a patient record (cascades to related scans/findings).
-        
+
         Args:
             patient_id: Patient UUID
-        
+
         Returns:
             True if deleted, False otherwise
         """

@@ -122,8 +122,8 @@ def aggregate(stats, subset):
 
 def mcnemar(a, b):
     """Exact McNemar. a, b are aligned correctness lists. Returns (b01, b10, p)."""
-    b01 = sum(1 for x, y in zip(a, b) if not x and y)
-    b10 = sum(1 for x, y in zip(a, b) if x and not y)
+    b01 = sum(1 for x, y in zip(a, b, strict=True) if not x and y)
+    b10 = sum(1 for x, y in zip(a, b, strict=True) if x and not y)
     n = b01 + b10
     if n == 0:
         return b01, b10, 1.0

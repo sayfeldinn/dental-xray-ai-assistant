@@ -85,9 +85,9 @@ def get_current_dentist(
         )
     try:
         return verifier.verify(credentials.credentials)
-    except InvalidToken:
+    except InvalidToken as exc:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "Session expired or invalid; sign in again",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc

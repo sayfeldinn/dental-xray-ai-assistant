@@ -243,11 +243,11 @@ class FakeFeedback:
 
     async def list_logs(self, scan_id=None, stage=None, correction_type=None):
         return [
-            l
-            for l in reversed(self.rows)
-            if (not scan_id or l.scan_id == scan_id)
-            and (not stage or l.stage == stage)
-            and (not correction_type or l.correction_type == correction_type)
+            row
+            for row in reversed(self.rows)
+            if (not scan_id or row.scan_id == scan_id)
+            and (not stage or row.stage == stage)
+            and (not correction_type or row.correction_type == correction_type)
         ]
 
 

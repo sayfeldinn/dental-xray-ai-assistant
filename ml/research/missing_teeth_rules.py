@@ -117,9 +117,8 @@ def derive(pt, rule, max8, nbrconf):
                 nh = min(hi, default=None)
                 if nl is None or nh is None or teeth[nl] < nbrconf or teeth[nh] < nbrconf:
                     continue
-            if rule == "adjacent":
-                if (t - 1) not in teeth or (t + 1) not in teeth:
-                    continue
+            if rule == "adjacent" and ((t - 1) not in teeth or (t + 1) not in teeth):
+                continue
             if rule == "maxgap1" and (min(hi) - max(lo)) > 3:
                 continue
             if rule == "maxgap2" and (min(hi) - max(lo)) > 4:

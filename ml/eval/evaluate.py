@@ -195,48 +195,15 @@ def get_predictions(images_dir, gt, api_url, local, cache_path, limit=None):
 # ------------------------------------------------------------------
 # Geometry + matching
 # ------------------------------------------------------------------
-
-
-def iou(a, b):
-    ax1, ay1, ax2, ay2 = a
-    bx1, by1, bx2, by2 = b
-    ix1, iy1 = max(ax1, bx1), max(ay1, by1)
-    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
-    iw, ih = max(0.0, ix2 - ix1), max(0.0, iy2 - iy1)
-    inter = iw * ih
-    if inter <= 0:
-        return 0.0
-    area_a = (ax2 - ax1) * (ay2 - ay1)
-    area_b = (bx2 - bx1) * (by2 - by1)
-    return inter / (area_a + area_b - inter)
-
-
-def greedy_match(gt_boxes, pred_boxes, iou_thresh, pred_scores=None):
-    """One-to-one match by descending IoU. Returns list of (gt_idx, pred_idx)."""
-    pairs = []
-    for gi, gb in enumerate(gt_boxes):
-        for pi, pb in enumerate(pred_boxes):
-            score = iou(gb, pb)
-            if score >= iou_thresh:
-                pairs.append((score, gi, pi))
-    # highest IoU first; break ties deterministically by score then indices
-    pairs.sort(key=lambda t: (-t[0], t[1], t[2]))
-
-    used_g, used_p, matches = set(), set(), []
-    for _, gi, pi in pairs:
-        if gi in used_g or pi in used_p:
-            continue
-        used_g.add(gi)
-        used_p.add(pi)
-        matches.append((gi, pi))
-    return matches
+# `iou` and `greedy_match` are imported from metrics.py; the duplicate copies
+# that used to live here shadowed them and have been removed.
 
 
 # ------------------------------------------------------------------
 # Detection / label statistics
 # ------------------------------------------------------------------
-# iou, greedy_match, wilson_ci, fmt_pct, average_precision and prf now live in
-# metrics.py and are imported above; they are re-exported from this module so
+# wilson_ci, fmt_pct, average_precision, prf and macro_mean also live in
+# metrics.py. They are re-exported from this module so
 # `from evaluate import average_precision, greedy_match` keeps working for the
 # significance and research scripts.
 
@@ -308,7 +275,7 @@ def collect_stats(cache, gt, sweep):
             per_class_counts[cname]["tp"] += tp
             per_class_counts[cname]["fp"] += fp
             per_class_counts[cname]["fn"] += fn
-            for gi, pi in matches:
+            for _, pi in matches:
                 per_class_flags[cname].append((preds[pi]["disease_confidence"], True))
             for pi in range(len(p_idx)):
                 if not any(pi == m[1] for m in matches):
@@ -326,7 +293,7 @@ def collect_stats(cache, gt, sweep):
                     [gt_boxes[i] for i in g_idx], [pred_boxes[i] for i in p_idx], t
                 )
                 matched_p = {pi for _, pi in matches}
-                for gi, pi in matches:
+                for _, pi in matches:
                     ap_flags[t][cname].append((preds[p_idx[pi]]["disease_confidence"], True))
                 for pi in range(len(p_idx)):
                     if pi not in matched_p:
@@ -445,6 +412,7 @@ def label_metrics(stats):
             zip(
                 ("rate", "ci_low", "ci_high", "correct", "total"),
                 (*wilson_ci(st["ok"], st["n"]), st["ok"], st["n"]),
+                strict=True,
             )
         )
 

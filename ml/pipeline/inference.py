@@ -17,6 +17,7 @@ working without modification:
     }
 """
 
+import contextlib
 import json
 import os
 
@@ -251,7 +252,7 @@ def apply_caries_verifier(lesions, teeth, image):
     cfg = _verifier_config()
     if not cfg.get("enabled") or not cfg.get("model") or not teeth or not lesions:
         return lesions
-    targets = [l for l in lesions if l["disease"] in CARIES_TARGETS]
+    targets = [lesion for lesion in lesions if lesion["disease"] in CARIES_TARGETS]
     if not targets:
         return lesions
 
@@ -275,7 +276,7 @@ def apply_caries_verifier(lesions, teeth, image):
                 )
         crops.append(_crop_tooth(image, best["box"]))
 
-    valid = [(l, c) for l, c in zip(targets, crops) if c is not None]
+    valid = [(lesion, c) for lesion, c in zip(targets, crops, strict=False) if c is not None]
     if not valid:
         return lesions
 
@@ -297,16 +298,16 @@ def apply_caries_verifier(lesions, teeth, image):
     if mode == "gate":
         # drop caries detections the verifier thinks are caries-free
         drop = {
-            id(l)
-            for (l, _), p in zip(valid, probs)
-            if p < threshold and l["disease"] in CARIES_TARGETS
+            id(lesion)
+            for (lesion, _), p in zip(valid, probs, strict=False)
+            if p < threshold and lesion["disease"] in CARIES_TARGETS
         }
-        kept = [l for l in lesions if id(l) not in drop]
-        for (l, _), p in zip(valid, probs):
-            l["caries_verifier_p"] = float(p)
+        kept = [lesion for lesion in lesions if id(lesion) not in drop]
+        for (lesion, _), p in zip(valid, probs, strict=False):
+            lesion["caries_verifier_p"] = float(p)
         return kept
 
-    for (lesion, _), p in zip(valid, probs):
+    for (lesion, _), p in zip(valid, probs, strict=False):
         lesion["disease_confidence"] = float(lesion["disease_confidence"] * p**alpha)
         lesion["caries_verifier_p"] = float(p)
     return lesions
@@ -504,7 +505,7 @@ def derive_missing_teeth(teeth, image=None, conf=MISSING_TEETH_CONF):
         for c in candidates:
             crop = _crop_tooth(image, c["_box"])
             crops.append(crop)
-        valid = [(c, crop) for c, crop in zip(candidates, crops) if crop is not None]
+        valid = [(c, crop) for c, crop in zip(candidates, crops, strict=False) if crop is not None]
         if valid:
             tf = transforms.Compose(
                 [
@@ -519,7 +520,7 @@ def derive_missing_teeth(teeth, image=None, conf=MISSING_TEETH_CONF):
             with torch.no_grad():
                 probs = torch.softmax(model(batch), 1)[:, 1].tolist()
             kept = []
-            for (c, _), p in zip(valid, probs):
+            for (c, _), p in zip(valid, probs, strict=False):
                 if p >= MISSING_TEETH_GAP:
                     c["gap_probability"] = round(float(p), 4)
                     kept.append(c)
@@ -568,10 +569,8 @@ def run_dentex_pipeline(image, save_json=None, confidence_threshold=None):
     teeth = detect_teeth(image)
     lesions = detect_diseases(image, conf=min(DISEASE_CONF, threshold))
     # Optional caries re-ranker; never let a missing verifier break /predict.
-    try:
+    with contextlib.suppress(Exception):
         lesions = apply_caries_verifier(lesions, teeth, image)
-    except Exception:
-        pass
     detections = associate(lesions, teeth)
     detections = [d for d in detections if d["disease_confidence"] >= threshold]
 

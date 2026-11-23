@@ -21,10 +21,10 @@ class FindingService:
     async def create_finding(self, finding_data: FindingCreate) -> Finding:
         """
         Create a new finding record.
-        
+
         Args:
             finding_data: Finding creation schema
-        
+
         Returns:
             Created finding
         """
@@ -40,10 +40,10 @@ class FindingService:
     async def bulk_create_findings(self, findings_data: list[dict[str, Any]]) -> list[Finding]:
         """
         Create multiple findings at once.
-        
+
         Args:
             findings_data: List of finding dictionaries
-        
+
         Returns:
             List of created findings
         """
@@ -60,10 +60,10 @@ class FindingService:
     async def get_finding(self, finding_id: UUID) -> Finding | None:
         """
         Retrieve a finding by ID.
-        
+
         Args:
             finding_id: Finding UUID
-        
+
         Returns:
             Finding if found, None otherwise
         """
@@ -76,10 +76,10 @@ class FindingService:
     async def list_findings_by_scan(self, scan_id: UUID) -> list[Finding]:
         """
         List all findings for a specific scan.
-        
+
         Args:
             scan_id: Scan UUID
-        
+
         Returns:
             List of findings
         """
@@ -101,11 +101,11 @@ class FindingService:
     ) -> list[Finding]:
         """
         List all findings for a specific patient.
-        
+
         Args:
             patient_id: Patient UUID
             review_status: Filter by review status
-        
+
         Returns:
             List of findings
         """
@@ -127,11 +127,11 @@ class FindingService:
     ) -> Finding | None:
         """
         Update finding record (typically for dentist review).
-        
+
         Args:
             finding_id: Finding UUID
             finding_data: Fields to update
-        
+
         Returns:
             Updated finding if found, None otherwise
         """
@@ -161,7 +161,7 @@ class FindingService:
     ) -> Finding | None:
         """
         Update finding with dentist review decision.
-        
+
         Args:
             finding_id: Finding UUID
             review_status: 'confirmed', 'rejected', or 'modified'
@@ -169,7 +169,7 @@ class FindingService:
                         references auth.users, so it is only set when authenticated)
             confirmed_disease: Corrected disease if modified
             dentist_notes: Dentist's notes
-        
+
         Returns:
             Updated finding
         """

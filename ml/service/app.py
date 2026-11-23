@@ -1,5 +1,6 @@
 import csv
 import io
+import logging
 import os
 import sys
 from datetime import datetime
@@ -19,13 +20,17 @@ FEEDBACK_DIR = os.path.join(BASE_DIR, "feedback")
 os.makedirs(FEEDBACK_DIR, exist_ok=True)
 sys.path.append(PIPELINE_DIR)
 
+logger = logging.getLogger("dentalai.ml")
+
 try:
     from inference import CONFIG, MODEL_DIR, run_dentex_pipeline, run_findings
 
     models_loaded = True
-except Exception as e:
+except Exception:
     models_loaded = False
-    print(f"Error loading the inference pipeline: {e}")
+    # Log the traceback: a missing weight or a broken import must be visible in
+    # the service log, but must not stop the process from serving /health.
+    logger.exception("Failed to load the inference pipeline")
 
 # /predict cannot run without these; findings and missing teeth degrade gracefully.
 REQUIRED_WEIGHTS = ("tooth", "disease")
@@ -83,10 +88,7 @@ def tooth_label(detection):
     tooth = detection.get("tooth_id")
     if tooth is None:
         label = detection.get("tooth")
-        if isinstance(label, str):
-            tooth = label.rsplit("_", 1)[-1]
-        else:
-            tooth = label
+        tooth = label.rsplit("_", 1)[-1] if isinstance(label, str) else label
     try:
         if quadrant is not None and tooth is not None:
             return f"{int(quadrant)}{int(tooth)}"
@@ -140,14 +142,14 @@ async def predict(
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         image_np = np.array(image)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
     # Run inference. A missing or corrupt weight file only surfaces here (lazy loading).
     try:
         results = run_dentex_pipeline(image_np, confidence_threshold=confidence_threshold)
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Inference failed: {e}")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Inference failed: {exc}") from exc
 
     # Generate structured report based on findings
     generated_report = generate_clinical_report(results.get("detections", []))
@@ -172,13 +174,13 @@ async def findings(file: UploadFile = File(...)):
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         image_np = np.array(image)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
     try:
         results = run_findings(image_np)
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Findings model unavailable: {e}")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Findings model unavailable: {exc}") from exc
 
     return JSONResponse(content=results)
 
@@ -218,8 +220,8 @@ async def submit_finding_feedback(feedback: FindingFeedback):
                 ]
             )
         return {"status": "success", "message": "Finding feedback saved successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.post("/feedback/report")
@@ -251,8 +253,8 @@ async def submit_report_feedback(feedback: ReportFeedback):
                 ]
             )
         return {"status": "success", "message": "Report feedback saved successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 if __name__ == "__main__":

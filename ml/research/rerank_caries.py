@@ -118,7 +118,7 @@ def reranked_pipeline(image, verifier, alpha):
             refs.append(lesion)
         if crops:
             probs = score_crops(model, tf, crops)
-            for lesion, p in zip(refs, probs):
+            for lesion, p in zip(refs, probs, strict=False):
                 lesion["disease_confidence"] = float(lesion["disease_confidence"] * p**alpha)
     detections = pipe.associate(lesions, teeth)
     return {
@@ -224,7 +224,7 @@ def main():
                 )
             )
             with open(Path(args.out) / "rerank_caries_raw.jsonl", "w") as fh:
-                for name, rec in cache.items():
+                for _name, rec in cache.items():
                     fh.write(json.dumps(rec) + "\n")
 
     if args.sweep:

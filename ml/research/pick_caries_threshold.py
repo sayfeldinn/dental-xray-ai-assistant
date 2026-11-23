@@ -36,7 +36,6 @@ TARGET_IDS = (1,)  # Caries GT
 
 def v3_split():
     qed = json.load(open(QED))
-    imgs = {i["id"]: i for i in qed["images"]}
     ids = defaultdict(set)
     for ann in qed["annotations"]:
         ids[ann["image_id"]].add(ann["category_id_3"])
@@ -65,16 +64,16 @@ def collect(images, gt_boxes, verifier):
         les = pipe.detect_diseases(arr)
         im = Image.open(path).convert("RGB")
         gts = gt_boxes.get(name, [])
-        for l in les:
-            if l["disease"] != "Caries":
+        for lesion in les:
+            if lesion["disease"] != "Caries":
                 continue
             p = 1.0
             if teeth:
-                c = rc.crop_tooth(im, rc.match_tooth(l, teeth)["box"])
+                c = rc.crop_tooth(im, rc.match_tooth(lesion, teeth)["box"])
                 if c is not None:
                     p = rc.score_crops(model, tf, [c])[0]
-            tp = int(any(iou(l["box"], b) >= 0.5 for b in gts))
-            pairs.append((p, l["disease_confidence"], tp))
+            tp = int(any(iou(lesion["box"], b) >= 0.5 for b in gts))
+            pairs.append((p, lesion["disease_confidence"], tp))
     return pairs
 
 

@@ -25,7 +25,9 @@ ENV_PATH, IMAGE = sys.argv[1], sys.argv[2]
 BACKEND = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/") + "/api/v1"
 
 env = {}
-for line in open(ENV_PATH):
+with open(ENV_PATH) as env_fh:
+    env_lines = env_fh.readlines()
+for line in env_lines:
     line = line.strip()
     if line and not line.startswith("#") and "=" in line:
         k, v = line.split("=", 1)

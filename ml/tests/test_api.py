@@ -116,6 +116,7 @@ def test_finding_feedback_is_appended_to_the_csv(client, tmp_path, monkeypatch):
     }
     for _ in range(2):
         assert client.post("/feedback/finding", json=entry).status_code == 200
-    rows = list(csv.reader(open(tmp_path / "dentist_finding_feedback.csv")))
+    with open(tmp_path / "dentist_finding_feedback.csv") as fh:
+        rows = list(csv.reader(fh))
     assert rows[0][0] == "timestamp" and len(rows) == 3  # one header, two rows
     assert rows[1][5:7] == ["False", "Deep Caries"]

@@ -31,12 +31,12 @@ class ScanService:
     ) -> tuple[str, str]:
         """
         Upload X-ray image to Supabase Storage.
-        
+
         Args:
             file_bytes: Image file bytes
             patient_id: Patient UUID for organization
             filename: Original filename
-        
+
         Returns:
             Tuple of (public_url, storage_path)
         """
@@ -45,8 +45,8 @@ class ScanService:
         file_ext = filename.split('.')[-1] if filename and '.' in filename else 'jpg'
         storage_path = f"patients/{patient_id}/{timestamp}_{uuid4().hex[:8]}.{file_ext}"
 
-        # Upload to storage
-        response = self.client.storage.from_(self.bucket).upload(
+        # Upload to storage. The response body is unused; supabase-py raises on failure.
+        self.client.storage.from_(self.bucket).upload(
             path=storage_path,
             file=file_bytes,
             file_options={"content-type": f"image/{file_ext}"}
@@ -79,10 +79,10 @@ class ScanService:
     async def create_scan(self, scan_data: ScanCreate) -> Scan:
         """
         Create a new scan record.
-        
+
         Args:
             scan_data: Scan creation schema
-        
+
         Returns:
             Created scan
         """
@@ -98,10 +98,10 @@ class ScanService:
     async def get_scan(self, scan_id: UUID) -> Scan | None:
         """
         Retrieve a scan by ID.
-        
+
         Args:
             scan_id: Scan UUID
-        
+
         Returns:
             Scan if found, None otherwise
         """
@@ -120,13 +120,13 @@ class ScanService:
     ) -> tuple[list[Scan], int]:
         """
         List scans with optional filtering and pagination.
-        
+
         Args:
             patient_id: Filter by patient
             status: Filter by status
             page: Page number (1-indexed)
             page_size: Results per page
-        
+
         Returns:
             Tuple of (scans list, total count)
         """
@@ -160,11 +160,11 @@ class ScanService:
     ) -> Scan | None:
         """
         Update scan record.
-        
+
         Args:
             scan_id: Scan UUID
             scan_data: Fields to update
-        
+
         Returns:
             Updated scan if found, None otherwise
         """
@@ -194,14 +194,14 @@ class ScanService:
     ) -> Scan | None:
         """
         Update scan with ML analysis results.
-        
+
         Args:
             scan_id: Scan UUID
             ml_output: Raw ML service response
             ai_report: Generated clinical report
             image_width: Image width in pixels
             image_height: Image height in pixels
-        
+
         Returns:
             Updated scan
         """
@@ -227,10 +227,10 @@ class ScanService:
     async def delete_scan(self, scan_id: UUID) -> bool:
         """
         Delete a scan record and its storage file.
-        
+
         Args:
             scan_id: Scan UUID
-        
+
         Returns:
             True if deleted, False otherwise
         """

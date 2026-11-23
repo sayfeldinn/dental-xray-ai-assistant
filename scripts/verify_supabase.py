@@ -90,7 +90,7 @@ def main():
             }
         )
         try:
-            with urllib.request.urlopen(tbl_req, timeout=10) as tbl_resp:
+            with urllib.request.urlopen(tbl_req, timeout=10):
                 print(f"  [+] Table '{table}' exists and is accessible.")
         except urllib.error.HTTPError as e:
             if e.code == 404 or "relation" in str(e.read()):
@@ -111,7 +111,7 @@ def main():
         }
     )
     try:
-        with urllib.request.urlopen(stg_req, timeout=10) as stg_resp:
+        with urllib.request.urlopen(stg_req, timeout=10):
             print("  [+] Storage bucket 'xray-scans' exists.")
     except urllib.error.HTTPError as e:
         if e.code == 404:

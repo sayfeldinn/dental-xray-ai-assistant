@@ -186,8 +186,8 @@ def main():
         for t_gap in (0.3, 0.4, 0.5, 0.6, 0.7):
             for t_tooth in (1.1, 0.9, 0.8, 0.7):
 
-                def pred(n, tg=t_gap, tt=t_tooth):
-                    det, gaps = pre[n]
+                def pred(n, tg=t_gap, tt=t_tooth, _pre=pre):
+                    det, gaps = _pre[n]
                     return {k for k, p in gaps.items() if p >= tg} | {
                         k for k, p in det.items() if p >= tt
                     }

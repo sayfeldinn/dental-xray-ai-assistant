@@ -30,10 +30,12 @@ async def create_patient(
     patient_data.dentist_id = dentist.id  # never trust an owner sent by the client
     try:
         return await patient_service.create_patient(patient_data)
-    except Exception:
+    except Exception as exc:
         # Do not leak the raw exception (it can carry connection details) to the client.
         logger.exception("Failed to create patient for dentist %s", dentist.id)
-        raise HTTPException(status_code=500, detail="Failed to create patient. Please try again.")
+        raise HTTPException(
+            status_code=500, detail="Failed to create patient. Please try again."
+        ) from exc
 
 
 @router.get("/{patient_id}", response_model=Patient)
