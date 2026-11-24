@@ -1,6 +1,6 @@
 # Contributing — Branching Strategy & Workflow
 
-Agreed for the 4-week competition build. Small repo, 5 people: keep the rules short and follow them exactly.
+Agreed for the competition build. Small repo, two people: keep the rules short and follow them exactly.
 
 ## 1. Branching Strategy — develop as integration branch
 
@@ -45,21 +45,35 @@ All work is a GitHub issue on the project board. Columns:
 
 | Role | Owns |
 | --- | --- |
-| A — ML Engineer | datasets, training, inference |
-| B — Backend Engineer | schema, API, recommendation engine |
-| C — Frontend Engineer | React app, review/confirmation screens |
-| D — Integration/QA | repo health, board, test cases, demo script |
-| E — Team Lead / Clinical Liaison | dentist meeting, validated clinical tables, risk log |
+| ML Engineer (research & evaluation lead) — `sayfeldinn` | datasets, training, inference, evaluation, conference numbers |
+| Full-stack / Platform Engineer — `Seif-shawky` | schema, API, recommendation engine, React app, deployment, CI |
 
-Cross-role changes (e.g. Backend editing `docs/qa/`) require a ping to the owner first.
+Cross-role changes (e.g. Platform editing `docs/qa/`) require a ping to the other member first.
 
 ## 5. Documentation Rules
 
 - `docs/` is the source of truth. If it isn't documented, it isn't agreed.
-- Clinical tables (finding-to-treatment, drug list, contraindications) are owned by the Team Lead. With no clinic partner available, a change must cite a published guideline (ADA / AHA / AAPD / regulator) in `docs/CLINICAL_GUIDELINES.md` §4-6, or be marked **PROJECT** with its rationale. Clinician sign-off is a standing recommendation, not a blocker.
+- Clinical tables (finding-to-treatment, drug list, contraindications) are owned by the team. With no clinic partner available, a change must cite a published guideline (ADA / AHA / AAPD / regulator) in `docs/CLINICAL_GUIDELINES.md` §4-6, or be marked **PROJECT** with its rationale. Clinician sign-off is a standing recommendation, not a blocker.
 - No real patient data anywhere in this repo — synthetic/anonymized only.
 
-## 6. What Must Never Land
+## 6. Code Style & Tooling
+
+- Python is formatted with **black** and linted with **ruff** (line length 99). Config lives in
+  `pyproject.toml`. Install the tooling with `pip install -r requirements-dev.txt`.
+- Before pushing:
+
+  ```bash
+  ruff check backend/app backend/tests backend/scripts ml scripts
+  black backend/app backend/tests backend/scripts ml scripts
+  ```
+
+  CI runs the same two commands in the `lint` job, so an unformatted push fails the build.
+- Follow the ruff config rather than adding `# noqa`. If a rule is genuinely wrong for a file
+  (for example FastAPI's `Depends()` defaults), add a scoped `per-file-ignores` entry with a
+  comment saying why.
+- Type hints on public functions; docstrings explain *why*, not *what*.
+
+## 7. What Must Never Land
 
 - Drug-interaction API clients (endpoint retired — see README)
 - 3D visualization code

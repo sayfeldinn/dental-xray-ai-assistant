@@ -184,7 +184,7 @@ captured in #33.
 | Failures triaged | Integration/QA | ✅ #33 (10 gaps at open → **6 remaining**) |
 | Handed to Backend | Integration/QA | ✅ issue #17 + PR review request |
 | Gaps fixed | Backend | 🟡 **partial** — 6 of 16 closed by PR #35, 10 remain |
-| Rules re-validated against dentist table | Team Lead (#11) | ⛔ **not done — blocks sign-off** |
+| Rules re-validated against dentist table | ML lead (#11) | ⛔ **not done — blocks sign-off** |
 | Re-run after #11 and #33 | Integration/QA | pending |
 
 **No real patient data in this document — synthetic/anonymized inputs only.**

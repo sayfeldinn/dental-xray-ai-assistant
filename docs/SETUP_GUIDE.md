@@ -1,15 +1,17 @@
 # DentalAI Setup Guide
 
 The single entry point for running the complete system: Supabase (database, auth, storage),
-the ML service (`dentex_week3`, port 8001), the backend API (port 8000) and the clinician UI
+the ML service (`ml/`, port 8001), the backend API (port 8000) and the clinician UI
 (port 5173 in development, 8080 with Docker).
 
 ## 1. Supabase project (once)
 
 1. Create a project at supabase.com. From **Project Settings → API** copy the Project URL, the
    `anon`/publishable key and the `service_role` key.
-2. **SQL Editor:** run `supabase/schema.sql` (tables, constraints, indexes, RLS, private `xray-scans` bucket).
-   Optional demo data: `supabase/seed.sql`.
+2. **SQL Editor:** for a new project run `supabase/migrations/20261019_base_schema.sql` then
+   `supabase/migrations/20261020_auth_lockdown.sql` (or `supabase db push`). `supabase/schema.sql`
+   remains the consolidated DDL for reference. Optional demo data: `supabase/seed.sql`.
+   For local development `npx supabase start` applies the migrations and seed automatically.
 3. **Existing projects created before Phase 6:** also run `supabase/migrations/20261020_auth_lockdown.sql`.
    It removes the old development policies that let anyone holding the anon key read and change
    every clinical table, and makes the X-ray bucket private. **Do this before deploying the frontend**:
@@ -37,15 +39,22 @@ the legacy shared JWT secret need `SUPABASE_JWT_SECRET`.
 Python **3.11 or 3.12** (3.14 breaks `pydantic-core`), Node **20+**.
 
 ```bash
-# ML service (needs the model weights in dentex_week3/production/, published as a GitHub Release)
-cd dentex_week3/api && ./start.sh                 # http://localhost:8001
+# Weights (once, from the repo root; public weights-v3 release)
+./notebooks/fetch_release_weights.sh
 
-# Backend
+# ML service (own terminal)
+cd ml/service && ./start.sh                 # http://localhost:8001
+
+# Backend (own terminal)
 cd backend && ./start.sh                          # http://localhost:8000/docs
 
-# Frontend
+# Frontend (own terminal)
 cd frontend && npm install && npm run dev         # http://localhost:5173
 ```
+
+The optional advisory weights (`findings_best.pt`, `missing_teeth.pt`) can be absent; the
+ML service still starts, but those advisory layers are unavailable. The missing-teeth
+rule fallback remains. The script prints which weights it found.
 
 ## 4. First sign-in
 
@@ -74,16 +83,19 @@ If a host-network `backend-e2e` container is already using `:8000` (the local Su
 only the other services: `docker compose up -d ml frontend`. The compose `backend` and `backend-e2e`
 both bind `:8000`, so run one or the other.
 
-The weights must be in `dentex_week3/production/` before building. Add `http://localhost:8080` to the
+The weights must be in `ml/weights/` before building; run
+`./notebooks/fetch_release_weights.sh` first. Add `http://localhost:8080` to the
 Supabase Site URL / redirect URLs. Dentist feedback queued by the ML service is kept in the `ml-feedback` volume.
 
 ## 6. Checks
 
 ```bash
-cd backend && pytest -q                          # 171 tests, no network
-cd frontend && npm run typecheck && npm test     # 14 tests
+cd backend && pytest -q                          # 176 tests, no network
+cd frontend && npm run typecheck && npm test     # 29 tests
+curl http://localhost:8001/                      # ML: models_loaded true
 curl http://localhost:8000/health                # public
 curl -i http://localhost:8000/api/v1/patients    # 401 without a token (expected)
+./scripts/demo_check.sh                          # pre-demo port/health check (optional)
 ```
 
 ## 7. Troubleshooting
@@ -96,4 +108,4 @@ curl -i http://localhost:8000/api/v1/patients    # 401 without a token (expected
 | Upload returns 502 "AI analysis failed" | ML service not running on `ML_SERVICE_URL`; the scan is kept: start the service and use **Re-run AI analysis** |
 | X-ray image does not load | Signed URLs expire after `SIGNED_URL_TTL_SECONDS` (default 1 h); reload the page |
 | `Client.__init__() got an unexpected keyword argument 'proxy'` | Old venv: `pip install -r backend/requirements.txt` (pins `gotrue<2.9`) |
-| Testing writes to `dentex_week3/feedback/*.csv` | Expected while the ML service runs (Phase 4 forwarding); `git checkout` that file after test sessions |
+| Testing writes to `ml/feedback/*.csv` | Expected while the ML service runs (Phase 4 forwarding); `git checkout` that file after test sessions |

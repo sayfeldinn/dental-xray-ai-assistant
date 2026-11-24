@@ -7,7 +7,7 @@ Clean FastAPI backend for IEEE IC-FTAI dental decision-support system.
 This backend implements the 6-step clinical loop:
 
 1. **Scan Ingestion** → Upload panoramic X-ray to Supabase Storage
-2. **AI Detection** → Call dentex_week3 microservice for analysis
+2. **AI Detection** → Call ml/ microservice for analysis
 3. **Dentist Validation** → Review and confirm/reject/modify findings
 4. **Recommendation Engine** → Rule-based treatment + drug proposals (Phase 3 ✅)
 5. **Dentist Confirmation** → Accept/modify/reject prescriptions behind contraindication gates (Phase 3 ✅)
@@ -51,7 +51,7 @@ backend/
 - Python 3.11 or 3.12 (**not 3.14**; `start.sh` enforces this)
 - Virtual environment tool (venv, conda, etc.)
 - Supabase project configured (Phase 1 complete)
-- dentex_week3 ML service running on port 8001
+- ml/ ML service running on port 8001
 
 ### 2. Setup
 
@@ -142,9 +142,9 @@ The API will be available at:
 - `GET /api/v1/feedback/summary?scan_id=` - Counts by stage and correction type
 - `POST /api/v1/feedback/missed-findings` - Report a lesion the AI missed (false negative)
 
-`POST /api/v1/findings/review` now also writes the ledger (false positive / misclassification) and forwards it to the ML service. Behaviour: `docs/PHASE4_STATUS.md`.
+`POST /api/v1/findings/review` now also writes the ledger (false positive / misclassification) and forwards it to the ML service. Behaviour: `docs/history/PHASE4_STATUS.md`.
 
-Full behaviour: `docs/PHASE3_STATUS.md`. Rules: `docs/CLINICAL_GUIDELINES.md` §4-5.
+Full behaviour: `docs/history/PHASE3_STATUS.md`. Rules: `docs/CLINICAL_GUIDELINES.md` §4-5.
 
 ## Testing the API
 
@@ -195,7 +195,7 @@ pytest -q        # 171 tests, <1 s, no network, no .env needed
 - Automatic scan upload and AI analysis
 - Finding review workflow
 
-✅ **Phase 3 (see `docs/PHASE3_STATUS.md`):** recommendation engine, contraindication checker, treatment/prescription endpoints, tests.
+✅ **Phase 3 (see `docs/history/PHASE3_STATUS.md`):** recommendation engine, contraindication checker, treatment/prescription endpoints, tests.
 
 ⬜ **Not Yet Implemented:**
 
@@ -214,18 +214,18 @@ All service methods are `async` for non-blocking I/O, even though Supabase clien
 - Every `/api/v1` call needs `Authorization: Bearer <Supabase access token>`; data is scoped to the signed-in dentist (`app/services/access.py`)
 
 ### ML Service Communication
-- `DentexClient` wraps all HTTP communication with dentex_week3
+- `DentexClient` wraps all HTTP communication with ml/
 - Timeout configured via settings (default: 60s)
 - Automatic parsing of ML output to Finding records
 
 ## Next Steps (Phase 5)
 
-All six loop steps, the UI and authentication are built. Remaining: clinician review of the rule content, clinic-level sharing. See `docs/PHASE6_STATUS.md`.
+All six loop steps, the UI and authentication are built. Remaining: clinician review of the rule content, clinic-level sharing. See `docs/history/PHASE6_STATUS.md`.
 
 ## Troubleshooting
 
 ### "Connection refused" on ML service
-- Ensure dentex_week3 is running: `cd dentex_week3/api && ./start.sh`
+- Ensure ml/ is running: `cd ml/service && ./start.sh`
 - Check ML_SERVICE_URL in `.env`
 
 ### "Table not found" errors
@@ -239,6 +239,6 @@ All six loop steps, the UI and authentication are built. Remaining: clinician re
 ---
 
 **Backend Port**: 8000  
-**ML Service Port**: 8001 (dentex_week3)  
+**ML Service Port**: 8001 (ml/)  
 **Database**: Supabase PostgreSQL  
 **Storage**: Supabase Storage (xray-scans bucket)

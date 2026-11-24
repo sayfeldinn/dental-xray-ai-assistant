@@ -3,10 +3,10 @@
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
-
 from app.domain.finding import FindingReviewRequest
 from app.services.supabase_client.finding_service import FindingService
+from pydantic import ValidationError
+
 from tests.conftest import make_finding
 
 
@@ -23,6 +23,7 @@ class RecordingClient:
         def record(*args, **kwargs):
             self.calls.append((method, args))
             return self
+
         return record
 
     def execute(self):
@@ -53,10 +54,16 @@ def test_modified_review_needs_a_valid_disease_label():
     with pytest.raises(ValidationError):
         FindingReviewRequest(finding_id=uuid4(), review_status="modified")
     with pytest.raises(ValidationError):
-        FindingReviewRequest(finding_id=uuid4(), review_status="modified", confirmed_disease="Gingivitis")
-    FindingReviewRequest(finding_id=uuid4(), review_status="modified", confirmed_disease="Deep Caries")
+        FindingReviewRequest(
+            finding_id=uuid4(), review_status="modified", confirmed_disease="Gingivitis"
+        )
+    FindingReviewRequest(
+        finding_id=uuid4(), review_status="modified", confirmed_disease="Deep Caries"
+    )
 
 
 def test_effective_disease_prefers_the_dentist_correction():
-    assert make_finding("Caries", confirmed_disease="Deep Caries").effective_disease == "Deep Caries"
+    assert (
+        make_finding("Caries", confirmed_disease="Deep Caries").effective_disease == "Deep Caries"
+    )
     assert make_finding("Caries").effective_disease == "Caries"

@@ -2,12 +2,20 @@
 
 Owner: Person D — Integration/QA Engineer. See [docs/Week1_Execution_Plan.md](../Week1_Execution_Plan.md) §4 for task context.
 
+> **Current (2026-11-18):** the conference demo runbook is
+> [`conference-demo-script.md`](conference-demo-script.md); the latest end-to-end run
+> record is [`e2e-clinician-flow.md`](e2e-clinician-flow.md). Current automated suites:
+> **176 backend / 29 frontend**. The Phase 3 open-findings notes below are historical;
+> clinical validation is still not recorded (see `submission/FACTS.md` §10).
+
 | File | Due | Status |
 | --- | --- | --- |
 | `synthetic-patient-profiles.md` | Day 2 (Tue) | done (v1, **UNVALIDATED** — dentist meeting not held) |
 | `contraindication-test-cases.md` | Day 3 (Wed) | done (v1, **UNVALIDATED** — dentist meeting not held) |
-| `demo-script-outline.md` | Day 4 (Thu) | done (DRAFT — inference blocked by #30) |
-| `manual-test-log.md` | Day 4 (Thu) | done (run 2 after PR #35: **19 pass / 10 xfail**; run 1 was 13/16) |
+| `demo-script-outline.md` | Day 4 (Thu) | historical Day 4 draft; use `conference-demo-script.md` |
+| `conference-demo-script.md` | Conference | current 2–3 minute local demo runbook |
+| `e2e-clinician-flow.md` | — | current local/cloud e2e run record |
+| `manual-test-log.md` | Day 4 (Thu) | historical (run 2 after PR #35: **19 pass / 10 xfail**; run 1 was 13/16) |
 
 > **Reconciliation note (Phase 3):** the backend was restarted in commit `6f7014b`; the old `test_contraindications.py`, the old engine, PR #33/#35 and issues #17/#28 no longer exist in this tree (they live in git history before `6f7014b`). The case IDs below are now covered by the new suite:
 > `TC-01…TC-06` and profiles `P-001…P-006` → [`backend/tests/test_contraindication.py`](../../backend/tests/test_contraindication.py); the three demo branches → [`backend/tests/test_recommendation_engine.py`](../../backend/tests/test_recommendation_engine.py). Run with `cd backend && pytest -q` (the CI Backend job now runs it).
@@ -27,7 +35,7 @@ Owner: Person D — Integration/QA Engineer. See [docs/Week1_Execution_Plan.md](
 - **R-06 / R-07 / R-08 have no covering profile** — no patient in `synthetic-patient-profiles.md`
   has liver disease, alcohol use, or a QT-prolonging co-medication, so TC-06, TC-16 and TC-17
   rely on QA-invented overrides. Needs either three appended profiles (P-007…P-009) or a scope
-  decision from Team Lead — see §6 of that file.
+  decision from the ML lead — see §6 of that file.
 - **#28 still blocks #17.** The test cases use QA free-text finding names so they stay usable
   independently of the taxonomy reconciliation, but Backend cannot map results into the API
   until `FindingTypeEnum` is settled. Four of six profiles' draft findings have no enum member.

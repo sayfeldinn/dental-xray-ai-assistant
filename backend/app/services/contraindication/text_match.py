@@ -8,12 +8,12 @@ Anything outside the alias tables is NOT understood: extend the tables, don't lo
 """
 
 import re
-from typing import Iterable, Tuple
+from collections.abc import Iterable
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
 
-def tokenize(term: str) -> Tuple[str, ...]:
+def tokenize(term: str) -> tuple[str, ...]:
     """'Penicillin (rash)' -> ('penicillin', 'rash')."""
     return tuple(t for t in _NON_ALNUM.split(term.lower()) if t)
 
@@ -24,8 +24,7 @@ def term_matches(term: str, alias: str) -> bool:
     if not needle or len(needle) > len(haystack):
         return False
     return any(
-        haystack[i : i + len(needle)] == needle
-        for i in range(len(haystack) - len(needle) + 1)
+        haystack[i : i + len(needle)] == needle for i in range(len(haystack) - len(needle) + 1)
     )
 
 
@@ -35,7 +34,7 @@ def any_term_matches(terms: Iterable[str], aliases: Iterable[str]) -> bool:
     return any(term_matches(t, a) for t in terms for a in aliases)
 
 
-def matching_terms(terms: Iterable[str], aliases: Iterable[str]) -> Tuple[str, ...]:
+def matching_terms(terms: Iterable[str], aliases: Iterable[str]) -> tuple[str, ...]:
     """The original patient terms that matched (for naming the allergen/drug in warnings)."""
     aliases = tuple(aliases)
     return tuple(t for t in terms if any(term_matches(t, a) for a in aliases))

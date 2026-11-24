@@ -153,6 +153,6 @@ Hand-curated draft — replaces the retired RxNav DDI API. Dentist to confirm/co
 
 - **Backend (issue #8):** every profile field above maps to a patient-record column — `age_years`, `weight_kg`, `allergies[]`, `current_medications[]` (name + dose + frequency + indication), `conditions[]`. Missing any of these = test cases can't run Day 4.
 - **Backend (issue #13/#17):** assertions in §4 are the contract for the Day 3 contraindication test cases (issue #15); keep rule IDs (R-01…R-09) stable across both documents.
-- **Team Lead (issue #11):** when the dentist meeting happens, re-validate §1, §2, and the `Draft treatment` column of every profile. Do not renumber profiles — only correct values, so downstream test cases keep their IDs.
+- **ML lead (issue #11):** when the dentist meeting happens, re-validate §1, §2, and the `Draft treatment` column of every profile. Do not renumber profiles — only correct values, so downstream test cases keep their IDs.
 - **Allergies encoding:** lowercase generic drug/class names (`penicillin`, `sulfa`) — no free text.
 - **Demo note:** P-003, P-004, P-005 give three *flavors* of conflict (allergy, interaction, age/weight); P-006 is the deliberate negative control proving the engine does not over-warn.

@@ -32,7 +32,7 @@ async def test_recommendation_flow_over_http(api):
     assert (await client.post(url, json={"decision": "accepted"})).status_code == 422
     ok = await client.post(url, json={"decision": "accepted", "acknowledge_warnings": True})
     assert ok.status_code == 200 and ok.json()["dentist_status"] == "accepted"
-    assert (await client.post(url, json={"decision": "rejected"})).status_code == 409   # final
+    assert (await client.post(url, json={"decision": "rejected"})).status_code == 409  # final
 
 
 async def test_recommendation_body_is_optional_and_defaults_to_no_drugs(api):
@@ -43,7 +43,9 @@ async def test_recommendation_body_is_optional_and_defaults_to_no_drugs(api):
 
 async def test_not_found_and_conflict_mapping(api):
     _, client = api
-    assert (await client.post(f"/api/v1/recommendations/scans/{uuid4()}", json=GENERATE)).status_code == 404
+    assert (
+        await client.post(f"/api/v1/recommendations/scans/{uuid4()}", json=GENERATE)
+    ).status_code == 404
     assert (await client.get(f"/api/v1/prescriptions/{uuid4()}")).status_code == 404
     assert (await client.get(f"/api/v1/treatments/{uuid4()}")).status_code == 404
 
@@ -59,23 +61,59 @@ async def test_list_endpoints_require_a_filter(api):
 
 async def test_check_endpoint_and_validation_errors(api):
     w, client = api
-    res = await client.post("/api/v1/prescriptions/check", json={
-        "patient_id": str(w.patient.id), "drug_name": "Amoxicillin",
-        "indication_type": "active_infection", "dosage": "500 mg"})
+    res = await client.post(
+        "/api/v1/prescriptions/check",
+        json={
+            "patient_id": str(w.patient.id),
+            "drug_name": "Amoxicillin",
+            "indication_type": "active_infection",
+            "dosage": "500 mg",
+        },
+    )
     assert res.status_code == 200 and res.json()["status"] == "contraindicated"
-    bad = await client.post("/api/v1/prescriptions/check", json={
-        "patient_id": str(w.patient.id), "drug_name": "Amoxicillin", "indication_type": "nonsense"})
+    bad = await client.post(
+        "/api/v1/prescriptions/check",
+        json={
+            "patient_id": str(w.patient.id),
+            "drug_name": "Amoxicillin",
+            "indication_type": "nonsense",
+        },
+    )
     assert bad.status_code == 422
 
 
 async def test_dentist_authored_treatment_and_prescription_over_http(api):
     w, client = api
-    t = await client.post("/api/v1/treatments", json={
-        "scan_id": str(w.scan_id), "treatment_category": "surgical_extraction", "description": "Extraction"})
+    t = await client.post(
+        "/api/v1/treatments",
+        json={
+            "scan_id": str(w.scan_id),
+            "treatment_category": "surgical_extraction",
+            "description": "Extraction",
+        },
+    )
     assert t.status_code == 201 and t.json()["status"] == "confirmed"
-    rx = await client.post("/api/v1/prescriptions", json={
-        "treatment_id": t.json()["id"], "drug_name": "Amoxicillin", "dosage": "500 mg",
-        "frequency": "every 8 hours", "duration": "5 days", "indication_type": "active_infection"})
-    assert rx.status_code == 201 and rx.json()["contraindication_status"] == "contraindicated"   # penicillin allergy
-    assert (await client.post("/api/v1/treatments", json={"scan_id": str(uuid4()), "treatment_category": "restorative",
-                                                          "description": "x"})).status_code == 404
+    rx = await client.post(
+        "/api/v1/prescriptions",
+        json={
+            "treatment_id": t.json()["id"],
+            "drug_name": "Amoxicillin",
+            "dosage": "500 mg",
+            "frequency": "every 8 hours",
+            "duration": "5 days",
+            "indication_type": "active_infection",
+        },
+    )
+    assert (
+        rx.status_code == 201 and rx.json()["contraindication_status"] == "contraindicated"
+    )  # penicillin allergy
+    assert (
+        await client.post(
+            "/api/v1/treatments",
+            json={
+                "scan_id": str(uuid4()),
+                "treatment_category": "restorative",
+                "description": "x",
+            },
+        )
+    ).status_code == 404

@@ -1,45 +1,50 @@
 """
 DentalAI - Dentex Week 3 ML Client
-HTTP client for communicating with the dentex_week3 AI microservice.
+HTTP client for communicating with the ML inference microservice.
 """
 
 import time
-import httpx
-from typing import Awaitable, Callable, Dict, Any, List, Optional
+from collections.abc import Awaitable, Callable
 from io import BytesIO
+from typing import Any
+
+import httpx
+
 from app.core.config import settings
 
 # Cloud Run metadata server: mints an identity token for the service's own account.
 METADATA_IDENTITY_URL = (
     "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
 )
-TOKEN_LIFETIME_SECONDS = 50 * 60   # Google identity tokens live 60 minutes
+TOKEN_LIFETIME_SECONDS = 50 * 60  # Google identity tokens live 60 minutes
 
 
 async def fetch_identity_token(audience: str) -> str:
     """Identity token for calling a private Cloud Run service at `audience`."""
     async with httpx.AsyncClient(timeout=5.0) as client:
         response = await client.get(
-            METADATA_IDENTITY_URL, params={"audience": audience}, headers={"Metadata-Flavor": "Google"}
+            METADATA_IDENTITY_URL,
+            params={"audience": audience},
+            headers={"Metadata-Flavor": "Google"},
         )
         response.raise_for_status()
         return response.text.strip()
 
 
 class DentexClient:
-    """Client for dentex_week3 AI inference microservice."""
-    
+    """Client for the ML inference microservice."""
+
     def __init__(
         self,
         base_url: str = None,
         timeout: int = None,
-        auth: Optional[bool] = None,
+        auth: bool | None = None,
         token_fetcher: Callable[[str], Awaitable[str]] = fetch_identity_token,
-        transport: Optional[httpx.AsyncBaseTransport] = None,
+        transport: httpx.AsyncBaseTransport | None = None,
     ):
         """
         Initialize Dentex client.
-        
+
         Args:
             base_url: ML service URL (defaults to settings)
             timeout: Request timeout in seconds (defaults to settings)
@@ -47,16 +52,16 @@ class DentexClient:
             token_fetcher: Mints the token for an audience (the metadata server on Cloud Run)
             transport: httpx transport override, for tests
         """
-        self.base_url = (base_url or settings.ML_SERVICE_URL).rstrip('/')
+        self.base_url = (base_url or settings.ML_SERVICE_URL).rstrip("/")
         self.timeout = timeout or settings.ML_TIMEOUT_SECONDS
         self.default_confidence = settings.ML_DEFAULT_CONFIDENCE
         self.auth = settings.ML_SERVICE_AUTH if auth is None else auth
         self._fetch_token = token_fetcher
         self._transport = transport
-        self._token: Optional[str] = None
+        self._token: str | None = None
         self._token_expires = 0.0
 
-    async def _headers(self) -> Dict[str, str]:
+    async def _headers(self) -> dict[str, str]:
         """Authorization for a private ML service; empty when auth is off (local, Docker)."""
         if not self.auth:
             return {}
@@ -67,14 +72,14 @@ class DentexClient:
 
     def _client(self, timeout: float) -> httpx.AsyncClient:
         return httpx.AsyncClient(timeout=timeout, transport=self._transport)
-    
-    async def health_check(self) -> Dict[str, Any]:
+
+    async def health_check(self) -> dict[str, Any]:
         """
         Check if ML service is healthy.
-        
+
         Returns:
             Health status response
-            
+
         Raises:
             httpx.HTTPError: If service is unreachable
         """
@@ -82,21 +87,18 @@ class DentexClient:
             response = await client.get(f"{self.base_url}/", headers=await self._headers())
             response.raise_for_status()
             return response.json()
-    
+
     async def analyze_scan(
-        self,
-        image_bytes: bytes,
-        filename: str = "scan.jpg",
-        confidence_threshold: float = None
-    ) -> Dict[str, Any]:
+        self, image_bytes: bytes, filename: str = "scan.jpg", confidence_threshold: float = None
+    ) -> dict[str, Any]:
         """
-        Send panoramic X-ray to dentex_week3 for analysis.
-        
+        Send panoramic X-ray to the ML service for analysis.
+
         Args:
             image_bytes: Raw image bytes (JPEG/PNG/WebP)
             filename: Original filename for context
             confidence_threshold: Minimum confidence for detections
-        
+
         Returns:
             Complete ML inference payload including:
             - image_width, image_height
@@ -104,91 +106,86 @@ class DentexClient:
             - detections: List of disease detections with tooth associations
             - report: Generated clinical text summary
             - metadata: Model information
-            
+
         Raises:
             httpx.HTTPError: If ML service fails
         """
         confidence = confidence_threshold or self.default_confidence
-        
+
         # Prepare multipart form data
-        files = {
-            'file': (filename, BytesIO(image_bytes), 'image/jpeg')
-        }
-        
+        files = {"file": (filename, BytesIO(image_bytes), "image/jpeg")}
+
         async with self._client(self.timeout) as client:
             response = await client.post(
                 f"{self.base_url}/predict",
                 files=files,
-                params={'confidence_threshold': confidence},
+                params={"confidence_threshold": confidence},
                 headers=await self._headers(),
             )
             response.raise_for_status()
             return response.json()
-    
+
     def parse_detections_to_findings(
-        self,
-        ml_output: Dict[str, Any],
-        scan_id: str,
-        patient_id: str
-    ) -> List[Dict[str, Any]]:
+        self, ml_output: dict[str, Any], scan_id: str, patient_id: str
+    ) -> list[dict[str, Any]]:
         """
-        Parse dentex_week3 output into Finding records.
-        
+        Parse ML-service output into Finding records.
+
         Args:
             ml_output: Raw ML service response
             scan_id: UUID of the scan
             patient_id: UUID of the patient
-        
+
         Returns:
             List of finding dictionaries ready for database insertion
         """
         findings = []
-        detections = ml_output.get('detections', [])
-        
+        detections = ml_output.get("detections", [])
+
         for detection in detections:
             # Extract tooth information
-            quadrant = detection.get('quadrant')
-            tooth_id = detection.get('tooth_id')
-            tooth_label = detection.get('tooth', '')
-            
+            quadrant = detection.get("quadrant")
+            tooth_id = detection.get("tooth_id")
+            tooth_label = detection.get("tooth", "")
+
             # Calculate FDI notation
             if quadrant and tooth_id:
                 tooth_fdi = f"{quadrant}{tooth_id}"
             else:
                 # Fallback if tooth_id not directly available
-                if isinstance(tooth_label, str) and '_' in tooth_label:
-                    tooth_num = tooth_label.split('_')[-1]
+                if isinstance(tooth_label, str) and "_" in tooth_label:
+                    tooth_num = tooth_label.split("_")[-1]
                     tooth_fdi = f"{quadrant}{tooth_num}" if quadrant else tooth_label
                 else:
                     tooth_fdi = str(tooth_label)
-            
+
             # Extract disease information
-            disease = detection.get('disease', 'Unknown')
-            disease_conf = detection.get('disease_confidence', 0.0)
-            tooth_conf = detection.get('tooth_confidence')
-            assoc_conf = detection.get('association_confidence')
-            
+            disease = detection.get("disease", "Unknown")
+            disease_conf = detection.get("disease_confidence", 0.0)
+            tooth_conf = detection.get("tooth_confidence")
+            assoc_conf = detection.get("association_confidence")
+
             # Extract bounding box
-            box = detection.get('box', [0, 0, 0, 0])
-            
+            box = detection.get("box", [0, 0, 0, 0])
+
             finding = {
-                'scan_id': scan_id,
-                'patient_id': patient_id,
-                'quadrant': quadrant,
-                'tooth_id': tooth_id,
-                'tooth_fdi': tooth_fdi,
-                'disease': disease,
-                'disease_confidence': disease_conf,
-                'tooth_confidence': tooth_conf,
-                'association_confidence': assoc_conf,
-                'box': box,
-                'review_status': 'pending'
+                "scan_id": scan_id,
+                "patient_id": patient_id,
+                "quadrant": quadrant,
+                "tooth_id": tooth_id,
+                "tooth_fdi": tooth_fdi,
+                "disease": disease,
+                "disease_confidence": disease_conf,
+                "tooth_confidence": tooth_conf,
+                "association_confidence": assoc_conf,
+                "box": box,
+                "review_status": "pending",
             }
-            
+
             findings.append(finding)
-        
+
         return findings
-    
+
     async def submit_feedback(
         self,
         image_id: str,
@@ -197,11 +194,11 @@ class DentexClient:
         original_disease: str,
         is_correct: bool,
         corrected_disease: str = None,
-        notes: str = None
-    ) -> Dict[str, Any]:
+        notes: str = None,
+    ) -> dict[str, Any]:
         """
         Submit dentist feedback to ML service for future retraining.
-        
+
         Args:
             image_id: Scan identifier
             quadrant: Tooth quadrant
@@ -210,20 +207,20 @@ class DentexClient:
             is_correct: Whether AI was correct
             corrected_disease: Dentist's correction if wrong
             notes: Additional feedback notes
-        
+
         Returns:
             Feedback submission confirmation
         """
         payload = {
-            'image_id': image_id,
-            'quadrant': quadrant,
-            'tooth': tooth,
-            'original_disease': original_disease,
-            'is_correct': is_correct,
-            'corrected_disease': corrected_disease,
-            'notes': notes
+            "image_id": image_id,
+            "quadrant": quadrant,
+            "tooth": tooth,
+            "original_disease": original_disease,
+            "is_correct": is_correct,
+            "corrected_disease": corrected_disease,
+            "notes": notes,
         }
-        
+
         async with self._client(10.0) as client:
             response = await client.post(
                 f"{self.base_url}/feedback/finding",

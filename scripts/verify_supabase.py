@@ -7,15 +7,15 @@ using standard library urllib (no pip dependencies required).
 
 import os
 import sys
-import json
-import urllib.request
 import urllib.error
+import urllib.request
+
 
 # Load environment variables from .env if present
 def load_dotenv(env_path):
     if not os.path.exists(env_path):
         return
-    with open(env_path, "r", encoding="utf-8") as f:
+    with open(env_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -77,7 +77,7 @@ def main():
 
     print("-" * 65)
     print("[*] Checking clinical tables in Supabase:")
-    
+
     missing_tables = []
     for table in tables:
         tbl_url = f"{supabase_url.rstrip('/')}/rest/v1/{table}?select=id&limit=1"
@@ -90,7 +90,7 @@ def main():
             }
         )
         try:
-            with urllib.request.urlopen(tbl_req, timeout=10) as tbl_resp:
+            with urllib.request.urlopen(tbl_req, timeout=10):
                 print(f"  [+] Table '{table}' exists and is accessible.")
         except urllib.error.HTTPError as e:
             if e.code == 404 or "relation" in str(e.read()):
@@ -111,8 +111,8 @@ def main():
         }
     )
     try:
-        with urllib.request.urlopen(stg_req, timeout=10) as stg_resp:
-            print(f"  [+] Storage bucket 'xray-scans' exists.")
+        with urllib.request.urlopen(stg_req, timeout=10):
+            print("  [+] Storage bucket 'xray-scans' exists.")
     except urllib.error.HTTPError as e:
         if e.code == 404:
             print("  [-] Storage bucket 'xray-scans' not found.")

@@ -1,0 +1,44 @@
+[tool.ruff]
+line-length = 99
+target-version = "py311"
+extend-exclude = [
+    "notebooks",
+    "docs",
+    "**/venv",
+    "**/.venv",
+    "supabase",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RET", "PIE"]
+ignore = [
+    # Black owns line wrapping; a handful of long string literals (URLs, report
+    # prose) cannot be split without hurting readability.
+    "E501",
+    # `except Exception` at the API boundary is deliberate: FastAPI must return a
+    # clean error, not a traceback.
+    "BLE001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI's Depends()/File()/Query() in argument defaults is the framework's
+# documented pattern, not an accidental function call in a default.
+"backend/app/**" = ["B008"]
+"backend/tests/test_recommendation_engine.py" = ["B008"]
+"ml/service/app.py" = ["B008"]
+# conftest sets SUPABASE_* env vars before importing app.*, so the imports
+# cannot move to the top of the file.
+"backend/tests/conftest.py" = ["E402"]
+"ml/tests/*" = ["E402"]          # sys.path shim before the imports under test
+"ml/eval/evaluate.py" = ["E402"]  # same: metrics import follows the path shim
+"ml/eval/significance.py" = ["E402"]
+"ml/research/*" = ["E402", "SIM115"]
+"ml/tools/verify_setup.py" = ["E402"]
+
+[tool.black]
+line-length = 99
+target-version = ["py311"]
+extend-exclude = "notebooks|docs|/venv/|/\\.venv/|supabase"
+
+[tool.pytest.ini_options]
+testpaths = ["ml/tests"]

@@ -1,0 +1,43 @@
+# NOTICE — data, weights and third-party terms
+
+This repository contains **code** licensed under the MIT License (see LICENSE).
+The code license does **not** cover the training data, third-party datasets, or the
+trained model weights.
+
+## DENTEX
+
+The tooth and disease detectors were trained and evaluated on the **DENTEX 2023**
+dental panoramic X-ray dataset.
+
+- Dataset: DENTEX: An Abnormal Tooth Detection with Dental Enumeration and Diagnosis
+  Benchmark (MICCAI 2023).
+- Citation: Hamamci, I. E., et al. "DENTEX: An Abnormal Tooth Detection with Dental
+  Enumeration and Diagnosis Benchmark for Panoramic X-rays." arXiv:2305.19112 (2023).
+- License: **CC BY-NC-SA 4.0** (Attribution-NonCommercial-ShareAlike).
+- The dataset images are **not** redistributed by this repository except for the small
+  number of validation examples used in `submission/assets` and documentation. Those
+  examples remain under CC BY-NC-SA 4.0 and must not be used commercially.
+
+**Model weights trained on DENTEX are research/non-commercial artifacts.** They are
+published for reproducibility and evaluation, not as a medical device or a commercial
+product.
+
+## OralXrays and DentalOPG
+
+The disease detector's training mix also includes **OralXrays-9**; the advisory
+11-class findings detector was trained on **DentalOPG**. Refer to the upstream dataset
+cards and licenses for those datasets. This repository does not redistribute their
+images. If you reuse the weights, you are responsible for complying with the upstream
+terms.
+
+## No patient data
+
+The repository contains no real patient records. Demo patients and the QA clinician
+account are synthetic/local fixtures. Do not upload identifiable patient data to the
+public demo.
+
+## Clinical status
+
+DentalAI is a research prototype. It is **not** a regulated medical device, has **not**
+received regulatory clearance, and has **not** been validated in a prospective clinical
+study. Do not use it for patient care outside a supervised research setting.

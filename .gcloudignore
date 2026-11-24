@@ -2,7 +2,7 @@
 # Weights are downloaded from the GitHub Release inside the build.
 /*
 !/backend/
-!/dentex_week3/
+!/ml/
 !/deploy/
 **/venv/
 **/.venv/
@@ -10,6 +10,7 @@
 **/*.pt
 **/.pytest_cache/
 backend/tests/
-dentex_week3/eval/
-dentex_week3/tests/
-dentex_week3/feedback/
+ml/eval/
+ml/research/
+ml/tests/
+ml/feedback/

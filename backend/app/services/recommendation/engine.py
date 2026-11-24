@@ -7,15 +7,18 @@ first non-contraindicated option in catalog.PREFERENCE wins (with a visible subs
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 from app.domain.finding import Finding
 from app.domain.prescription import SafetyWarning
 from app.domain.recommendation import ClinicalContext, PlanAlert
 from app.services.contraindication import ContraindicationChecker, PatientSafetyProfile
 from app.services.contraindication.catalog import (
-    CATALOG, DENTIST_DOSE_DOSAGE, PREFERENCE, WEIGHT_NEEDED_DOSAGE,
+    CATALOG,
+    DENTIST_DOSE_DOSAGE,
+    PREFERENCE,
+    WEIGHT_NEEDED_DOSAGE,
 )
+
 from .rules import INFECTION_ELIGIBLE, PROPHYLAXIS_ELIGIBLE, TREATMENT_RULES
 
 GUIDE = "docs/CLINICAL_GUIDELINES.md"
@@ -37,7 +40,7 @@ class PrescriptionProposal:
     indication_type: str
     instructions: str
     status: str
-    warnings: List[SafetyWarning]
+    warnings: list[SafetyWarning]
 
 
 @dataclass
@@ -46,22 +49,24 @@ class TreatmentProposal:
     category: str
     description: str
     justification: str
-    prescriptions: List[PrescriptionProposal] = field(default_factory=list)
-    alerts: List[PlanAlert] = field(default_factory=list)
+    prescriptions: list[PrescriptionProposal] = field(default_factory=list)
+    alerts: list[PlanAlert] = field(default_factory=list)
 
 
 class RecommendationEngine:
-    def __init__(self, checker: Optional[ContraindicationChecker] = None):
+    def __init__(self, checker: ContraindicationChecker | None = None):
         self.checker = checker or ContraindicationChecker()
 
     def recommend_for_scan(
         self,
-        findings: List[Finding],
+        findings: list[Finding],
         patient: PatientSafetyProfile,
         context: ClinicalContext,
-    ) -> List[TreatmentProposal]:
+    ) -> list[TreatmentProposal]:
         """One proposal per finding. Each systemic drug is proposed once per scan (first tooth wins)."""
-        proposed_under: Dict[str, str] = {}   # indication -> FDI of the tooth that already carries it
+        proposed_under: dict[str, str] = (
+            {}
+        )  # indication -> FDI of the tooth that already carries it
         return [self._recommend(f, patient, context, proposed_under) for f in findings]
 
     # --- per finding ---------------------------------------------------------
@@ -71,24 +76,34 @@ class RecommendationEngine:
         rule = TREATMENT_RULES.get(disease)
         if rule is None:
             return TreatmentProposal(
-                finding, "monitoring",
+                finding,
+                "monitoring",
                 f"No automated rule for '{disease}': dentist to decide the management.",
                 self._justification(finding),
-                alerts=[PlanAlert(code="UNMAPPED_FINDING",
-                                  message=f"'{disease}' has no recommendation rule; no drugs were proposed.")],
+                alerts=[
+                    PlanAlert(
+                        code="UNMAPPED_FINDING",
+                        message=f"'{disease}' has no recommendation rule; no drugs were proposed.",
+                    )
+                ],
             )
 
-        proposal = TreatmentProposal(finding, rule.category, rule.description, self._justification(finding))
+        proposal = TreatmentProposal(
+            finding, rule.category, rule.description, self._justification(finding)
+        )
 
-        indications: List[str] = []
+        indications: list[str] = []
         if context.active_infection:
             if disease in INFECTION_ELIGIBLE:
                 indications.append("active_infection")
             else:
-                proposal.alerts.append(PlanAlert(
-                    code="ANTIBIOTIC_NOT_INDICATED",
-                    message=f"Active infection reported but '{disease}' is managed restoratively without systemic "
-                            "antibiotics. Reconsider the finding (e.g. Deep Caries / Periapical Lesion)."))
+                proposal.alerts.append(
+                    PlanAlert(
+                        code="ANTIBIOTIC_NOT_INDICATED",
+                        message=f"Active infection reported but '{disease}' is managed restoratively without systemic "
+                        "antibiotics. Reconsider the finding (e.g. Deep Caries / Periapical Lesion).",
+                    )
+                )
         if patient.needs_cardiac_prophylaxis and disease in PROPHYLAXIS_ELIGIBLE:
             indications.append("pre_procedure_prophylaxis")
         if context.pain:
@@ -96,53 +111,85 @@ class RecommendationEngine:
 
         for indication in indications:
             if indication in proposed_under:
-                proposal.alerts.append(PlanAlert(
-                    code="DUPLICATE_DRUG_SKIPPED",
-                    message=f"{INDICATION_LABEL[indication]} is already proposed under tooth "
-                            f"{proposed_under[indication]}; not repeated."))
+                proposal.alerts.append(
+                    PlanAlert(
+                        code="DUPLICATE_DRUG_SKIPPED",
+                        message=f"{INDICATION_LABEL[indication]} is already proposed under tooth "
+                        f"{proposed_under[indication]}; not repeated.",
+                    )
+                )
                 continue
             proposed_under[indication] = finding.tooth_fdi
             prescription, exclusions = self._select_drug(indication, patient)
             if prescription:
                 proposal.prescriptions.append(prescription)
             else:
-                proposal.alerts.append(PlanAlert(
-                    code="NO_SAFE_DRUG",
-                    message=f"{INDICATION_LABEL[indication]}: no safe drug could be proposed ({exclusions}). "
-                            "Dentist decision required."))
+                proposal.alerts.append(
+                    PlanAlert(
+                        code="NO_SAFE_DRUG",
+                        message=f"{INDICATION_LABEL[indication]}: no safe drug could be proposed ({exclusions}). "
+                        "Dentist decision required.",
+                    )
+                )
 
-        if {rx.indication_type for rx in proposal.prescriptions} >= {"active_infection", "pre_procedure_prophylaxis"}:
-            proposal.alerts.append(PlanAlert(
-                code="OVERLAPPING_ANTIBIOTICS",
-                message="Both an infection course and procedural prophylaxis are proposed: "
-                        "dentist to reconcile the overlapping antibiotics."))
+        if {rx.indication_type for rx in proposal.prescriptions} >= {
+            "active_infection",
+            "pre_procedure_prophylaxis",
+        }:
+            proposal.alerts.append(
+                PlanAlert(
+                    code="OVERLAPPING_ANTIBIOTICS",
+                    message="Both an infection course and procedural prophylaxis are proposed: "
+                    "dentist to reconcile the overlapping antibiotics.",
+                )
+            )
         return proposal
 
     # --- drug selection ------------------------------------------------------
 
-    def _select_drug(self, indication: str, patient: PatientSafetyProfile
-                     ) -> Tuple[Optional[PrescriptionProposal], str]:
-        excluded: List[Tuple[str, str]] = []   # (drug, reasons)
+    def _select_drug(
+        self, indication: str, patient: PatientSafetyProfile
+    ) -> tuple[PrescriptionProposal | None, str]:
+        excluded: list[tuple[str, str]] = []  # (drug, reasons)
         for name in PREFERENCE[indication]:
             dosage, frequency, duration, instructions = self._regimen(name, indication, patient)
             result = self.checker.check(name, indication, patient, dosage, frequency)
             if result.status == "contraindicated":
-                reasons = " ".join(w.message for w in result.warnings if w.severity == "contraindicated")
+                reasons = " ".join(
+                    w.message for w in result.warnings if w.severity == "contraindicated"
+                )
                 excluded.append((name, reasons))
                 continue
             warnings = [
-                SafetyWarning(code="FIRST_LINE_EXCLUDED", rule_id="R-18", severity="warning", drug=ex_name,
-                              message=f"{ex_name} not proposed: {reasons} Substituted {name}.", source=GUIDE)
+                SafetyWarning(
+                    code="FIRST_LINE_EXCLUDED",
+                    rule_id="R-18",
+                    severity="warning",
+                    drug=ex_name,
+                    message=f"{ex_name} not proposed: {reasons} Substituted {name}.",
+                    source=GUIDE,
+                )
                 for ex_name, reasons in excluded
             ] + result.warnings
-            return PrescriptionProposal(
-                name, dosage, frequency, duration, indication, instructions,
-                self.checker.status_of(warnings), warnings,
-            ), ""
+            return (
+                PrescriptionProposal(
+                    name,
+                    dosage,
+                    frequency,
+                    duration,
+                    indication,
+                    instructions,
+                    self.checker.status_of(warnings),
+                    warnings,
+                ),
+                "",
+            )
         return None, "; ".join(f"{n}: {r}" for n, r in excluded)
 
     @staticmethod
-    def _regimen(drug_name: str, indication: str, patient: PatientSafetyProfile) -> Tuple[str, str, str, str]:
+    def _regimen(
+        drug_name: str, indication: str, patient: PatientSafetyProfile
+    ) -> tuple[str, str, str, str]:
         regimen = CATALOG[drug_name].regimens[indication]
         if not patient.is_pediatric:
             return regimen.dosage, regimen.frequency, regimen.duration, regimen.instructions
@@ -163,8 +210,10 @@ class RecommendationEngine:
 
     @staticmethod
     def _justification(finding: Finding) -> str:
-        text = (f"{finding.effective_disease} at tooth {finding.tooth_fdi} "
-                f"(AI confidence {finding.disease_confidence:.0%}), validated by the dentist")
+        text = (
+            f"{finding.effective_disease} at tooth {finding.tooth_fdi} "
+            f"(AI confidence {finding.disease_confidence:.0%}), validated by the dentist"
+        )
         if finding.confirmed_disease and finding.confirmed_disease != finding.disease:
             text += f"; dentist corrected the AI label '{finding.disease}'"
         return f"{text}. Rules: {GUIDE} §1-2."

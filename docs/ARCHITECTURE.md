@@ -1,119 +1,214 @@
-# DentalAI — Clean Architecture Specification
+# DentalAI — Architecture Specification
 
-## 1. System Philosophy & Non-Negotiable Constraints
+## 1. System philosophy and non-negotiable constraints
 
-DentalAI is built for clinical decision support in dental clinics under the **IEEE IC-FTAI competition rules**. As the system is built and maintained by a team of engineers, every contributor must strictly observe the following foundational principles:
+DentalAI is a clinical decision-support system built for the **IEEE IC-FTAI 2026
+Student Project Track**. Every contributor must observe these principles:
 
-1. **Assistive, Never Autonomous ("The System Proposes, The Dentist Decides"):**
-   - No finding, diagnosis, prescription, or dosage is committed to a patient's medical record without explicit confirmation by the treating dentist.
-   - Every user interface screen and API response must visibly disclose that AI outputs are recommendations pending dentist validation.
-2. **Deterministic & Auditable Recommendation Engine:**
-   - Drug dosing and contraindication logic are **rule-based** and sourced from cited clinical dental guidelines (ADA, AHA, AAPD).
-   - Generative LLM hallucination for drug dosages is strictly forbidden in production.
-3. **Clean Architectural Boundaries:**
-   - **Data Layer:** Supabase PostgreSQL + Supabase Storage (`xray-scans`).
-   - **Inference Layer:** Standalone Python microservice (`dentex_week3` on port 8001).
-   - **Backend Service Layer:** FastAPI (`backend/` on port 8000) housing domain models, recommendation rules, contraindication checks, and database adapters.
-   - **Clinician Frontend Layer:** React + Vite + Tailwind CSS (`frontend/` on port 5173).
-   - **Identity & access (Phase 6):** Supabase Auth issues the dentist's token; the backend verifies it (`app/core/auth.py`) and scopes every request to the dentist's own patients (`app/services/access.py`). Clients have no direct table or storage access (RLS with no client policies, private bucket, signed URLs).
-
----
-
-## 2. The 6-Step Clinical Loop (Data Flow)
-
-```
-[ Step 1: Scan Ingestion ]
-      │ (Panoramic radiograph uploaded to Supabase Storage)
-      ▼
-[ Step 2: AI-Assisted Detection ]
-      │ (dentex_week3 model detects Quadrants, Teeth FDI, Pathology Bounding Boxes)
-      ▼
-[ Step 3: Dentist Finding Validation ]
-      │ (Dentist reviews findings: Confirms, Rejects, or Modifies)
-      ▼
-[ Step 4: Condition-Specific Recommendation ]
-      │ (Rule engine maps confirmed findings to treatments & candidate drugs)
-      │ (Contraindication validator scans patient allergies, meds, conditions)
-      ▼
-[ Step 5: Dentist Prescription Confirmation ]
-      │ (Dentist approves, adjusts dosage, or overrides with clinical justification)
-      ▼
-[ Step 6: Active Feedback & Logging ]
-        (Audit ledger logs discrepancies between original AI output and dentist decisions)
-```
+1. **Assistive, never autonomous ("the system proposes, the dentist decides").**
+   - No finding, diagnosis, prescription, or dosage is committed to a patient record
+     without explicit confirmation by the treating dentist.
+   - Every UI screen and API response that shows AI output must disclose that it is a
+     recommendation pending dentist validation.
+2. **Deterministic and auditable clinical logic.**
+   - Treatment and contraindication rules are rule-based and sourced from cited
+     guidelines (ADA, AHA, AAPD).
+   - Generative-LLM output is never used for drug selection or dosing.
+3. **Clean boundaries.**
+   - **Data layer:** Supabase PostgreSQL + private Supabase Storage (`xray-scans`).
+   - **Inference layer:** standalone FastAPI service (`ml/service`, port 8001).
+   - **Backend layer:** FastAPI (`backend/`, port 8000) — domain models, clinical rules,
+     data adapters, orchestration.
+   - **Clinician UI:** React + Vite + Tailwind (`frontend/`, port 5173; 8080 in Docker).
+   - **Identity:** Supabase Auth issues the dentist token; the backend verifies it and
+     scopes every request to that dentist's patients. Clients have no direct table or
+     storage access (RLS with no client policies, private bucket, signed URLs).
 
 ---
 
-## 3. Directory Structure & Modular Layout
+## 2. The six-step clinical loop
+
+```
+[ 1. Scan ingestion ]
+      │  panoramic radiograph → Supabase Storage (private bucket)
+      ▼
+[ 2. AI-assisted detection ]
+      │  ml/ v3: tooth detector + disease detector + association
+      │  advisory layers: missing teeth, 11-class findings (never in the report)
+      ▼
+[ 3. Dentist finding validation ]
+      │  confirm / modify / reject every finding; corrections are logged
+      ▼
+[ 4. Condition-specific recommendation ]
+      │  confirmed findings → rule engine → treatment + candidate drugs
+      │  contraindication validator checks allergies, medications, conditions
+      ▼
+[ 5. Dentist prescription confirmation ]
+      │  approve / adjust / reject with clinical justification; safety gates block silently
+      ▼
+[ 6. Feedback and audit ]
+         every AI-vs-dentist discrepancy is written to the feedback ledger
+```
+
+The loop is deliberately bidirectional: a scan cannot be re-analysed after any finding
+has been reviewed, so the audit trail always refers to the AI output the dentist saw.
+
+---
+
+## 3. Directory structure
 
 ```
 dental-xray-ai-assistant/
-├── .env                          # Central active environment variables
-├── .env.example                  # Sanitized template for team members
-├── dentex_week3/                 # STANDALONE AI MODEL MICROSERVICE (DO NOT MODIFY PIPELINE)
-│   ├── api/app.py                # FastAPI microservice running on port 8001
-│   └── production/               # Pretrained weights (.pt, .joblib) and inference pipeline
+├── .env                          # local environment (never committed)
+├── .env.example                  # sanitized template
+├── ml/                           # ACTIVE model microservice
+│   ├── pipeline/                 # frozen v3 inference pipeline + pipeline_config.json
+│   ├── weights/                  # v3 *.pt checkpoints (not in git)
+│   ├── service/                  # FastAPI app, start.sh (:8001)
+│   ├── eval/                     # locked-50 reports, CIs, significance, external validation
+│   │   └── evaluate.py           # the judge for every model candidate
+│   ├── research/                 # one-off studies (caries rerank/threshold, missing teeth)
+│   └── tests/                    # model/pipeline tests
 ├── supabase/
-│   ├── schema.sql                # Complete Supabase DDL schema, RLS, indexes, and storage
-│   └── seed.sql                  # Synthetic demo patient records for competition branches
-├── backend/                      # BUILT (Phases 2-3): clean FastAPI backend
+│   ├── migrations/               # base schema + auth lockdown (applied by `supabase start`)
+│   ├── schema.sql                # full DDL for hosted projects
+│   └── seed.sql                  # synthetic demo patients
+├── backend/                      # FastAPI backend
 │   ├── app/
-│   │   ├── main.py               # FastAPI entry point, domain-error -> HTTP mapping
-│   │   ├── core/                 # Config, Supabase client factory
-│   │   ├── domain/               # Pydantic entities (patient, scan, finding, treatment, prescription,
-│   │   │                         #   recommendation) + errors.py. No I/O.
+│   │   ├── main.py               # entry point, domain-error → HTTP mapping
+│   │   ├── core/                 # config, Supabase client factory
+│   │   ├── domain/               # Pydantic entities + errors (no I/O)
 │   │   ├── services/
-│   │   │   ├── contraindication/ # PURE safety rules R-01..R-22 (catalog, matcher, checker)
-│   │   │   ├── recommendation/   # PURE finding -> treatment + candidate drugs
-│   │   │   ├── clinical_workflow.py  # orchestration: load, run engines, dentist-decision policy, save
-│   │   │   ├── ml_client/        # HTTP client communicating with dentex_week3
-│   │   │   └── supabase_client/  # Typed data access layer (patients, scans, findings, treatments, prescriptions)
-│   │   └── api/                  # deps.py + v1/ REST routers (patients, scans, findings,
-│   │                             #   recommendations, treatments, prescriptions; /feedback = Phase 4, built)
-│   ├── tests/                    # 171 pytest tests (no network)
+│   │   │   ├── contraindication/ # pure safety rules R-01..R-26
+│   │   │   ├── recommendation/   # pure finding → treatment + candidate drugs
+│   │   │   ├── clinical_workflow.py
+│   │   │   ├── ml_client/        # HTTP client for ml/
+│   │   │   └── supabase_client/  # typed data access
+│   │   └── api/v1/               # patients, scans, findings, recommendations,
+│   │                             #   treatments, prescriptions, feedback
+│   ├── tests/                    # 176 pytest tests (no network)
 │   └── requirements.txt
-├── frontend/                     # BUILT (Phase 5): React + Vite + Tailwind, see frontend/README.md
+├── frontend/                     # React + Vite + Tailwind clinician UI
 │   ├── src/
-│   │   ├── components/           # Reusable UI widgets (Viewer, Alerts, Badges)
-│   │   ├── features/             # Feature slices (scan-review, treatment-plan, feedback-log)
-│   │   └── lib/                  # Supabase client and API clients
+│   │   ├── components/           # viewer, alerts, badges
+│   │   ├── features/             # patients, scan-review, treatment-plan, feedback-log
+│   │   └── lib/                  # Supabase client, typed API client
 │   └── package.json
-├── docs/                         # Team specifications and guides (start at AGENT_ONBOARDING.md)
-│   ├── ARCHITECTURE.md           # This document
-│   ├── AGENT_ONBOARDING.md       # 5-minute orientation for new developers/agents
-│   ├── PHASE2_STATUS.md, PHASE3_STATUS.md  # What each phase delivered
-│   ├── DATABASE_SPEC.md          # Database dictionary, relations, and altering rules
-│   ├── CLINICAL_GUIDELINES.md    # ADA/AHA/AAPD pharmacology and contraindication rules
-│   └── TEAM_WORKFLOW.md          # Multi-developer collaboration and PR workflow
-└── scripts/                      # Utility and verification scripts
+├── notebooks/                    # training/eval notebooks + weight fetch scripts
+├── deploy/                       # Cloud Run / Cloudflare scripts
+├── submission/                   # IC-FTAI deck, summary, facts, Q&A
+├── docs/                         # specifications and guides
+└── scripts/                      # dev/verification tooling
 ```
 
 ---
 
-## 4. Layer Responsibilities & Boundaries
+## 4. Layer responsibilities
 
-### 4.1 AI Model Microservice (`dentex_week3`)
-- **Port:** 8001
-- **Role:** Pure computer vision inference engine.
-- **Inputs:** Raw image bytes (JPEG / PNG / WebP panoramic dental radiograph).
-- **Outputs:** Standard JSON containing image dimensions, quadrant coordinates, detection bounding boxes, FDI tooth numbers, disease labels (`Caries`, `Deep Caries`, `Periapical Lesion`, `Impacted`), confidence scores, and raw radiographic summary text.
-- **Rule:** The AI microservice does **not** connect to the database directly and does **not** generate prescriptions.
+### 4.1 Inference service (`ml/`, port 8001)
 
-### 4.2 Backend Service (`backend/`)
-- **Port:** 8000
-- **Role:** Business logic, clinical safety verification, data persistence, and orchestration.
-- **Rule Engine** (authoritative detail: `CLINICAL_GUIDELINES.md` §4-5; the dentist supplies `clinical_context` flags `active_infection` / `pain` because an X-ray cannot show them):
-  - Caries with no signs of infection: Generates **restorative treatment referral only** (No systemic antibiotics).
-  - Active infection / abscess (dentist-reported): Recommends first-line antibiotic (**Amoxicillin**), but cross-checks patient allergies. If allergic to penicillins, switches to **Clindamycin** (infection) or **Azithromycin** (cardiac prophylaxis only).
-  - Cardiac risk patients: Flags need for **pre-procedure prophylaxis** (single dose 30–60m before procedure). Note: Clindamycin is strictly forbidden for cardiac prophylaxis per AHA 2021 guidelines.
-  - Pain management: Recommends **Ibuprofen**, unless patient has active GI ulcers, renal impairment, asthma, or anticoagulant therapy, falling back to **Paracetamol**.
+- **Role:** pure computer-vision inference. No database access, no prescriptions.
+- **Input:** JPEG / PNG / WebP panoramic radiograph.
+- **Core output:** image dimensions, tooth boxes with FDI numbers, disease boxes with
+  `Caries` / `Deep Caries` / `Periapical Lesion` / `Impacted`, confidences, and the
+  associated `(tooth, disease)` findings.
+- **Advisory output:** `missing_teeth` (ResNet18 classifier with a rule fallback;
+  interior gaps only) and `findings` (11-class DentalOPG model). Both carry explicit
+  `*_advisory: true` flags and are excluded from the clinical report.
+- **Provenance:** every response stores the weights, thresholds and
+  `pipeline_version` in `raw_ml_output.model`.
+- **Threshold:** `/predict` honours `confidence_threshold` (UI exposes 0.20 / 0.30 /
+  0.50; default 0.20). Re-analysis is allowed only before any finding is reviewed.
+- **Startup:** `api/start.sh` checks the two required v3 weights, starts uvicorn on
+  `:8001`, and warns (does not fail) when the optional advisory weights are absent.
 
-### 4.3 Clinician Workstation (`frontend/`)
-- **Port:** 5173
-- **Role:** Clear, responsive interface for the dentist during consultation and live competition demonstration.
-- **Key UI Sections:**
-  1. **Radiograph Canvas:** Interactive image viewer displaying detections as color-coded bounding boxes labeled with FDI tooth notation and confidence badges.
-  2. **Review Checklist:** Dentist can quickly click "Confirm", "Reject", or "Edit" on each finding.
-  3. **Decision Drawer:** Shows condition-specific treatment paths and drug recommendations. Critical contraindication alerts are rendered in bold amber/red banners that cannot be silently skipped.
-  4. **Feedback Table:** A live-updating corrections ledger demonstrating Step 6 audit logging.
-- **As built (Phase 5):** `frontend/src/features/{patients,scan-review,treatment-plan,feedback-log}`; one typed API client (`src/lib/api.ts`); server state via TanStack Query. Details: `docs/PHASE5_STATUS.md`.
+### 4.2 Model pipeline (v3)
+
+```
+panoramic
+  ├─ tooth detector   YOLOv8s, 32 FDI classes, 1024 px
+  ├─ disease detector YOLOv8s, 4 classes, 1024 px
+  │     └─ association: IoU → containment → nearest centre
+  ├─ missing teeth    ResNet18 classifier (advisory) + rule fallback
+  └─ findings         YOLOv8s, 11 classes, 640 px (advisory)
+```
+
+- Training data: DENTEX 2023 (tooth: 540 train / 94 val) and DENTEX + OralXrays
+  (disease: 10,120 train / 9,848 unique / 107 val; 4 classes).
+- The **locked-50** official DENTEX validation split is the judge. It is never used
+  for training or model selection. A candidate is promoted only if it beats the
+  incumbent on mAP@0.5, Caries AP, tooth accuracy and joint accuracy.
+- v3 is the production model. v4 was rejected after losing end-to-end joint accuracy
+  (p = 0.029). Full numbers: `ml/eval/evaluation_report_v3.md`.
+
+### 4.3 Backend (`backend/`, port 8000)
+
+- **Role:** business logic, clinical safety, persistence, orchestration.
+- **Rule engine** (authoritative detail: `docs/CLINICAL_GUIDELINES.md`; the dentist
+  supplies `active_infection` / `pain` because an X-ray cannot show them):
+  - Caries without infection → restorative referral only; no systemic antibiotics.
+  - Active infection / abscess → first-line amoxicillin after allergy check; penicillin
+    allergy → clindamycin (infection) or azithromycin (cardiac prophylaxis only).
+  - Cardiac-risk patients → pre-procedure prophylaxis flag; clindamycin is forbidden
+    for cardiac prophylaxis per AHA 2021.
+  - Pain → ibuprofen unless GI ulcer, renal impairment, asthma or anticoagulant
+    therapy; fallback paracetamol.
+- **26 rules** (R-01..R-26) are pure functions with unit tests. Warnings must be
+  acknowledged; a contraindicated drug requires a written justification.
+- **Persistence:** every state change goes through the typed Supabase adapter. The
+  service-role key stays server-side.
+
+### 4.4 Clinician UI (`frontend/`, port 5173 / 8080)
+
+1. **Radiograph viewer** — colour-coded disease boxes, FDI labels, dashed missing-tooth
+   boxes, wheel zoom, drag pan and reset.
+2. **Review checklist** — confirm / modify / reject per finding; a sticky summary shows
+   progress; the confirmed-findings gate blocks treatment until review is complete.
+3. **Advisory panel** — missing teeth and 11-class findings are visually separated and
+   labelled "advisory"; they never appear in the clinical report.
+4. **Re-analysis controls** — confidence threshold (0.20 / 0.30 / 0.50), disabled after
+   the first review; the run is stored with its provenance.
+5. **Model provenance** — a collapsed card shows the pipeline version, tooth/disease/
+   findings weights and missing-teeth gate stored with the run.
+6. **Decision drawer** — treatment paths, candidate drugs, contraindication banners that
+   cannot be silently skipped.
+7. **Feedback tab** — the corrections ledger (Step 6), with no automatic retraining.
+
+### 4.5 Data and security
+
+- Supabase Auth; backend verifies the JWT and scopes every query to the dentist.
+- RLS enabled on all clinical tables with **no client policies**; the backend uses the
+  service role. The `xray-scans` bucket is private; images are served through
+  short-lived signed URLs.
+- Cross-dentist access returns 404, not 403, to avoid leaking record existence.
+- Local development uses the Supabase CLI stack (`127.0.0.1:54321`). Production deploy
+  scripts live in `deploy/`; they require cloud credentials that are not in the repo.
+
+---
+
+## 5. Testing and quality gates
+
+| Gate | Command | Current |
+| --- | --- | --- |
+| Backend | `cd backend && pytest -q` | **176 passed** |
+| Frontend | `cd frontend && npm run typecheck && npm test` | **29 passed** |
+| Model | `python ml/eval/evaluate.py` on locked-50 | v3 frozen |
+| E2E | local Supabase + host-network backend | recorded in `docs/qa/e2e-clinician-flow.md` |
+| CI | GitHub Actions: guard, backend, frontend | green on `main` |
+
+The model judge is `ml/eval/evaluate.py`; ad-hoc scripts are not accepted as
+promotion evidence. Detection CIs use image-level bootstrap; label accuracy uses Wilson
+CIs; paired comparisons use bootstrap and McNemar.
+
+---
+
+## 6. Historical layers
+
+Earlier assets are kept for reference only, never deployed:
+
+| Location | Contents |
+| --- | --- |
+| `docs/evidence/mlv2/` | v2 training logs (`args.yaml` + `results.csv`) and the v2 report |
+| `docs/history/` | v1 model card, v1 evaluation, phase notes, the model-switch changelog |
+
+The active pipeline and all current metrics are v3, under `ml/`.

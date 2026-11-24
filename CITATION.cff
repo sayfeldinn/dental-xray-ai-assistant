@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use DentalAI, please cite this repository and the DENTEX dataset."
+title: "DentalAI: AI-Assisted Dental Radiography and Patient-History System"
+type: software
+authors:
+  - name: "sayfeldinn"
+    affiliation: "Alexandria University"
+  - name: "Seif-shawky"
+    affiliation: "Alexandria University"
+# Two-person team. GitHub handles are used because they are the confirmed
+# identifiers; display names can be substituted without changing the roster.
+repository-code: "https://github.com/sayfeldinn/dental-xray-ai-assistant"
+url: "https://github.com/sayfeldinn/dental-xray-ai-assistant"
+abstract: >-
+  DentalAI is an assistive clinical decision-support prototype for panoramic dental
+  radiographs. A v3 pipeline combines a 32-class FDI tooth detector, a 4-class disease
+  detector and geometric association; missing-teeth and 11-class findings models are
+  advisory only. Every AI finding requires dentist confirmation before it enters a
+  rule-based treatment and drug-safety workflow. The system is evaluated on the locked
+  DENTEX validation split and an external Romanian hospital set; it is a research
+  prototype, not a medical device.
+keywords:
+  - dental radiography
+  - panoramic X-ray
+  - object detection
+  - clinical decision support
+  - DENTEX
+license: MIT
+version: "3.0"
+date-released: 2026-11-18

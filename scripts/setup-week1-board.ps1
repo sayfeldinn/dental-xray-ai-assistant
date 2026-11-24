@@ -83,7 +83,7 @@ $issues = @(
 )
 
 $assignees = @{
-    ml       = "abdullahtarek4"
+    ml       = "sayfeldinn"
     backend  = "Seif-shawky"
     frontend = "Seif-shawky"
 }

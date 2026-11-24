@@ -10,24 +10,35 @@ import argparse
 import sys
 
 from app.core.supabase_client import supabase_admin as db
+
 from scripts.auth_admin import find_user
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Assign unowned patients to a dentist")
     parser.add_argument("--email", required=True)
-    parser.add_argument("--apply", action="store_true", help="Write the change (default is a dry run)")
+    parser.add_argument(
+        "--apply", action="store_true", help="Write the change (default is a dry run)"
+    )
     args = parser.parse_args()
 
     user = find_user(args.email)
     if not user:
         print(f"No user with email {args.email}", file=sys.stderr)
         return 1
-    unowned = db.table("patients").select("id, first_name, last_name").is_("dentist_id", "null").execute().data
+    unowned = (
+        db.table("patients")
+        .select("id, first_name, last_name")
+        .is_("dentist_id", "null")
+        .execute()
+        .data
+    )
     for p in unowned:
         print(f"  {p['first_name']} {p['last_name']} ({p['id']})")
     if not args.apply:
-        print(f"Dry run: {len(unowned)} unowned patient(s) would go to {args.email}. Re-run with --apply.")
+        print(
+            f"Dry run: {len(unowned)} unowned patient(s) would go to {args.email}. Re-run with --apply."
+        )
         return 0
     if unowned:
         db.table("patients").update({"dentist_id": user["id"]}).is_("dentist_id", "null").execute()

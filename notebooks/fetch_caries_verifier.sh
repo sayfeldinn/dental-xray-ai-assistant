@@ -10,4 +10,4 @@ rm -f "$STAGE/romania.zip" "$STAGE"/*.kaggle-partial
 ls -lh "$STAGE"
 echo
 echo "the verifier is not promoted; enable it with, e.g.:"
-echo "  DENTEX_CARIES_VERIFIER=$STAGE/caries_verifier.pt:gate:0.7 python dentex_week3/evaluate.py --local ..."
+echo "  DENTEX_CARIES_VERIFIER=$STAGE/caries_verifier.pt:gate:0.7 python ml/eval/evaluate.py --local ..."

@@ -3,13 +3,13 @@ DentalAI - Scan Service
 Database and storage operations for X-ray scans.
 """
 
-from typing import List, Optional, Dict, Any
-from uuid import UUID, uuid4
-from datetime import datetime, timezone
 import logging
+from datetime import UTC, datetime
+from typing import Any
+from uuid import UUID, uuid4
 
-from app.core.supabase_client import supabase_admin
 from app.core.config import settings
+from app.core.supabase_client import supabase_admin
 from app.domain.scan import Scan, ScanCreate, ScanUpdate
 
 logger = logging.getLogger(__name__)
@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 
 class ScanService:
     """Service for scan CRUD and storage operations."""
-    
+
     def __init__(self):
         self.client = supabase_admin
         self.table = "scans"
         self.bucket = settings.SUPABASE_STORAGE_BUCKET
-    
+
     async def upload_image(
         self,
         file_bytes: bytes,
@@ -31,31 +31,31 @@ class ScanService:
     ) -> tuple[str, str]:
         """
         Upload X-ray image to Supabase Storage.
-        
+
         Args:
             file_bytes: Image file bytes
             patient_id: Patient UUID for organization
             filename: Original filename
-        
+
         Returns:
             Tuple of (public_url, storage_path)
         """
         # Generate unique storage path
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         file_ext = filename.split('.')[-1] if filename and '.' in filename else 'jpg'
         storage_path = f"patients/{patient_id}/{timestamp}_{uuid4().hex[:8]}.{file_ext}"
-        
-        # Upload to storage
-        response = self.client.storage.from_(self.bucket).upload(
+
+        # Upload to storage. The response body is unused; supabase-py raises on failure.
+        self.client.storage.from_(self.bucket).upload(
             path=storage_path,
             file=file_bytes,
             file_options={"content-type": f"image/{file_ext}"}
         )
-        
+
         # The bucket is private, so no working public URL exists. The stored image_url is a
         # placeholder; signed_url() rewrites it with a short-lived signed URL on every read.
         return storage_path, storage_path
-    
+
     def signed_url(self, scan: Scan) -> Scan:
         """
         Copy of the scan whose image_url is a short-lived signed URL. The bucket is private
@@ -72,136 +72,136 @@ class ScanService:
     async def download_image(self, storage_path: str) -> bytes:
         return self.client.storage.from_(self.bucket).download(storage_path)
 
-    async def remove_images(self, storage_paths: List[str]) -> None:
+    async def remove_images(self, storage_paths: list[str]) -> None:
         if storage_paths:
             self.client.storage.from_(self.bucket).remove(storage_paths)
 
     async def create_scan(self, scan_data: ScanCreate) -> Scan:
         """
         Create a new scan record.
-        
+
         Args:
             scan_data: Scan creation schema
-        
+
         Returns:
             Created scan
         """
         data = scan_data.model_dump(exclude_unset=True, mode='json')
-        
+
         response = self.client.table(self.table).insert(data).execute()
-        
+
         if not response.data:
             raise ValueError("Failed to create scan")
-        
+
         return Scan(**response.data[0])
-    
-    async def get_scan(self, scan_id: UUID) -> Optional[Scan]:
+
+    async def get_scan(self, scan_id: UUID) -> Scan | None:
         """
         Retrieve a scan by ID.
-        
+
         Args:
             scan_id: Scan UUID
-        
+
         Returns:
             Scan if found, None otherwise
         """
         response = self.client.table(self.table).select("*").eq("id", str(scan_id)).execute()
-        
+
         if response.data:
             return Scan(**response.data[0])
         return None
-    
+
     async def list_scans(
         self,
-        patient_id: Optional[UUID] = None,
-        status: Optional[str] = None,
+        patient_id: UUID | None = None,
+        status: str | None = None,
         page: int = 1,
         page_size: int = 20
-    ) -> tuple[List[Scan], int]:
+    ) -> tuple[list[Scan], int]:
         """
         List scans with optional filtering and pagination.
-        
+
         Args:
             patient_id: Filter by patient
             status: Filter by status
             page: Page number (1-indexed)
             page_size: Results per page
-        
+
         Returns:
             Tuple of (scans list, total count)
         """
         query = self.client.table(self.table).select("*", count="exact")
-        
+
         # Apply filters
         if patient_id:
             query = query.eq("patient_id", str(patient_id))
-        
+
         if status:
             query = query.eq("status", status)
-        
+
         # Order by creation date (newest first)
         query = query.order("created_at", desc=True)
-        
+
         # Apply pagination
         offset = (page - 1) * page_size
         query = query.range(offset, offset + page_size - 1)
-        
+
         response = query.execute()
-        
+
         scans = [Scan(**s) for s in response.data] if response.data else []
         total = response.count or 0
-        
+
         return scans, total
-    
+
     async def update_scan(
         self,
         scan_id: UUID,
         scan_data: ScanUpdate
-    ) -> Optional[Scan]:
+    ) -> Scan | None:
         """
         Update scan record.
-        
+
         Args:
             scan_id: Scan UUID
             scan_data: Fields to update
-        
+
         Returns:
             Updated scan if found, None otherwise
         """
         data = scan_data.model_dump(exclude_unset=True, mode='json')
-        
+
         if not data:
             return await self.get_scan(scan_id)
-        
+
         response = (
             self.client.table(self.table)
             .update(data)
             .eq("id", str(scan_id))
             .execute()
         )
-        
+
         if response.data:
             return Scan(**response.data[0])
         return None
-    
+
     async def update_ml_results(
         self,
         scan_id: UUID,
-        ml_output: Dict[str, Any],
+        ml_output: dict[str, Any],
         ai_report: str,
         image_width: int,
         image_height: int
-    ) -> Optional[Scan]:
+    ) -> Scan | None:
         """
         Update scan with ML analysis results.
-        
+
         Args:
             scan_id: Scan UUID
             ml_output: Raw ML service response
             ai_report: Generated clinical report
             image_width: Image width in pixels
             image_height: Image height in pixels
-        
+
         Returns:
             Updated scan
         """
@@ -212,41 +212,41 @@ class ScanService:
             'image_height': image_height,
             'status': 'analyzed'
         }
-        
+
         response = (
             self.client.table(self.table)
             .update(data)
             .eq("id", str(scan_id))
             .execute()
         )
-        
+
         if response.data:
             return Scan(**response.data[0])
         return None
-    
+
     async def delete_scan(self, scan_id: UUID) -> bool:
         """
         Delete a scan record and its storage file.
-        
+
         Args:
             scan_id: Scan UUID
-        
+
         Returns:
             True if deleted, False otherwise
         """
         # Get scan to find storage path
         scan = await self.get_scan(scan_id)
-        
+
         if not scan:
             return False
-        
+
         # Delete from storage if path exists
         if scan.storage_path:
             try:
                 self.client.storage.from_(self.bucket).remove([scan.storage_path])
             except Exception:
                 logger.warning("Could not delete storage file for scan %s", scan_id, exc_info=True)
-        
+
         # Delete database record
         response = (
             self.client.table(self.table)
@@ -254,7 +254,7 @@ class ScanService:
             .eq("id", str(scan_id))
             .execute()
         )
-        
+
         return len(response.data) > 0 if response.data else False
 
 

@@ -2,7 +2,7 @@
 
 *Team Roles, Day-by-Day Tasks & Existing Tools to Reuse*
 
-**Team of 5 — One-Month Competition Build, Week 1 of 4**
+**Historical Week-1 plan — originally written for a five-role split. The current team is two people; see [README](../README.md#team).**
 
 *This plan assigns every team member concrete daily tasks for Week 1, lists every existing model, dataset, and tool the team will reuse instead of rebuilding, and defines exactly what must exist by Friday.*
 
@@ -31,7 +31,7 @@
 
 *Everything in this plan assumes the team is not building anything already solved elsewhere — Section 3 lists exactly what to reuse.*
 
-## 2. Team Roles for Week 1
+## 2. Team Roles for Week 1 (historical five-role split)
 
 | Role | Week 1 Focus |
 | --- | --- |
@@ -41,7 +41,9 @@
 | Person D — Integration/QA Engineer | Set up the shared repo and project board; design synthetic patient profiles and contraindication test cases. |
 | Person E — Team Lead / Clinical Liaison | Schedule and run the dentist meeting; document validated outputs; coordinate the team daily. |
 
-*Swap in real names once assigned. Roles carry over unchanged into Weeks 2–4 (see the main project documentation, Section 9.3).*
+*This table is a historical record of the original plan. The current team is exactly two
+people — `sayfeldinn` (ML Engineer, research & evaluation lead) and `Seif-shawky`
+(Full-stack / Platform Engineer) — and both cover the tasks above.*
 
 ## 3. Existing Tools & Models We Are Reusing (Not Building)
 
@@ -123,7 +125,7 @@ Status recorded by Lead + QA on 2026-09-27. Evidence and the full verification t
 - [~] DENTEX + Tufts + Roboflow datasets downloaded, merged, and converted to training format
       — **diverged.** DENTEX purged (box granularity), Roboflow unused. Actual set: **Tufts + Loki Silvres**.
       Awaiting Lead decision: accept the substitution or re-plan.
-- [x] First model fine-tuning run started — two runs in `ml/Evaluation_Report.md`; checkpoint
+- [x] First model fine-tuning run started — two runs in `docs/history/ml-v1-evaluation.md`; checkpoint
       frozen as Release `v0.1-dental-yolov8s`. (#16)
 - [~] Patient record schema implemented in Supabase with all contraindication-relevant fields
       — **partial.** Tables + JSONB fields in (#3, #8), but **`weight_kg` is not a column** and age

@@ -3,8 +3,9 @@ DentalAI - Prescription Service
 Database operations for prescriptions (Step 4/5).
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
+
 from app.core.supabase_client import supabase_admin
 from app.domain.prescription import Prescription, PrescriptionCreate
 
@@ -26,16 +27,18 @@ class PrescriptionService:
 
         return Prescription(**response.data[0])
 
-    async def get_prescription(self, prescription_id: UUID) -> Optional[Prescription]:
+    async def get_prescription(self, prescription_id: UUID) -> Prescription | None:
         """Retrieve a prescription by ID."""
-        response = self.client.table(self.table).select("*").eq("id", str(prescription_id)).execute()
+        response = (
+            self.client.table(self.table).select("*").eq("id", str(prescription_id)).execute()
+        )
         return Prescription(**response.data[0]) if response.data else None
 
     async def list_prescriptions(
         self,
-        treatment_ids: Optional[List[UUID]] = None,
-        patient_id: Optional[UUID] = None,
-    ) -> List[Prescription]:
+        treatment_ids: list[UUID] | None = None,
+        patient_id: UUID | None = None,
+    ) -> list[Prescription]:
         """List prescriptions for treatments and/or a patient, oldest first."""
         query = self.client.table(self.table).select("*")
         if treatment_ids is not None:
@@ -48,7 +51,9 @@ class PrescriptionService:
         response = query.order("created_at").execute()
         return [Prescription(**p) for p in response.data] if response.data else []
 
-    async def update_prescription(self, prescription_id: UUID, changes: Dict[str, Any]) -> Optional[Prescription]:
+    async def update_prescription(
+        self, prescription_id: UUID, changes: dict[str, Any]
+    ) -> Prescription | None:
         """Apply a partial update (JSON-safe values only)."""
         response = (
             self.client.table(self.table)

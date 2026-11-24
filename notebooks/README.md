@@ -1,7 +1,8 @@
 # ML rebuild — notebooks
 
-Rebuild of the DENTEX models from scratch. v1 is frozen in `archive/ml-v1/`
-(tag `ml-v1-baseline`) and v2 in `archive/ml-v2/`. The shipped disease
+Rebuild of the DENTEX models from scratch. v1 is recoverable from tag
+`ml-v1-baseline` (the local `archive/` copy was removed in the 2026-11 cleanup)
+and v2 training logs are in `docs/evidence/mlv2/`. The shipped disease
 detector is v3.
 
 ## Pipeline

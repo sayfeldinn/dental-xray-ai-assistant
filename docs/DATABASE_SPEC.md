@@ -57,7 +57,7 @@ The three arrays are free text; the backend matches them against alias tables (s
 | `image_url` | `TEXT` | NOT NULL | Supabase Storage URL |
 | `storage_path` | `TEXT` | nullable | Path in the `xray-scans` bucket |
 | `status` | `VARCHAR(30)` | IN (`uploaded`,`processing`,`analyzed`,`reviewed`,`failed`) | Lifecycle |
-| `raw_ml_output` | `JSONB` | default `{}` | Verbatim `dentex_week3` response |
+| `raw_ml_output` | `JSONB` | default `{}` | Verbatim `ml/` response |
 | `ai_report` | `TEXT` | nullable | Model-written report |
 | `image_width`, `image_height` | `INT` | nullable | Pixels |
 | `notes` | `TEXT` | nullable | |
@@ -115,7 +115,7 @@ Proposed by the recommendation engine, decided by the dentist.
 | `prescribed_at` | `TIMESTAMPTZ` | nullable | Set on accept/modify |
 
 ### 2.6 `clinical_feedback_logs`
-Immutable audit log, written by `ClinicalWorkflowService` (Phase 4; see `docs/PHASE4_STATUS.md`). The application only inserts and reads rows.
+Immutable audit log, written by `ClinicalWorkflowService` (Phase 4; see `docs/history/PHASE4_STATUS.md`). The application only inserts and reads rows.
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |

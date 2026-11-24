@@ -5,10 +5,10 @@ Loads environment variables and provides typed settings access.
 
 import json
 from pathlib import Path
+from typing import Any
 
-from pydantic_settings import BaseSettings
 from pydantic import field_validator
-from typing import List, Any
+from pydantic_settings import BaseSettings
 
 # Repo root = backend/app/core/ -> up three levels. Resolved from this file so settings load
 # regardless of the process working directory (the old "../.env" only worked from backend/).
@@ -17,7 +17,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
-    
+
     # Application
     APP_NAME: str = "DentalAI"
     ENVIRONMENT: str = "development"
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
             if val in ("false", "0", "no", "f", "release", "prod", "production"):
                 return False
         return bool(v)
-    
+
     # Supabase. Only these two are required by the backend at runtime.
     SUPABASE_URL: str
     SUPABASE_SERVICE_ROLE_KEY: str
@@ -50,34 +50,36 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = ""
     SIGNED_URL_TTL_SECONDS: int = 3600
     MAX_UPLOAD_MB: int = 20
-    
-    # AI Microservice (dentex_week3)
+
+    # AI Microservice (ml/)
     ML_SERVICE_URL: str = "http://localhost:8001"
     ML_TIMEOUT_SECONDS: int = 60
     # Cloud Run: the ML service is private, so calls carry a Google identity token for it.
     ML_SERVICE_AUTH: bool = False
     ML_DEFAULT_CONFIDENCE: float = 0.20
-    
+
     # Backend API
     BACKEND_HOST: str = "0.0.0.0"
     BACKEND_PORT: int = 8000
     API_V1_PREFIX: str = "/api/v1"
-    
+
     # CORS
-    CORS_ORIGINS: str = '["http://localhost:5173","http://localhost:3000","http://127.0.0.1:5173","http://localhost:8080","http://127.0.0.1:8080"]'
-    
+    CORS_ORIGINS: str = (
+        '["http://localhost:5173","http://localhost:3000","http://127.0.0.1:5173","http://localhost:8080","http://127.0.0.1:8080"]'
+    )
+
     @property
     def auth_issuer(self) -> str:
         return f"{self.SUPABASE_URL.rstrip('/')}/auth/v1"
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from JSON string."""
         try:
             return json.loads(self.CORS_ORIGINS)
         except Exception:
             return ["http://localhost:5173", "http://localhost:3000"]
-    
+
     class Config:
         env_file = str(_REPO_ROOT / ".env")  # repo-root .env, CWD-independent
         case_sensitive = True

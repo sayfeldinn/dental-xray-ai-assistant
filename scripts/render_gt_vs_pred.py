@@ -13,6 +13,7 @@ change the locked-50 benchmark.
 
 Environment overrides: ML_URL, DENTEX_GT, DENTEX_XRAYS, OUT_DIR.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,13 +25,19 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 
 ML_URL = os.environ.get("ML_URL", "http://127.0.0.1:8001")
-GT_PATH = Path(os.environ.get(
-    "DENTEX_GT",
-    "/home/sayfeldin/Projects/dental-model-research/data/downloads/validation_triple.json"))
-XRAY_DIR = Path(os.environ.get(
-    "DENTEX_XRAYS",
-    "/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
-    "validation_data/quadrant_enumeration_disease/xrays"))
+GT_PATH = Path(
+    os.environ.get(
+        "DENTEX_GT",
+        "/home/sayfeldin/Projects/dental-model-research/data/downloads/validation_triple.json",
+    )
+)
+XRAY_DIR = Path(
+    os.environ.get(
+        "DENTEX_XRAYS",
+        "/home/sayfeldin/Projects/dental-model-research/data/raw/dentex/"
+        "validation_data/quadrant_enumeration_disease/xrays",
+    )
+)
 OUT_DIR = Path(os.environ.get("OUT_DIR", "submission/assets"))
 
 GT_COLOR = (34, 197, 94)
@@ -109,21 +116,38 @@ def render(name: str, gt: dict, threshold: float, out_dir: Path) -> Path:
     for a in anns:
         x, y, w, h = a["bbox"]
         fdi = f"{a['category_id_1'] + 1}{a['category_id_2'] + 1}"
-        draw_box(draw_left, (x, y, x + w, y + h), scale, GT_COLOR,
-                 f"{fdi} {disease_names.get(a['category_id_3'], '?')}", font)
+        draw_box(
+            draw_left,
+            (x, y, x + w, y + h),
+            scale,
+            GT_COLOR,
+            f"{fdi} {disease_names.get(a['category_id_3'], '?')}",
+            font,
+        )
 
     for d in detections:
-        draw_box(draw_right, d["box"], scale, PRED_COLOR,
-                 f"{d.get('tooth_fdi', '?')} {d.get('disease', '?')} {d.get('disease_confidence', 0):.2f}",
-                 font)
+        draw_box(
+            draw_right,
+            d["box"],
+            scale,
+            PRED_COLOR,
+            f"{d.get('tooth_fdi', '?')} {d.get('disease', '?')} {d.get('disease_confidence', 0):.2f}",
+            font,
+        )
 
     x0, y0 = MARGIN, HEADER_H + MARGIN
     canvas.paste(left, (x0, y0))
     canvas.paste(right, (x0 + PANEL_W + GAP, y0))
 
-    draw.text((x0, MARGIN), f"{name} — ground truth ({len(anns)})", fill=TEXT_COLOR, font=title_font)
-    draw.text((x0 + PANEL_W + GAP, MARGIN),
-              f"v3 detections ({len(detections)} @ {threshold:.2f})", fill=TEXT_COLOR, font=title_font)
+    draw.text(
+        (x0, MARGIN), f"{name} — ground truth ({len(anns)})", fill=TEXT_COLOR, font=title_font
+    )
+    draw.text(
+        (x0 + PANEL_W + GAP, MARGIN),
+        f"v3 detections ({len(detections)} @ {threshold:.2f})",
+        fill=TEXT_COLOR,
+        font=title_font,
+    )
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"gt_vs_pred_{Path(name).stem}.png"

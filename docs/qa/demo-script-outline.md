@@ -177,7 +177,7 @@ Week 1 checkpoint expects *"the model running inference on one sample scan."*
   (`0 Inter-Radicular / 1 Non-Odontogenic / 2 Periapical / 3 Pericoronal / 4 Caries`) against
   `FindingTypeEnum`'s 7 unrelated values. Also tracked in **#28**.
 - **Fallback for Friday:** show the notebook (`ml/train_dental_yolov8s.ipynb`) and the model
-  card (`ml/README.md`) instead of a live run, and name #30 + #28 as the blockers.
+  card (`docs/history/ml-v1-readme.md`) instead of a live run, and name #30 + #28 as the blockers.
 
 ---
 

@@ -5,12 +5,15 @@ The slice of a patient record the safety rules need, with age/weight derived onc
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional, Tuple
 
 from app.domain.patient import Patient
+
 from .catalog import (
-    ALLERGY_CLASSES, CONDITION_CLASSES, MEDICATION_CLASSES,
-    PEDIATRIC_AGE_YEARS, ELDERLY_AGE_YEARS,
+    ALLERGY_CLASSES,
+    CONDITION_CLASSES,
+    ELDERLY_AGE_YEARS,
+    MEDICATION_CLASSES,
+    PEDIATRIC_AGE_YEARS,
 )
 from .text_match import any_term_matches, matching_terms
 
@@ -24,13 +27,13 @@ def age_on(date_of_birth: date, on_date: date) -> int:
 @dataclass(frozen=True)
 class PatientSafetyProfile:
     age_years: int
-    weight_kg: Optional[float]
-    allergies: Tuple[str, ...] = ()
-    medications: Tuple[str, ...] = ()
-    conditions: Tuple[str, ...] = ()
+    weight_kg: float | None
+    allergies: tuple[str, ...] = ()
+    medications: tuple[str, ...] = ()
+    conditions: tuple[str, ...] = ()
 
     @classmethod
-    def from_patient(cls, patient: Patient, on_date: Optional[date] = None) -> "PatientSafetyProfile":
+    def from_patient(cls, patient: Patient, on_date: date | None = None) -> "PatientSafetyProfile":
         return cls(
             age_years=age_on(patient.date_of_birth, on_date or date.today()),
             weight_kg=patient.weight_kg,
@@ -47,7 +50,7 @@ class PatientSafetyProfile:
     def is_elderly(self) -> bool:
         return self.age_years >= ELDERLY_AGE_YEARS
 
-    def allergen_terms(self, allergy_class: str) -> Tuple[str, ...]:
+    def allergen_terms(self, allergy_class: str) -> tuple[str, ...]:
         """Patient's own allergy entries that fall in the class (to name the allergen in warnings)."""
         return matching_terms(self.allergies, ALLERGY_CLASSES[allergy_class])
 
@@ -59,12 +62,14 @@ class PatientSafetyProfile:
 
     def has_alcohol_use(self) -> bool:
         # Seed data records 'alcohol_chronic' under current_medications, so look in both lists.
-        return any_term_matches(self.conditions + self.medications, CONDITION_CLASSES["alcohol_use"])
+        return any_term_matches(
+            self.conditions + self.medications, CONDITION_CLASSES["alcohol_use"]
+        )
 
-    def medication_terms(self, medication_class: str) -> Tuple[str, ...]:
+    def medication_terms(self, medication_class: str) -> tuple[str, ...]:
         return matching_terms(self.medications, MEDICATION_CLASSES[medication_class])
 
-    def condition_terms(self, condition_class: str) -> Tuple[str, ...]:
+    def condition_terms(self, condition_class: str) -> tuple[str, ...]:
         return matching_terms(self.conditions, CONDITION_CLASSES[condition_class])
 
     @property

@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS patients (
 
 -- Table: scans
 -- Ingested panoramic dental radiographs. Stores links to Supabase Storage and
--- the verbatim, untruncated AI inference payload from dentex_week3.
+-- the verbatim, untruncated AI inference payload from the ML service.
 CREATE TABLE IF NOT EXISTS scans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,

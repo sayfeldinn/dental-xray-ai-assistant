@@ -1,0 +1,12 @@
+# Build context for deploy/ml.Dockerfile. Only service/app.py, service/requirements.txt,
+# pipeline/ and weights/ are copied; keep everything else (notably the multi-GB local
+# venv and the eval evidence) out of the context so builds stay fast.
+**/venv
+**/.venv
+**/__pycache__
+**/*.pyc
+feedback
+eval
+research
+tests
+.DS_Store
