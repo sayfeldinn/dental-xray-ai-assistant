@@ -14,6 +14,7 @@ The binary deck/summary are still v2 and must be updated from `DECK_V3_REWRITE.m
 
 | # | Item | Owner | Done |
 | ---: | --- | --- | :---: |
+| 0 | **Attach the evidence for the headline results table (overall P 82.6 / R 79.7 / F1 81.1). Record the command, weights, GT file and matching protocol, or re-run `ml/eval/evaluate.py` on locked-50 so the table is reproducible. Until then the deck must not ship it.** | `sayfeldinn` | ☐ **BLOCKER** |
 | 1 | Confirm the two-person roster on the title slide and in `CITATION.cff` (`sayfeldinn`, `Seif-shawky`) | Both | ✅ |
 | 2 | Apply `DECK_V3_REWRITE.md` to the PPTX: numbers, architecture, advisory, tests, team | Both | ☐ |
 | 3 | Replace the v2 screenshots with current UI (advisory panel, dashed missing boxes, threshold, provenance, zoom) | `Seif-shawky` | ☐ |

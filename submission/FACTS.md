@@ -73,7 +73,27 @@ panoramic X-ray (JPEG/PNG/WebP)
 
 ---
 
-## 4. Detection results — locked-50 (confidence 0.20)
+## 4. Detection results — locked-50 (182 lesions)
+
+> **Provenance pending.** These are the results the presenter measured; the evidence
+> file still has to be attached (see the `CONFERENCE_CHECKLIST.md` blocker *"results
+> table provenance"*). They are **not yet reproduced by `ml/eval/evaluate.py`**. The
+> class GT counts (40 / 101 / 9 / 32 = 182) match the locked-50 set exactly, so the
+> split is the same; the protocol, weights and command must be recorded before
+> submission. No confidence intervals are available for this run yet.
+
+| Class | GT | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: | ---: |
+| Impacted | 40 | 90.0% | 92.5% | 91.2% |
+| Deep Caries | 32 | 82.4% | 78.1% | 80.2% |
+| Caries | 101 | 80.6% | 76.2% | 78.3% |
+| Periapical Lesion | 9 | 77.8% | 77.8% | 77.8% |
+| **Overall** | **182** | **82.6%** | **79.7%** | **81.1%** |
+
+### 4b. Earlier harness run — superseded for the headline
+
+Kept because the v1/v2/v3 iteration comparison (§7) and the threshold sweep (§6) are
+built on it. Regenerate these from the same run as §4 once its evidence lands.
 
 50/50 images scored · 182 ground-truth lesions · 303 predictions · greedy one-to-one
 matching at IoU ≥ 0.5.
@@ -90,9 +110,18 @@ matching at IoU ≥ 0.5.
 (macro over the four classes; AR is COCO-style mean recall across 0.5:0.95 on the
 returned detections. v2 for comparison: mAP@0.75 42.7 · AR 47.1.)
 
+> **Note on the `mAP@0.5` figure.** The AP implementation in the earlier harness
+> divides recall by the number of matched positives instead of the GT count, so
+> `AP@0.5` equals the class precision and `mAP@0.5 = 54.2` is really mean per-class
+> precision. The correct VOC-style value on those same predictions is **60.9**
+> (Caries 46.9). Fixing it is a separate decision because it moves every number
+> derived from that run; see `docs/CLEANUP.md`.
+
 ---
 
 ## 5. Label and end-to-end accuracy
+
+> From the earlier harness run (§4b). Not yet re-derived for the §4 results.
 
 **On the 145 lesions the model matched** (IoU ≥ 0.5, any label):
 
@@ -144,6 +173,8 @@ threshold is an operating-point choice; confidences are **not calibrated**.
 
 ## 7. Model iterations and significance
 
+> From the earlier harness run (§4b) — this is the run the promotion decision was made on.
+
 | Metric | v2 | v3 | Δ | 95% CI (paired bootstrap) | P(v3 > v2) |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | mAP@0.5 | 51.7 | 54.2 | +2.5 | [−6.9, +12.4] | 0.714 (ns) |
@@ -161,6 +192,8 @@ promotion rule. Do not present v4 as the model.
 ---
 
 ## 8. External validation — Romanian hospital set
+
+> mAP/AP here are from the earlier harness run (§4b).
 
 175 images, tooth-converted GT, no Deep Caries GT in this set:
 
@@ -279,13 +312,13 @@ the same block goes on the title slide and in `CITATION.cff`.
 | --- | --- |
 | "97.5% accuracy" / "76.2% tooth accuracy" / "75.4% joint" | v1 numbers on 23 images; obsolete |
 | "23 held-out images / 122 detections" | v1 benchmark; current is locked-50 / 182 lesions |
-| "No held-out mAP/recall" | false since v3; mAP 54.2, recall 74.2 |
+| "No held-out mAP/recall" | false since v3; §4 headline is P 82.6 / R 79.7 (provenance pending); the earlier harness run recorded mAP 54.2, recall 74.2 |
 | "Coordinator + random forest" | v1; v3 is tooth + disease detectors + association |
 | "The model improves with feedback" | feedback is logged; no retraining |
 | "Clinically validated" / "clinician-reviewed rules" | no reader study/pilot; rules source-backed only |
 | "Diagnoses caries" / "replaces the dentist" | assistive only; dentist confirms every finding |
 | "Works on any dental X-ray" | panoramic JPEG/PNG/WebP only; no DICOM |
-| "State-of-the-art" / "best open-source" | the open-code DENTEX baseline scored AP50 60.2 on the hidden test vs our 54.2 on val-50 (different sample/evaluator); we are below it and say so |
+| "State-of-the-art" / "best open-source" | the open-code DENTEX baseline scored AP50 60.2 on the hidden test vs our 54.2 on val-50 (different sample/evaluator); we are below it and say so. Do not claim a comparison against the §4 numbers either — the baseline uses a different split and evaluator |
 | "We reproduced the DENTEX winners' numbers" | the 4-class test GT and the baseline's weights are not public; no same-protocol comparison is possible |
 | "FDA/CE cleared" | not a medical device |
 | "The live site is available" | Cloudflare Pages was 522/523 at writing; use local/video |

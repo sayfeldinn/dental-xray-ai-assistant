@@ -17,9 +17,10 @@ limitation that must stay visible.
 | 2 | Missing teeth = ResNet18 + rule fallback, advisory only | `pipeline_config.json`; `missing_teeth_model_results.json` | ✅ |
 | 3 | 11-class findings = advisory only, excluded from the report | `pipeline_config.json`; `findings_*.json`; `ScanPage.tsx` | ✅ |
 | 4 | Data: DENTEX 2023 (540/94 tooth; 10,120/9,848/107 disease mix) + OralXrays; DentalOPG advisory; Romanian external | `pipeline_config.json` `training`; `FACTS.md` §2 | ✅ |
-| 5 | Locked-50: 50 images, 182 lesions, 303 predictions, conf 0.20 | `evaluation_report_v3.md` | ✅ |
-| 6 | mAP@0.5 54.2; mAP@0.5:0.95 38.2; mAP@0.75 42.5; AR@0.5:0.95 51.3; P 44.6 [39.1–50.2]; R 74.2 [67.4–80.0] | `evaluation_report_v3.md` | ✅ |
-| 7 | Per-class AP: Impacted 75.0, Caries 35.3, Periapical 55.6, Deep Caries 51.1 | `evaluation_report_v3.md` | ✅ |
+| 5 | Locked-50: 50 images, 182 lesions | `evaluation_report_v3.md` | ✅ |
+| 5b | **Headline detection results: overall P 82.6 / R 79.7 / F1 81.1; Impacted 90.0/92.5, Deep Caries 82.4/78.1, Caries 80.6/76.2, Periapical 77.8/77.8** | presenter's evaluation run — **evidence file not yet attached**; not reproduced by `ml/eval/evaluate.py`; GT counts (40/101/9/32) match locked-50 | ⚠️ **PENDING — blocker** |
+| 6 | Earlier harness run: mAP@0.5 54.2 (really mean per-class precision — true VOC mAP 60.9); mAP@0.5:0.95 38.2; mAP@0.75 42.5; AR@0.5:0.95 51.3; P 44.6 [39.1–50.2]; R 74.2 [67.4–80.0] | `evaluation_report_v3.md`; AP defect documented in `docs/CLEANUP.md` | ✅ traceable / ⚠️ mislabelled metric |
+| 7 | Earlier harness per-class AP: Impacted 75.0, Caries 35.3, Periapical 55.6, Deep Caries 51.1 (equals precision; true AP50 Impacted 86.2, Caries 46.9, Periapical 55.6, Deep Caries 55.2) | `evaluation_report_v3.md` | ✅ traceable / ⚠️ mislabelled metric |
 | 8 | Matched-label accuracy: disease 89.0, tooth 91.7, quadrant 100, joint 82.8 (n=145) | `evaluation_report_v3.md` | ✅ |
 | 9 | End-to-end: tooth 73.1, joint 65.9 (n=182) | `paired_significance_v2_v3.md` | ✅ |
 | 10 | Threshold sweep 0.20/0.30/0.50 = P44.6/R74.2, P51.4/R69.2, P68.0/R57.1 | `evaluation_report_v3.md` §4 | ✅ |

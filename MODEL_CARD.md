@@ -55,6 +55,21 @@ used for training or model selection. It is the judge for every candidate.
 
 ## Evaluation
 
+**Headline results (presenter's run; provenance pending — see
+`submission/CONFERENCE_CHECKLIST.md` blocker 0). Not reproduced by
+`ml/eval/evaluate.py`; class GT counts match the locked-50 set.**
+
+| Class | GT | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: | ---: |
+| Impacted | 40 | 90.0% | 92.5% | 91.2% |
+| Deep Caries | 32 | 82.4% | 78.1% | 80.2% |
+| Caries | 101 | 80.6% | 76.2% | 78.3% |
+| Periapical Lesion | 9 | 77.8% | 77.8% | 77.8% |
+| **Overall** | **182** | **82.6%** | **79.7%** | **81.1%** |
+
+**Reproducible harness run** — the numbers below are what `ml/eval/evaluate.py`
+regenerates on the locked-50 set (`ml/eval/evaluation_report_v3.md`).
+
 Locked-50, confidence threshold 0.20, 303 predictions:
 
 | Metric | v3 |

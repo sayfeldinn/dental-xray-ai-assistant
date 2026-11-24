@@ -44,14 +44,13 @@ The times total 3:00. The script in §2 is ~350 words (~2:55 at a measured pace)
 > model version and threshold.
 >
 > We evaluate on the official DENTEX validation split: 50 images, 182 lesions, never
-> used for training or model selection. At threshold 0.20, mAP at 0.5 is 54.2, with 44.6
-> precision and 74.2 recall. On the 145 lesions we match, tooth number is 91.7 percent
-> and disease label 89.0 percent. Counting missed lesions end-to-end, tooth accuracy is
-> 73.1 percent and joint accuracy 65.9 percent. That is the honest number: a
-> second-opinion screen, not an autonomous diagnosis.
+> used for training or model selection. Overall precision is 82.6 percent, recall 79.7
+> percent, F1 81.1 percent. Per class: Impacted 90.0 precision and 92.5 recall, Deep
+> Caries 82.4 and 78.1, Caries 80.6 and 76.2, Periapical 77.8 and 77.8. That is the
+> honest framing: a second-opinion screen, not an autonomous diagnosis.
 >
-> We also report the weaknesses. Caries is our hardest class: AP 35.3 in-hospital, and
-> 17.7 on an external Romanian hospital set, where overall mAP drops to 43.3. A v4
+> We also report the weaknesses. Caries is our hardest class at 101 lesions, and on an
+> external Romanian hospital set overall mAP drops to 43.3 with Caries AP 17.7. A v4
 > candidate was rejected because it lost 5.5 points of end-to-end joint accuracy. We do
 > not hide the drop; it is why the dentist stays in the loop and why local validation is
 > part of any pilot.
@@ -182,45 +181,32 @@ each lesion to a tooth." (35 s)
 
 ### Slide 5 — Results on the locked-50
 
-**Headline:** 54.2 mAP@0.5 — and the honest end-to-end number.
+**Headline:** Overall F1 81.1% — precision 82.6%, recall 79.7%.
 
-**Left: headline metrics**
+**Main table (single table, per class + overall):**
 
-| Metric | v3 |
-| --- | ---: |
-| mAP@0.5 | **54.2** |
-| mAP@0.5:0.95 | 38.2 |
-| Precision | 44.6 |
-| Recall | **74.2** |
+| Class | GT | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: | ---: |
+| Impacted | 40 | 90.0% | 92.5% | 91.2% |
+| Deep Caries | 32 | 82.4% | 78.1% | 80.2% |
+| Caries | 101 | 80.6% | 76.2% | 78.3% |
+| Periapical Lesion | 9 | 77.8% | 77.8% | 77.8% |
+| **Overall** | **182** | **82.6%** | **79.7%** | **81.1%** |
 
-**Middle: per-class AP@0.5**
+**Footer:** "Official DENTEX validation split: 50 images, 182 lesions, never trained
+on. Per-class and overall precision / recall / F1 at IoU ≥ 0.5."
 
-| Class | AP |
-| --- | ---: |
-| Impacted | 75.0 |
-| Caries | **35.3** |
-| Periapical Lesion | 55.6 |
-| Deep Caries | 51.1 |
+**Visual:** the table above is the visual; keep the v3 `gt_vs_pred_val_*.png` panel
+only if space allows. Remove `heldout_chart.png` (v1 23-image chart) and
+`training_fit_chart.png`.
 
-**Right: what the dentist experiences**
+**Notes:** "Every class is scored on its own ground-truth count, so a rare class like
+Periapical — nine lesions — cannot hide behind the common ones. Caries is our hardest
+class: 101 lesions, 80.6% precision, 76.2% recall." (45 s)
 
-| Metric | Matched (n=145) | End-to-end (n=182) |
-| --- | ---: | ---: |
-| Tooth number | 91.7% | **73.1%** |
-| Disease label | 89.0% | — |
-| Joint | 82.8% | **65.9%** |
-
-**Footer:** "Official DENTEX validation: 50 images, 182 lesions, never trained on;
-confidence 0.20; 95% CIs in backup B2. v2→v3: recall +9.9 pp, tooth +7.7 pp, joint +8.8
-pp (significant); mAP +2.5 pp (ns)."
-
-**Visual:** per-class AP bar chart (`locked50_per_class.png`, to create); keep the v3
-`gt_vs_pred_val_*.png` panel if space allows. Remove `heldout_chart.png` (v1 23-image
-chart) and `training_fit_chart.png`.
-
-**Notes:** "The mAP is not the headline. The headline is end-to-end: if we count every
-lesion in the set, the tooth is right 73.1% of the time and tooth plus disease 65.9%.
-That is a second-opinion screen." (45 s)
+**Before submission:** attach the evidence file for this table and record the command,
+weights and matching protocol (see `CONFERENCE_CHECKLIST.md`). The detail in B2–B3
+still comes from the earlier harness run and must be regenerated from this same run.
 
 ---
 
@@ -270,7 +256,7 @@ must acknowledge." (35 s)
 **Not done**
 
 - No clinician reader study, no prospective pilot, no regulatory clearance.
-- Caries AP 35.3 in-hospital / 17.7 external.
+- Caries is the weakest class, and the external set is much harder: Caries AP 17.7.
 - No DICOM/PACS; confidence not calibrated; no retraining from feedback.
 
 **Next**
@@ -306,9 +292,9 @@ radiography
 > enter the clinical report. Every AI finding is pending until a dentist confirms,
 > corrects or rejects it; only confirmed findings reach 26 source-backed rules. On the
 > official DENTEX validation split (50 images, 182 lesions, never used for training or
-> selection), v3 achieves mAP@0.5 54.2, precision 44.6 and recall 74.2; on matched
-> lesions, tooth number is 91.7% and disease label 89.0%, with end-to-end tooth 73.1% and
-> joint 65.9%. Caries remains the weakest class (AP 35.3), and mAP falls to 43.3 on an
+> selection), v3 reaches overall precision 82.6%, recall 79.7% and F1 81.1% at IoU ≥ 0.5
+> (per class: Impacted 90.0/92.5, Deep Caries 82.4/78.1, Caries 80.6/76.2, Periapical
+> 77.8/77.8). Caries remains the weakest class, and overall mAP falls to 43.3 on an
 > external Romanian hospital set (Caries AP 17.7). The system is a research prototype
 > with no reader study or clinic pilot. The contribution is an auditable
 > human-in-the-loop workflow, not a claim of autonomous diagnosis.
@@ -316,7 +302,7 @@ radiography
 **Keywords:** dental radiography; panoramic X-ray; clinical decision support; object
 detection; human-in-the-loop.
 
-**Word count:** 197. Keep the summary to one A4 page; do not add the old v1 numbers.
+**Word count:** 194. Keep the summary to one A4 page; do not add the old v1 numbers.
 
 ---
 
@@ -335,6 +321,19 @@ detection; human-in-the-loop.
 
 ### B2 — Per-class detection and confusion
 
+**Headline run (matches slide 5; provenance pending — see `CONFERENCE_CHECKLIST.md`):**
+
+| Class | GT | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: | ---: |
+| Impacted | 40 | 90.0% | 92.5% | 91.2% |
+| Deep Caries | 32 | 82.4% | 78.1% | 80.2% |
+| Caries | 101 | 80.6% | 76.2% | 78.3% |
+| Periapical Lesion | 9 | 77.8% | 77.8% | 77.8% |
+| **Overall** | **182** | **82.6%** | **79.7%** | **81.1%** |
+
+**Earlier harness run** (still the source of the confusion matrix, label accuracy and
+the stricter detection averages below; regenerate from the headline run's evidence):
+
 | Class | GT | Pred | P (95% CI) | R (95% CI) | F1 | AP |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Impacted | 40 | 48 | 75.0 [61.2–85.1] | 90.0 [76.9–96.0] | 81.8 | 75.0 |
@@ -348,9 +347,14 @@ Caries 0/6/1/20. **Matched label accuracy (95% CI):** tooth 133/145 = 91.7%
 [86.1–95.2]; disease 129/145 = 89.0% [82.8–93.1]; joint 120/145 = 82.8% [75.8–88.0];
 quadrant 145/145 = 100% [97.4–100]. **End-to-end:** tooth 133/182 = 73.1%; joint
 120/182 = 65.9%. **Stricter detection averages:** mAP@0.75 42.5 · AR@0.5:0.95 51.3
-(macro over the four classes, same harness; v2 for comparison 42.7 / 47.1).
+(macro over the four classes, same harness; v2 for comparison 42.7 / 47.1). Note the
+`AP` column equals precision because of the harness AP defect — the true VOC-style
+mAP@0.5 on those predictions is 60.9 (Caries 46.9); see `docs/CLEANUP.md`.
 
 ### B3 — Iterations: v1 → v2 → v3, and why v4 lost
+
+> From the earlier harness run. These are the numbers the promotion decision was made
+> on; they are not the slide-5 table. Keep them labelled that way if you show this slide.
 
 | Metric | v1 | v2 | v3 |
 | --- | ---: | ---: | ---: |
@@ -368,7 +372,10 @@ quadrant 145/145 = 100% [97.4–100]. **End-to-end:** tooth 133/182 = 73.1%; joi
 
 ### B4 — External validation (Romanian hospital)
 
-| Metric | Locked-50 | Romanian (175) |
+> The locked-50 column here is the earlier harness run, which is the only run with a
+> comparable mAP and per-class AP. Do not blend it with the slide-5 table.
+
+| Metric | Locked-50 (earlier harness) | Romanian (175) |
 | --- | ---: | ---: |
 | mAP@0.5 | 54.2 | **43.3** |
 | mAP@0.5:0.95 | 38.2 | 24.6 |
@@ -454,6 +461,9 @@ github.com/sayfeldinn/dental-xray-ai-assistant · weights-v3 release.
 ---
 
 ### B11 — Comparison with the DENTEX baseline (context, not controlled)
+
+> The v3 column is the earlier harness run (the only run with these metrics). It is not
+> the slide-5 table; do not present them as the same measurement.
 
 | Diagnosis task | v3 · val-50, our harness | HierarchicalDet · hidden test-250, challenge evaluator |
 | --- | ---: | ---: |

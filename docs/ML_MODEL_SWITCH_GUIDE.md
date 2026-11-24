@@ -8,6 +8,11 @@
 > and rejected on 2026-11-04 (it lost Caries, tooth and joint accuracy on the
 > locked 50); see "Candidate v4" below. `notebooks/README.md` covers training
 > and `ml/eval/evaluation_report_v3.md` has the full benchmark.
+>
+> **Numbers in this guide are the reproducible harness run.** The conference
+> headline table (overall P 82.6 / R 79.7 / F1 81.1) comes from a separate
+> presenter run whose evidence is still pending; see `submission/FACTS.md` §4 and
+> `submission/CONFERENCE_CHECKLIST.md`. Do not blend the two.
 
 ## Overview
 

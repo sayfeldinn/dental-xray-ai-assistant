@@ -22,7 +22,18 @@ panoramic X-ray (1024 px)
   └─ 11-class findings detector (advisory) → fillings, crowns, root canals, …; never enters the report
 ```
 
-**Locked-50 evaluation** — the official DENTEX validation split (50 images, 182
+**Headline results** (presenter's run; provenance pending — see
+`submission/CONFERENCE_CHECKLIST.md` blocker 0):
+
+| Class | GT | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: | ---: |
+| Impacted | 40 | 90.0% | 92.5% | 91.2% |
+| Deep Caries | 32 | 82.4% | 78.1% | 80.2% |
+| Caries | 101 | 80.6% | 76.2% | 78.3% |
+| Periapical Lesion | 9 | 77.8% | 77.8% | 77.8% |
+| **Overall** | **182** | **82.6%** | **79.7%** | **81.1%** |
+
+**Reproducible harness run** — the official DENTEX validation split (50 images, 182
 lesions), never used for training or model selection; confidence threshold 0.20:
 
 | Metric | v3 |
